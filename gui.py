@@ -27,7 +27,7 @@ class VerticalScrolledFrame(tk.Frame):
 
         # create a frame inside the canvas which will be scrolled with it
         self.interior = interior = tk.Frame(self.canvas)
-        interior_id = self.canvas.create_window(0, 0, window=self.interior,
+        self.interior_id = self.canvas.create_window(0, 0, window=self.interior,
                                            anchor=tk.NW)
 
 
@@ -45,13 +45,15 @@ class VerticalScrolledFrame(tk.Frame):
 
         interior.bind('<Configure>', _configure_interior)
 
-        def _configure_canvas(event):
-            if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
-                # update the inner frame's width to fill the canvas
-                self.canvas.itemconfigure(interior_id, width=self.canvas.winfo_width())
-            # Remove or add scrollbars depending on whether or not they're necessary
-            self._configure_scrollbars()
-        self.canvas.bind('<Configure>', _configure_canvas)
+
+        self.canvas.bind('<Configure>', self._configure_canvas)
+
+    def _configure_canvas(self, event):
+        if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
+            # update the inner frame's width to fill the canvas
+            self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width())
+        # Remove or add scrollbars depending on whether or not they're necessary
+        self._configure_scrollbars()
 
     # If the scrollable area is smaller than the window size, get rid of the
     # scroll bars. Keep space while the scrollbars are gone though.
@@ -82,6 +84,7 @@ class ChatFrame(VerticalScrolledFrame):
 class MessageFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
+        self.canvas.bind('<Configure>', self._configure_messages_canvas)
 
     def addMessages(self, chat):
         for widget in self.interior.winfo_children():
@@ -94,7 +97,21 @@ class MessageFrame(VerticalScrolledFrame):
                 msg.pack(anchor=tk.E, expand=tk.FALSE)
             else:
                 msg.pack(anchor=tk.W, expand=tk.FALSE)
+
+        self._configure_message_scrollbars()
+
+    def _configure_message_scrollbars(self):
+        self.canvas.yview_moveto(0)       
         self._configure_scrollbars()
+        self.interior.update()
+        self.canvas.xview_moveto(0)
+        self.canvas.yview_moveto(self.interior.winfo_reqheight())
+
+    def _configure_messages_canvas(self, event):
+        (top, bottom) = self.vscrollbar.get()
+        self._configure_canvas(event)
+        self.canvas.yview_moveto(bottom)   
+
 
 class MessageBubble(tk.Message):
 
