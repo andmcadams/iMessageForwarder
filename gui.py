@@ -30,6 +30,8 @@ class VerticalScrolledFrame(tk.Frame):
         self.interior_id = self.canvas.create_window(0, 0, window=self.interior,
                                            anchor=tk.NW)
 
+        self.bind('<Enter>', self._bound_to_mousewheel)
+        self.bind('<Leave>', self._unbound_to_mousewheel)
 
         # track changes to the canvas and frame width and sync them,
         # also updating the scrollbar
@@ -67,6 +69,21 @@ class VerticalScrolledFrame(tk.Frame):
             self.vscrollbar.grid(row=0, column=1, sticky='ns')
             self.canvas.grid_configure(padx=(0,0))
 
+    def _bound_to_mousewheel(self, event):
+        self.canvas.bind_all('<MouseWheel>', self._on_mousewheel_windows)
+        self.canvas.bind_all('<Button-4>', lambda event: self._on_mousewheel_linux(-1, event))
+        self.canvas.bind_all('<Button-5>', lambda event: self._on_mousewheel_linux(1, event))
+
+    def _unbound_to_mousewheel(self, event):
+        self.canvas.unbind_all('<MouseWheel>')
+        self.canvas.unbind_all('<Button-4>')
+        self.canvas.unbind_all('<Button-5>')
+
+    def _on_mousewheel_windows(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+    def _on_mousewheel_linux(self, direction, event):
+        self.canvas.yview_scroll(direction, "units")
 
 class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
@@ -92,7 +109,7 @@ class MessageFrame(VerticalScrolledFrame):
         chat._loadMessages()
         messageDict = chat.getMessages()
         for message in messageDict.values():
-            msg = MessageBubble(self.interior, message.messageId, padx=0, pady=5, width=200, bg='blue', text=message.text, font="Dosis")
+            msg = MessageBubble(self.interior, message.messageId, padx=0, pady=5, width=200, fg='white', bg='blue', text=message.text, font="Dosis")
             if message.isFromMe:
                 msg.pack(anchor=tk.E, expand=tk.FALSE)
             else:
@@ -108,7 +125,7 @@ class MessageFrame(VerticalScrolledFrame):
         self.canvas.yview_moveto(self.interior.winfo_reqheight())
 
     def _configure_messages_canvas(self, event):
-        (top, bottom) = self.vscrollbar.get()
+        (_, bottom) = self.vscrollbar.get()
         self._configure_canvas(event)
         self.canvas.yview_moveto(bottom)   
 
