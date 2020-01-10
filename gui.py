@@ -70,11 +70,11 @@ class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
 
-    def addChat(self, chat, messageFrame):
+    def addChat(self, chat, responseFrame):
         btn = tk.Button(self.interior, height=1, width=20, relief=tk.FLAT, 
             bg="gray99", fg="purple3",
             font="Dosis", text=chat.getName(),
-            command=lambda chat=chat: messageFrame.addMessages(chat))
+            command=lambda chat=chat: responseFrame.changeChat(chat))
         btn.pack(padx=0, pady=0, side=tk.TOP)
 
         self._configure_scrollbars()
@@ -103,15 +103,39 @@ class MessageBubble(tk.Message):
         tk.Message.__init__(self, parent, *args, **kw)
         self.messageId = messageId
 
+class RecipientFrame(tk.Frame):
+    def __init__(self, parent, *args, **kw):
+        tk.Frame.__init__(self, parent, *args, **kw)
+        self.configure(bg='red')
+        self.label = tk.Label(self, text='', bg='green', anchor='nw', justify=tk.LEFT, width=1, height=1)
+        self.label.grid(row=0, column=0, sticky='ew')
+
+        self.details = tk.Label(self, text='Details', bg='yellow', anchor='e', justify=tk.LEFT)
+        self.details.grid(row=0, column=1, sticky='se')
+
+        self.columnconfigure(0, weight=1)
+
+    def addRecipients(self, chat):
+        recipString = ', '.join(chat.recipientList)
+        self.label.configure(text=recipString, wraplength=int(0.66*self.winfo_width()))
+
 # The entire right half of the app
 class ResponseFrame(tk.Frame):
     def __init__(self, parent, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
         # This will eventually contain a RecipientFrame, MessageFrame, and a SendFrame
         self.messageFrame = MessageFrame(self, 0, 400)
-        self.messageFrame.grid(row=0, column=0, sticky='nsew')
+        self.messageFrame.grid(row=1, column=0, sticky='nsew')
+
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+
+        self.recipientFrame = RecipientFrame(self)
+        self.recipientFrame.grid(row=0, column=0, sticky='ew')
+
+    def changeChat(self, chat):
+        self.messageFrame.addMessages(chat)
+        self.recipientFrame.addRecipients(chat)
 
 
 
@@ -130,7 +154,7 @@ chats = api._loadChats()
 
 
 for i, chat in enumerate(chats):
-    chatFrame.addChat(chat, responseFrame.messageFrame)
+    chatFrame.addChat(chat, responseFrame)
 
 def openlink(i):
     print(lis[i])
