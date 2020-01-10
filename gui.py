@@ -76,7 +76,6 @@ class ChatFrame(VerticalScrolledFrame):
             font="Dosis", text=chat.getName(),
             command=lambda chat=chat: responseFrame.changeChat(chat))
         btn.pack(padx=0, pady=0, side=tk.TOP)
-
         self._configure_scrollbars()
 
 # The part of the right half where messages are displayed
@@ -106,18 +105,34 @@ class MessageBubble(tk.Message):
 class RecipientFrame(tk.Frame):
     def __init__(self, parent, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
-        self.configure(bg='red')
-        self.label = tk.Label(self, text='', bg='green', anchor='nw', justify=tk.LEFT, width=1, height=1)
+        self.label = tk.Label(self, text='', anchor='nw', justify=tk.LEFT, width=1, height=1)
         self.label.grid(row=0, column=0, sticky='ew')
 
-        self.details = tk.Label(self, text='Details', bg='yellow', anchor='e', justify=tk.LEFT)
+        self.details = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
         self.details.grid(row=0, column=1, sticky='se')
 
         self.columnconfigure(0, weight=1)
 
     def addRecipients(self, chat):
+        # Fix resizing of label,
+        # limit number of lines. Not hard to do if I hardcode the font size (17) to adjust height.
+        # Seems inelegant, will return later.
         recipString = ', '.join(chat.recipientList)
         self.label.configure(text=recipString, wraplength=int(0.66*self.winfo_width()))
+        self.details.configure(text='Details')
+
+class SendFrame(tk.Frame):
+    def __init__(self, parent, *args, **kw):
+        tk.Frame.__init__(self, parent, *args, **kw)
+        self.text = tk.Text(self, wrap=tk.WORD, width=1, height=1)
+        self.text.grid(row=0, column=0, sticky='ew')
+
+        self.columnconfigure(0, weight=1)
+
+        self.sendButton = tk.Button(self, relief=tk.FLAT, 
+            bg="gray99", fg="purple3",
+            font="Dosis", text='Send')
+        self.sendButton.grid(row=0, column=1)
 
 # The entire right half of the app
 class ResponseFrame(tk.Frame):
@@ -132,6 +147,9 @@ class ResponseFrame(tk.Frame):
 
         self.recipientFrame = RecipientFrame(self)
         self.recipientFrame.grid(row=0, column=0, sticky='ew')
+
+        self.sendFrame = SendFrame(self)
+        self.sendFrame.grid(row=2, column=0, sticky='ew')
 
     def changeChat(self, chat):
         self.messageFrame.addMessages(chat)
