@@ -11,9 +11,6 @@ class VerticalScrolledFrame(tk.Frame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)            
 
-        self.minHeight = minHeight
-        self.minWidth = minWidth
-
         # create a canvas object and a vertical scrollbar for scrolling it
         self.vscrollbar = tk.Scrollbar(self, orient=tk.VERTICAL)
         self.vscrollbar.grid(row=0, column=1, sticky='ns')
