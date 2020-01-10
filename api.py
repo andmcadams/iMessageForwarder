@@ -83,6 +83,14 @@ class Chat:
 		# This should probably eventually be a list where the messages are in order
 		self.messageList = MessageList()
 		self.mostRecentMessage = self._getMostRecentMessage()
+		self.recipientList = self._loadRecipients()
+
+	def _loadRecipients(self):
+		cursor = conn.execute('select id from handle inner join chat_handle_join on handle.ROWID = chat_handle_join.handle_id and chat_handle_join.chat_id = ?', (self.chatId, ))
+		recipients = []
+		for recipient in cursor.fetchall():
+			recipients.append(recipient[0])
+		return recipients
 
 	def _getMostRecentMessage(self):
 		cursor = conn.execute('select ROWID, handle_id, text, max(message.date), is_from_me from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ?', (self.chatId, ))
