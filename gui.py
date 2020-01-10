@@ -10,7 +10,6 @@ class VerticalScrolledFrame(tk.Frame):
     """
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)            
-
         # create a canvas object and a vertical scrollbar for scrolling it
         self.vscrollbar = tk.Scrollbar(self, orient=tk.VERTICAL)
         self.vscrollbar.grid(row=0, column=1, sticky='ns')
@@ -30,7 +29,6 @@ class VerticalScrolledFrame(tk.Frame):
         self.interior = interior = tk.Frame(self.canvas)
         interior_id = self.canvas.create_window(0, 0, window=self.interior,
                                            anchor=tk.NW)
-
 
 
         # track changes to the canvas and frame width and sync them,
@@ -58,6 +56,7 @@ class VerticalScrolledFrame(tk.Frame):
     # If the scrollable area is smaller than the window size, get rid of the
     # scroll bars. Keep space while the scrollbars are gone though.
     def _configure_scrollbars(self):
+        self.interior.update()
         if self.canvas.winfo_height() > self.interior.winfo_reqheight():
             self.scrollbarwidth = self.vscrollbar.winfo_width()
             self.vscrollbar.grid_forget()
@@ -80,6 +79,7 @@ class ChatFrame(VerticalScrolledFrame):
 
         self._configure_scrollbars()
 
+# The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
@@ -103,6 +103,18 @@ class MessageBubble(tk.Message):
         tk.Message.__init__(self, parent, *args, **kw)
         self.messageId = messageId
 
+# The entire right half of the app
+class ResponseFrame(tk.Frame):
+    def __init__(self, parent, *args, **kw):
+        tk.Frame.__init__(self, parent, *args, **kw)
+        # This will eventually contain a RecipientFrame, MessageFrame, and a SendFrame
+        self.messageFrame = MessageFrame(self, 0, 400)
+        self.messageFrame.grid(row=0, column=0, sticky='nsew')
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+
+
 
 root = tk.Tk()
 root.title("Scrollable Frame Demo")
@@ -110,15 +122,15 @@ root.configure(background="gray99")
 root.minsize(500, 100)
 chatFrame = ChatFrame(root, 0, 100)
 chatFrame.grid(row=0, column=0, sticky='nsew')
-messageFrame = MessageFrame(root, 0, 400)
-messageFrame.grid(row=0, column=1, sticky='nsew')
+responseFrame = ResponseFrame(root)
+responseFrame.grid(row=0, column=1, sticky='nsew')
 root.columnconfigure(1, weight=1)
 root.rowconfigure(0, weight=1)
 chats = api._loadChats()
 
 
 for i, chat in enumerate(chats):
-    chatFrame.addChat(chat, messageFrame)
+    chatFrame.addChat(chat, responseFrame.messageFrame)
 
 def openlink(i):
     print(lis[i])
