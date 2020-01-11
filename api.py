@@ -1,8 +1,12 @@
 import sqlite3
+import os
+import json
 
 conn = sqlite3.connect('../messages/SMS/sms.db')
 
-
+secrets = json.load(open('secrets.json'))
+ip = secrets['ip']
+scriptPath = secrets['scriptPath']
 """
 MessageList needs to satisfy two major criteria:
 	1. Easy lookup to find a message based on messageId (in order to update messages)
@@ -115,6 +119,12 @@ class Chat:
 		for row in cursor:
 			message = Message(*row)
 			self.messageList.append(message)
+
+	def sendMessage(self, messageText):
+		messageText = messageText.replace('\"', '\\\"')
+		cmd = "ssh root@{} \"python {} \\\"{}\\\" {}\"".format(ip, scriptPath, messageText, self.chatId)
+		os.system(cmd)
+
 
 def _loadChats():
 	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat')
