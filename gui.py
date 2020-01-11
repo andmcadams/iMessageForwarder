@@ -168,6 +168,13 @@ class SendFrame(tk.Frame):
             font="Dosis", text='Send')
         self.sendButton.grid(row=0, column=1)
 
+    def sendMessage(self, chat):
+        chat.sendMessage(self.text.get('1.0', 'end-1c'))
+        self.text.delete('1.0', 'end')
+
+    def updateSendButton(self, chat):
+        self.sendButton.configure(command= lambda chat=chat: self.sendMessage(chat))
+
 # The entire right half of the app
 class ResponseFrame(tk.Frame):
     def __init__(self, parent, *args, **kw):
@@ -188,6 +195,7 @@ class ResponseFrame(tk.Frame):
     def changeChat(self, chat):
         self.messageFrame.addMessages(chat)
         self.recipientFrame.addRecipients(chat)
+        self.sendFrame.updateSendButton(chat)
 
 
 
