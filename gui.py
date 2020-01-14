@@ -1,6 +1,8 @@
 import tkinter as tk
 import time
 import api
+from threading import Thread
+
 class VerticalScrolledFrame(tk.Frame):
     """A pure Tkinter scrollable frame that actually works!
 
@@ -109,8 +111,8 @@ class MessageFrame(VerticalScrolledFrame):
         chat._loadMessages()
         messageDict = chat.getMessages()
         for message in messageDict.values():
-            msg = MessageBubble(self.interior, message.messageId, padx=0, pady=5, width=200, fg='white', bg='blue', text=message.text, font="Dosis")
-            if message.isFromMe:
+            msg = MessageBubble(self.interior, message, padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
+            if message.attr['is_from_me']:
                 msg.pack(anchor=tk.E, expand=tk.FALSE)
             else:
                 msg.pack(anchor=tk.W, expand=tk.FALSE)
@@ -127,14 +129,22 @@ class MessageFrame(VerticalScrolledFrame):
     def _configure_messages_canvas(self, event):
         (_, bottom) = self.vscrollbar.get()
         self._configure_canvas(event)
-        self.canvas.yview_moveto(bottom)   
+        self.canvas.yview_moveto(bottom)
+
 
 
 class MessageBubble(tk.Message):
 
-    def __init__(self, parent, messageId, *args, **kw):
+    def __init__(self, parent, message, *args, **kw):
         tk.Message.__init__(self, parent, *args, **kw)
-        self.messageId = messageId
+        
+        # Store a pointer to message object, so when this object is updated
+        # we can just call self.update()
+        self.message = message
+        self.update()
+
+    def update(self):
+        self.configure(text=self.message.attr['text'])
 
 class RecipientFrame(tk.Frame):
     def __init__(self, parent, *args, **kw):
@@ -215,10 +225,15 @@ class ResponseFrame(tk.Frame):
         self.sendFrame = SendFrame(self)
         self.sendFrame.grid(row=2, column=0, sticky='ew')
 
+        # Hold a dummy chat with an invalid id initially
+        self.currentChat = api.DummyChat(-1)
+
     def changeChat(self, chat):
-        self.messageFrame.addMessages(chat)
-        self.recipientFrame.addRecipients(chat)
-        self.sendFrame.updateSendButton(chat)
+        if chat.chatId != self.currentChat.chatId:
+            self.currentChat = chat
+            self.messageFrame.addMessages(chat)
+            self.recipientFrame.addRecipients(chat)
+            self.sendFrame.updateSendButton(chat)
 
 
 
@@ -239,7 +254,6 @@ chats = api._loadChats()
 for i, chat in enumerate(chats):
     chatFrame.addChat(chat, responseFrame)
 
-def openlink(i):
-    print(lis[i])
+
 
 root.mainloop()
