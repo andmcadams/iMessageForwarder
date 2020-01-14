@@ -2,6 +2,7 @@ import tkinter as tk
 import time
 import api
 import threading
+from datetime import datetime, timedelta
 
 class VerticalScrolledFrame(tk.Frame):
     """A pure Tkinter scrollable frame that actually works!
@@ -98,8 +99,19 @@ class ChatButton(tk.Frame):
             text = text[0:40] + '...'
         self.lastMessage = tk.Label(self, height=2, width=1, bg='green', anchor='nw', justify='left', text=text, wraplength=160)
 
-        # Time is going to be off by a few decades, whoops
-        self.lastMessageTime = tk.Label(self, height=1, width=1, bg='yellow', anchor='se', justify='right', text=time.strftime('%I:%M %p', time.localtime(chat.mostRecentMessage.attr['max(message.date)'])))
+        def getTimeText(timeStamp):
+            currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
+            msgTime = datetime.fromtimestamp(timeStamp + 978307200, tz=datetime.now().astimezone().tzinfo)
+            if currentTime.date() == msgTime.date():
+                timeText = msgTime.strftime('%I:%M %p')
+            elif currentTime.date() - timedelta(days=1) == msgTime.date():
+                timeText = 'Yesterday'
+            else:
+                timeText = msgTime.strftime('%m/%d/%Y')  
+            return timeText     
+
+        timeText = getTimeText(chat.mostRecentMessage.attr['max(message.date)'])
+        self.lastMessageTime = tk.Label(self, height=1, width=1, bg='yellow', anchor='se', justify='right', text=timeText)
         self.picture.grid(row=0, column=0, rowspan=2, sticky='nsew')
         self.number.grid(row=0, column=1, sticky='ew')
         self.lastMessage.grid(row=1, column=1, columnspan=2, sticky='ew')
@@ -120,14 +132,12 @@ class ChatButton(tk.Frame):
 class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
+        self.chatButtons = {}
 
     def addChat(self, chat, responseFrame):
-        # btn = tk.Button(self.interior, height=1, width=20, relief=tk.FLAT, 
-        #     bg="gray99", fg="purple3",
-        #     font="Dosis", text=chat.getName(),
-        #     command=lambda chat=chat: responseFrame.changeChat(chat))
         btn = ChatButton(self.interior, chat, responseFrame, bg='orange')
-        btn.pack(fill=tk.X, pady=1)
+        btn.pack(fill=tk.X, side=tk.TOP, pady=1)
+        self.chatButtons[chat.chatId] = btn
         self._configure_scrollbars()
 
 # The part of the right half where messages are displayed
@@ -174,8 +184,6 @@ class MessageFrame(VerticalScrolledFrame):
         (_, bottom) = self.vscrollbar.get()
         self._configure_canvas(event)
         self.canvas.yview_moveto(bottom)
-
-
 
 class MessageBubble(tk.Message):
 
