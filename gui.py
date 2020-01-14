@@ -87,16 +87,47 @@ class VerticalScrolledFrame(tk.Frame):
     def _on_mousewheel_linux(self, direction, event):
         self.canvas.yview_scroll(direction, "units")
 
+
+class ChatButton(tk.Frame):
+    def __init__(self, parent, chat, responseFrame, *args, **kw):
+        tk.Frame.__init__(self, parent, *args, **kw)            
+        self.picture = tk.Label(self, height=1, width=1, bg='red', text='picture')
+        self.number = tk.Label(self, height=1, width=1, bg='blue', anchor='nw', justify='left', text=chat.getName())
+        text = chat.mostRecentMessage.attr['text']
+        if text and len(text) > 40:
+            text = text[0:40] + '...'
+        self.lastMessage = tk.Label(self, height=2, width=1, bg='green', anchor='nw', justify='left', text=text, wraplength=160)
+
+        # Time is going to be off by a few decades, whoops
+        self.lastMessageTime = tk.Label(self, height=1, width=1, bg='yellow', anchor='se', justify='right', text=time.strftime('%I:%M %p', time.localtime(chat.mostRecentMessage.attr['max(message.date)'])))
+        self.picture.grid(row=0, column=0, rowspan=2, sticky='nsew')
+        self.number.grid(row=0, column=1, sticky='ew')
+        self.lastMessage.grid(row=1, column=1, columnspan=2, sticky='ew')
+        self.lastMessageTime.grid(row=0, column=2, sticky='ew')
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure(2, weight=1)
+
+        self.bind('<Button-1>', lambda event, chat=chat: responseFrame.changeChat(chat))
+        self.lastMessageTime.bind('<Button-1>', lambda event, chat=chat: responseFrame.changeChat(chat))
+        self.picture.bind('<Button-1>', lambda event, chat=chat: responseFrame.changeChat(chat))
+        self.lastMessage.bind('<Button-1>', lambda event, chat=chat: responseFrame.changeChat(chat))
+        self.number.bind('<Button-1>', lambda event, chat=chat: responseFrame.changeChat(chat))
+
+
 class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
 
     def addChat(self, chat, responseFrame):
-        btn = tk.Button(self.interior, height=1, width=20, relief=tk.FLAT, 
-            bg="gray99", fg="purple3",
-            font="Dosis", text=chat.getName(),
-            command=lambda chat=chat: responseFrame.changeChat(chat))
-        btn.pack(padx=0, pady=0, side=tk.TOP)
+        # btn = tk.Button(self.interior, height=1, width=20, relief=tk.FLAT, 
+        #     bg="gray99", fg="purple3",
+        #     font="Dosis", text=chat.getName(),
+        #     command=lambda chat=chat: responseFrame.changeChat(chat))
+        btn = ChatButton(self.interior, chat, responseFrame, bg='orange')
+        btn.pack(fill=tk.X, pady=1)
         self._configure_scrollbars()
 
 # The part of the right half where messages are displayed
@@ -223,10 +254,10 @@ class SendFrame(tk.Frame):
 
 # The entire right half of the app
 class ResponseFrame(tk.Frame):
-    def __init__(self, parent, *args, **kw):
+    def __init__(self, parent, minWidth, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
         # This will eventually contain a RecipientFrame, MessageFrame, and a SendFrame
-        self.messageFrame = MessageFrame(self, 0, 400)
+        self.messageFrame = MessageFrame(self, 0, minWidth)
         self.messageFrame.grid(row=1, column=0, sticky='nsew')
 
         self.columnconfigure(0, weight=1)
@@ -260,10 +291,12 @@ def updateFrames(chatFrame, responseFrame):
 root = tk.Tk()
 root.title("Scrollable Frame Demo")
 root.configure(background="gray99")
-root.minsize(500, 100)
-chatFrame = ChatFrame(root, 0, 100)
+minWidthChatFrame = 270
+minWidthResponseFrame = int(4*minWidthChatFrame/3)
+root.minsize(minWidthChatFrame+minWidthResponseFrame, 100)
+chatFrame = ChatFrame(root, 0, minWidthChatFrame)
 chatFrame.grid(row=0, column=0, sticky='nsew')
-responseFrame = ResponseFrame(root)
+responseFrame = ResponseFrame(root, minWidthResponseFrame)
 responseFrame.grid(row=0, column=1, sticky='nsew')
 root.columnconfigure(1, weight=1)
 root.rowconfigure(0, weight=1)
