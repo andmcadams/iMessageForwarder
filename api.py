@@ -155,6 +155,7 @@ def _loadChats():
 		chat = Chat(row[0], row[1], row[2])
 		if chat.mostRecentMessage.attr['ROWID'] != None:
 			chats.append(chat)
+	chats = sorted(chats, key=lambda chat: chat.mostRecentMessage.attr['max(message.date)'], reverse=True)
 	return chats
 
 def _getChatsToUpdate(lastAccessTime):
