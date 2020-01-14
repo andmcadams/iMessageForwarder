@@ -1,7 +1,7 @@
 import tkinter as tk
 import time
 import api
-from threading import Thread
+import threading
 
 class VerticalScrolledFrame(tk.Frame):
     """A pure Tkinter scrollable frame that actually works!
@@ -104,20 +104,33 @@ class MessageFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
         self.canvas.bind('<Configure>', self._configure_messages_canvas)
+        self.messageBubbles = {}
 
-    def addMessages(self, chat):
+    def changeChat(self, chat):
         for widget in self.interior.winfo_children():
             widget.destroy()
+        self.messageBubbles = {}
+        self.addMessages(chat)    
+
+    def addMessages(self, chat):
         chat._loadMessages()
         messageDict = chat.getMessages()
-        for message in messageDict.values():
-            msg = MessageBubble(self.interior, message, padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
-            if message.attr['is_from_me']:
-                msg.pack(anchor=tk.E, expand=tk.FALSE)
-            else:
-                msg.pack(anchor=tk.W, expand=tk.FALSE)
 
-        self._configure_message_scrollbars()
+        # For each message in messageDict
+        # Update the message bubble if it exists
+        # Add a new one if it does not exist
+        for messageId in messageDict.keys():
+            if not messageId in self.messageBubbles:
+                msg = MessageBubble(self.interior, messageDict[messageId], padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
+                if messageDict[messageId].attr['is_from_me']:
+                    msg.pack(anchor=tk.E, expand=tk.FALSE)
+                else:
+                    msg.pack(anchor=tk.W, expand=tk.FALSE)
+                self.messageBubbles[messageId] = msg
+                # Maybe make it do this after all messages are added, set a flag or something
+                self._configure_message_scrollbars()
+            else:
+                self.messageBubbles[messageId].update()
 
     def _configure_message_scrollbars(self):
         self.canvas.yview_moveto(0)       
@@ -231,12 +244,18 @@ class ResponseFrame(tk.Frame):
     def changeChat(self, chat):
         if chat.chatId != self.currentChat.chatId:
             self.currentChat = chat
-            self.messageFrame.addMessages(chat)
+            self.messageFrame.changeChat(chat)
             self.recipientFrame.addRecipients(chat)
             self.sendFrame.updateSendButton(chat)
 
 
 
+def updateFrames(chatFrame, responseFrame):
+    chatIds = api._getChatsToUpdate(0)
+    for chatId in chatIds:
+        if chatId == responseFrame.currentChat.chatId:
+            responseFrame.messageFrame.addMessages(responseFrame.currentChat)
+    threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame: updateFrames(chatFrame, responseFrame)).start()
 
 root = tk.Tk()
 root.title("Scrollable Frame Demo")
@@ -254,6 +273,7 @@ chats = api._loadChats()
 for i, chat in enumerate(chats):
     chatFrame.addChat(chat, responseFrame)
 
+updateFrames(chatFrame, responseFrame)
 
 
 root.mainloop()

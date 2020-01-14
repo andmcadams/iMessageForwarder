@@ -3,7 +3,9 @@ import os
 import json
 import time
 
-conn = sqlite3.connect('../messages/SMS/sms.db')
+
+dbPath = 'sms.db'
+conn = sqlite3.connect(dbPath)
 conn.row_factory = sqlite3.Row
 
 secrets = json.load(open('secrets.json'))
@@ -77,6 +79,8 @@ class Message:
 		if kw['text'] != None:
 			self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
 
+		print('Created message with text "{}"'.format(self.attr['text']))
+
 class DummyChat:
 	def __init__(self, chatId):
 		self.chatId = chatId
@@ -119,19 +123,21 @@ class Chat:
 
 	def _loadMessages(self):
 		# if self.messages is not none, we should just query for messages received after last message
-		print(self.lastAccess)
-		tempLastAccess = int(time.time())
+		conn = sqlite3.connect(dbPath)
+		conn.row_factory = sqlite3.Row
+		tempLastAccess = self.lastAccess
+		self.setAccessTime(int(time.time()))
 		neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type']
 
 		columns = ', '.join(neededColumnsMessage)
 		sql = 'SELECT {} FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?) and chat_message_join.chat_id = ? '.format(columns)
-		cursor = conn.execute(sql, (self.lastAccess, self.lastAccess, self.lastAccess, self.chatId))
+		cursor = conn.execute(sql, (tempLastAccess,tempLastAccess, tempLastAccess, self.chatId))
 
 		for row in cursor:
 			message = Message(**row)
 			self.messageList.append(message)
 
-		self.setAccessTime(tempLastAccess)	
+		conn.close()
 
 	def sendMessage(self, messageText):
 		messageText = messageText.replace('\"', '\\\"')
@@ -139,7 +145,7 @@ class Chat:
 		os.system(cmd)
 
 	def setAccessTime(self, t):
-		self.lastAccess = t - 978307200
+		self.lastAccess = t - 978307400
 
 
 def _loadChats():
@@ -150,3 +156,14 @@ def _loadChats():
 		if chat.mostRecentMessage.attr['ROWID'] != None:
 			chats.append(chat)
 	return chats
+
+def _getChatsToUpdate(lastAccessTime):
+	conn = sqlite3.connect(dbPath)
+	conn.row_factory = sqlite3.Row
+	sql = 'SELECT chat_id FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?)'
+	cursor = conn.execute(sql, (lastAccessTime, lastAccessTime, lastAccessTime))
+	chatIds = set()
+	for row in cursor.fetchall():
+		chatIds.add(row['chat_id'])
+	conn.close()
+	return chatIds
