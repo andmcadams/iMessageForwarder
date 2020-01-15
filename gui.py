@@ -143,6 +143,11 @@ class ChatButton(tk.Frame):
         timeText = self.getTimeText(self.chat.getMostRecentMessage().attr['date'])
         self.lastMessageTime.configure(text=timeText)
 
+        name = chat.getName()
+        if name and len(name) > 20:
+            name = name[0:17] + '...'
+        self.number.configure(text=name)
+
 
 class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
