@@ -40,32 +40,37 @@ class MessageList(dict):
 			# We assume that the dictionary will be sorted at this point by induction
 			# Avoid using reverse here since it has complexity O(n)
 			if keys:
-				# Find first message older than the new message
-				i = -1
-				for i in range(-1, -len(keys)):
+				i = 0
+				# Setting the range to go down to -2 makes it so we can reach i = -1 (range not inclusive to 2nd param)
+				# If i == -1, we know that this message is older than all other messages in the list.
+				for i in range(len(keys)-1, -2, -1):
+					#
+					if i == -1:
+						break
+					key = keys[i]
 					if message.attr['date'] > updatedMessages[key].attr['date']:
 						break
-				# i contains the index that message should be inserted after
-				# Note that if i == -1, we don't need to remove anything since -1 is the last index
-				if i != -1:
-					# Find the keys that will need to come after this new message
-					keysToRemove = [k for k in keys[i+1:]]
-					# Remove the keys, but save messages
-					poppedMessages = []
-					for key in keysToRemove:
-						poppedMessages.append(updatedMessages.pop(key))
-					# Add in the new message
-					updatedMessages[message.attr['ROWID']] = message
-					# Add back the messages we removed from the list
-					for poppedMessage in poppedMessages:
-						p = poppedMessages.pop()
-						updatedMessages[p.attr['ROWID']] = p
-				else:
-					updatedMessages[message.attr['ROWID']] = message
+
+				# Find the keys that will need to come after this new message
+				keysToRemove = [k for k in keys[i+1:]]
+				# Remove the keys, but save messages
+				poppedMessages = []
+				for key in keysToRemove:
+					poppedMessages.append(updatedMessages.pop(key))
+				# Add in the new message
+				updatedMessages[message.attr['ROWID']] = message
+				# Add back the messages we removed from the list
+				poppedMessages.reverse()
+				for _ in range(len(poppedMessages)):
+					p = poppedMessages.pop()
+					updatedMessages[p.attr['ROWID']] = p
 			# If the list is empty we end up here
 			else:
 				updatedMessages[message.attr['ROWID']] = message
 		self.messages = updatedMessages
+
+	def getMostRecentMessage(self):
+		return list(self.messages.values())[-1]
 
 class Message:
 
@@ -93,8 +98,8 @@ class Chat:
 		self.displayName = displayName
 		# This should probably eventually be a list where the messages are in order
 		self.messageList = MessageList()
-		self.mostRecentMessage = self._getMostRecentMessage()
 		self.recipientList = self._loadRecipients()
+		self._loadMostRecentMessage()
 		self.lastAccess = 0
 
 	def _loadRecipients(self):
@@ -103,14 +108,6 @@ class Chat:
 		for recipient in cursor.fetchall():
 			recipients.append(recipient[0])
 		return recipients
-
-	def _getMostRecentMessage(self):
-		cursor = conn.execute('select ROWID, handle_id, text, max(message.date), is_from_me from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ?', (self.chatId, ))
-		m = cursor.fetchone()
-		message = Message(**m)
-
-		# If I can guarantee that self.messages[-1] is the most recent message, this can be a lot simpler
-		return message
 	
 	def getName(self):
 		if self.displayName:
@@ -147,15 +144,27 @@ class Chat:
 	def setAccessTime(self, t):
 		self.lastAccess = t - 978307400
 
+	def getMostRecentMessage(self):
+		return self.messageList.getMostRecentMessage()
+
+	def _loadMostRecentMessage(self):
+		conn = sqlite3.connect(dbPath)
+		conn.row_factory = sqlite3.Row		
+		cursor = conn.execute('select ROWID, handle_id, text, max(message.date), is_from_me from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ?', (self.chatId, ))
+		m = cursor.fetchone()
+		message = Message(**m)
+		message.attr['date'] = message.attr['max(message.date)']
+		del message.attr['max(message.date)']
+		self.messageList.append(message)
 
 def _loadChats():
 	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat')
 	chats = []
 	for row in cursor.fetchall():
 		chat = Chat(row[0], row[1], row[2])
-		if chat.mostRecentMessage.attr['ROWID'] != None:
+		if chat.getMostRecentMessage().attr['ROWID'] != None:
 			chats.append(chat)
-	chats = sorted(chats, key=lambda chat: chat.mostRecentMessage.attr['max(message.date)'], reverse=True)
+	chats = sorted(chats, key=lambda chat: chat.getMostRecentMessage().attr['date'], reverse=True)
 	return chats
 
 def _getChatsToUpdate(lastAccessTime):
