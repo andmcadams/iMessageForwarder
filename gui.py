@@ -94,25 +94,28 @@ class ChatButton(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kw)
         self.chat = chat
         self.picture = tk.Label(self, height=1, width=1, bg='red', text='picture')
-        self.number = tk.Label(self, height=1, width=1, bg='blue', anchor='nw', justify='left', text=chat.getName())
+        name = chat.getName()
+        if name and len(name) > 20:
+            name = name[0:17] + '...'
+        self.number = tk.Label(self, height=1, width=1, bg='blue', anchor='nw', justify='left', font=("helvetica", 10), text=name, wraplength=0)
         text = chat.getMostRecentMessage().attr['text']
-        if text and len(text) > 40:
-            text = text[0:40] + '...'
-        self.lastMessage = tk.Label(self, height=2, width=1, bg='green', anchor='nw', justify='left', text=text, wraplength=160)
+        if text and len(text) > 50:
+            text = text[0:50] + '...'
+        self.lastMessage = tk.Label(self, height=2, width=1, bg='green', anchor='nw', justify='left', text=text, font=("helvetica", 10), wraplength=200)
    
 
         timeText = self.getTimeText(chat.getMostRecentMessage().attr['date'])
-        self.lastMessageTime = tk.Label(self, height=1, width=1, bg='yellow', anchor='se', justify='right', text=timeText)
+        self.lastMessageTime = tk.Label(self, height=1, width=1, bg='yellow', anchor='se', justify='right', font=("helvetica", 8), text=timeText)
         self.lastMessageId = chat.getMostRecentMessage().attr['ROWID']
         self.picture.grid(row=0, column=0, rowspan=2, sticky='nsew')
-        self.number.grid(row=0, column=1, sticky='ew')
-        self.lastMessage.grid(row=1, column=1, columnspan=2, sticky='ew')
-        self.lastMessageTime.grid(row=0, column=2, sticky='ew')
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=1)
+        self.number.grid(row=0, column=1, sticky='nsew')
+        self.lastMessage.grid(row=1, column=1, columnspan=2, sticky='nsew')
+        self.lastMessageTime.grid(row=0, column=2, sticky='nsew')
+        self.columnconfigure(0, weight=2)
+        self.columnconfigure(1, weight=5)
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
-        self.columnconfigure(2, weight=1)
+        self.columnconfigure(2, weight=2)
 
         self.bind('<Button-1>', lambda event, chat=chat: responseFrame.changeChat(chat))
         self.lastMessageTime.bind('<Button-1>', lambda event, chat=chat: responseFrame.changeChat(chat))
@@ -134,8 +137,8 @@ class ChatButton(tk.Frame):
     def update(self):
         text = self.chat.getMostRecentMessage().attr['text']
         self.lastMessageId = self.chat.getMostRecentMessage().attr['ROWID']
-        if text and len(text) > 40:
-            text = text[0:40] + '...'
+        if text and len(text) > 50:
+            text = text[0:50] + '...'
         self.lastMessage.configure(text=text)
         timeText = self.getTimeText(self.chat.getMostRecentMessage().attr['date'])
         self.lastMessageTime.configure(text=timeText)
