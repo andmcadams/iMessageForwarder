@@ -84,7 +84,6 @@ class Message:
 		if kw['text'] != None:
 			self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
 
-		print('Created message with text "{}"'.format(self.attr['text']))
 
 class DummyChat:
 	def __init__(self, chatId):
@@ -157,6 +156,15 @@ class Chat:
 		del message.attr['max(message.date)']
 		self.messageList.append(message)
 
+def _loadChat(chatId):
+	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat where ROWID = ?', (chatId, ))
+	row = cursor.fetchone()
+	chat = Chat(row[0], row[1], row[2])
+	if chat.getMostRecentMessage().attr['ROWID'] != None:
+		return chat
+
+	return None
+
 def _loadChats():
 	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat')
 	chats = []
@@ -170,10 +178,11 @@ def _loadChats():
 def _getChatsToUpdate(lastAccessTime):
 	conn = sqlite3.connect(dbPath)
 	conn.row_factory = sqlite3.Row
-	sql = 'SELECT chat_id FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?)'
+	sql = 'SELECT chat_id, max(date), text FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?) group by chat_id'
 	cursor = conn.execute(sql, (lastAccessTime, lastAccessTime, lastAccessTime))
-	chatIds = set()
+	chatIds = []
 	for row in cursor.fetchall():
-		chatIds.add(row['chat_id'])
+		chatIds.append((row['chat_id'], row['max(date)']))
+	chatIds = sorted(chatIds, key=lambda chatId: chatId[1])
 	conn.close()
 	return chatIds
