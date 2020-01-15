@@ -112,7 +112,7 @@ class Chat:
 		if self.displayName:
 			return self.displayName
 		else:
-			return self.chatIdentifier
+			return ', '.join(self.recipientList)
 
 	def getMessages(self):
 		return self.messageList.messages
