@@ -102,10 +102,13 @@ class Chat:
 		self.lastAccess = 0
 
 	def _loadRecipients(self):
+		conn = sqlite3.connect(dbPath)
+		conn.row_factory = sqlite3.Row
 		cursor = conn.execute('select id from handle inner join chat_handle_join on handle.ROWID = chat_handle_join.handle_id and chat_handle_join.chat_id = ?', (self.chatId, ))
 		recipients = []
 		for recipient in cursor.fetchall():
 			recipients.append(recipient[0])
+		conn.close()
 		return recipients
 	
 	def getName(self):
@@ -157,9 +160,12 @@ class Chat:
 		self.messageList.append(message)
 
 def _loadChat(chatId):
+	conn = sqlite3.connect(dbPath)
+	conn.row_factory = sqlite3.Row
 	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat where ROWID = ?', (chatId, ))
 	row = cursor.fetchone()
 	chat = Chat(row[0], row[1], row[2])
+	conn.close()
 	if chat.getMostRecentMessage().attr['ROWID'] != None:
 		return chat
 
