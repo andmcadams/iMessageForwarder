@@ -176,15 +176,27 @@ class ChatFrame(VerticalScrolledFrame):
 class MessageFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
-        self.canvas.bind('<Configure>', self._configure_messages_canvas)
+        
         self.messageBubbles = {}
+        
+        self.canvas.bind('<Configure>', self._configure_messages_canvas)
 
+    # To change chats (ie display messages of a new chat)
+    # we need to delete all the MessageBubbles of the old chat
+    # and then add the messages of the new chat.
+    #
+    # This could probably be changed so that there are frames for each chat
+    # and when a chat is opened, that frame is lifted. That should help
+    # avoid stutter by buffering.
+    # However, this probably needs to follow restricting chats to their first x messages
+    # without scrolling up to avoid consuming too much memory.
     def changeChat(self, chat):
         for widget in self.interior.winfo_children():
             widget.destroy()
         self.messageBubbles = {}
         self.addMessages(chat)    
 
+    # Add the chat's messages to the MessageFrame as MessageBubbles
     def addMessages(self, chat):
         chat._loadMessages()
         messageDict = chat.getMessages()
@@ -205,13 +217,20 @@ class MessageFrame(VerticalScrolledFrame):
             else:
                 self.messageBubbles[messageId].update()
 
+    # This function fixes the scrollbar for the message frame
+    # VSF _configure_scrollbars just adds or removes them based on how much stuff is displayed.
+    # This function first moves the scrollbars to the top, so if changing to a chat with fewer
+    # messages, the messages are in view (winfo_reqheight() won't decrease without this change).
+    # The interior is updated to get the new winfo_reqheight set.
+    # Scrollbars are then moved to the bottom of the canvas so that the most recent messages are showing.
     def _configure_message_scrollbars(self):
         self.canvas.yview_moveto(0)       
         self._configure_scrollbars()
         self.interior.update()
-        self.canvas.xview_moveto(0)
         self.canvas.yview_moveto(self.interior.winfo_reqheight())
 
+    # When the window changes size, this keeps the scrollbar's bottom location
+    # locked in place so the most recent messages stay in view.
     def _configure_messages_canvas(self, event):
         (_, bottom) = self.vscrollbar.get()
         self._configure_canvas(event)
