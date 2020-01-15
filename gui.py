@@ -94,7 +94,7 @@ class ChatButton(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kw)            
         self.picture = tk.Label(self, height=1, width=1, bg='red', text='picture')
         self.number = tk.Label(self, height=1, width=1, bg='blue', anchor='nw', justify='left', text=chat.getName())
-        text = chat.mostRecentMessage.attr['text']
+        text = chat.getMostRecentMessage().attr['text']
         if text and len(text) > 40:
             text = text[0:40] + '...'
         self.lastMessage = tk.Label(self, height=2, width=1, bg='green', anchor='nw', justify='left', text=text, wraplength=160)
@@ -110,7 +110,7 @@ class ChatButton(tk.Frame):
                 timeText = msgTime.strftime('%m/%d/%Y')  
             return timeText     
 
-        timeText = getTimeText(chat.mostRecentMessage.attr['max(message.date)'])
+        timeText = getTimeText(chat.getMostRecentMessage().attr['date'])
         self.lastMessageTime = tk.Label(self, height=1, width=1, bg='yellow', anchor='se', justify='right', text=timeText)
         self.picture.grid(row=0, column=0, rowspan=2, sticky='nsew')
         self.number.grid(row=0, column=1, sticky='ew')
@@ -283,6 +283,7 @@ class ResponseFrame(tk.Frame):
     def changeChat(self, chat):
         if chat.chatId != self.currentChat.chatId:
             self.currentChat = chat
+            self.currentChat.lastAccess = 0
             self.messageFrame.changeChat(chat)
             self.recipientFrame.addRecipients(chat)
             self.sendFrame.updateSendButton(chat)
@@ -294,6 +295,7 @@ def updateFrames(chatFrame, responseFrame):
     for chatId in chatIds:
         if chatId == responseFrame.currentChat.chatId:
             responseFrame.messageFrame.addMessages(responseFrame.currentChat)
+        # 
     threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame: updateFrames(chatFrame, responseFrame)).start()
 
 root = tk.Tk()
