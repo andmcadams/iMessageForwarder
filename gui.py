@@ -91,27 +91,19 @@ class VerticalScrolledFrame(tk.Frame):
 
 class ChatButton(tk.Frame):
     def __init__(self, parent, chat, responseFrame, *args, **kw):
-        tk.Frame.__init__(self, parent, *args, **kw)            
+        tk.Frame.__init__(self, parent, *args, **kw)
+        self.chat = chat
         self.picture = tk.Label(self, height=1, width=1, bg='red', text='picture')
         self.number = tk.Label(self, height=1, width=1, bg='blue', anchor='nw', justify='left', text=chat.getName())
         text = chat.getMostRecentMessage().attr['text']
         if text and len(text) > 40:
             text = text[0:40] + '...'
         self.lastMessage = tk.Label(self, height=2, width=1, bg='green', anchor='nw', justify='left', text=text, wraplength=160)
+   
 
-        def getTimeText(timeStamp):
-            currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
-            msgTime = datetime.fromtimestamp(timeStamp + 978307200, tz=datetime.now().astimezone().tzinfo)
-            if currentTime.date() == msgTime.date():
-                timeText = msgTime.strftime('%I:%M %p')
-            elif currentTime.date() - timedelta(days=1) == msgTime.date():
-                timeText = 'Yesterday'
-            else:
-                timeText = msgTime.strftime('%m/%d/%Y')  
-            return timeText     
-
-        timeText = getTimeText(chat.getMostRecentMessage().attr['date'])
+        timeText = self.getTimeText(chat.getMostRecentMessage().attr['date'])
         self.lastMessageTime = tk.Label(self, height=1, width=1, bg='yellow', anchor='se', justify='right', text=timeText)
+        self.lastMessageId = chat.getMostRecentMessage().attr['ROWID']
         self.picture.grid(row=0, column=0, rowspan=2, sticky='nsew')
         self.number.grid(row=0, column=1, sticky='ew')
         self.lastMessage.grid(row=1, column=1, columnspan=2, sticky='ew')
@@ -128,6 +120,26 @@ class ChatButton(tk.Frame):
         self.lastMessage.bind('<Button-1>', lambda event, chat=chat: responseFrame.changeChat(chat))
         self.number.bind('<Button-1>', lambda event, chat=chat: responseFrame.changeChat(chat))
 
+    def getTimeText(self, timeStamp):
+        currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
+        msgTime = datetime.fromtimestamp(timeStamp + 978307200, tz=datetime.now().astimezone().tzinfo)
+        if currentTime.date() == msgTime.date():
+            timeText = msgTime.strftime('%I:%M %p')
+        elif currentTime.date() - timedelta(days=1) == msgTime.date():
+            timeText = 'Yesterday'
+        else:
+            timeText = msgTime.strftime('%m/%d/%Y')  
+        return timeText  
+
+    def update(self):
+        text = self.chat.getMostRecentMessage().attr['text']
+        self.lastMessageId = self.chat.getMostRecentMessage().attr['ROWID']
+        if text and len(text) > 40:
+            text = text[0:40] + '...'
+        self.lastMessage.configure(text=text)
+        timeText = self.getTimeText(self.chat.getMostRecentMessage().attr['date'])
+        self.lastMessageTime.configure(text=timeText)
+
 
 class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
@@ -138,7 +150,7 @@ class ChatFrame(VerticalScrolledFrame):
         btn = ChatButton(self.interior, chat, responseFrame, bg='orange')
         btn.pack(fill=tk.X, side=tk.TOP, pady=1)
         self.chatButtons[chat.chatId] = btn
-        self._configure_scrollbars()
+        self._configure_scrollbars()        
 
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
@@ -292,9 +304,30 @@ class ResponseFrame(tk.Frame):
 
 def updateFrames(chatFrame, responseFrame):
     chatIds = api._getChatsToUpdate(0)
-    for chatId in chatIds:
+    for chatIdTuple in chatIds:
+        chatId = chatIdTuple[0]
         if chatId == responseFrame.currentChat.chatId:
             responseFrame.messageFrame.addMessages(responseFrame.currentChat)
+        # If there's a change in the number of messages in this chat
+        # push the chat to the top
+        if chatId in chatFrame.chatButtons:
+            oldMessageId = chatFrame.chatButtons[chatId].lastMessageId
+            chatFrame.chatButtons[chatId].chat._loadMostRecentMessage()
+            mostRecent = chatFrame.chatButtons[chatId].chat.getMostRecentMessage()
+            if oldMessageId != mostRecent.attr['ROWID']:
+                # Push this chat to the top
+                for rowid in chatFrame.chatButtons:
+                    chatFrame.chatButtons[rowid].pack_forget()
+                chatFrame.chatButtons[chatId].update()
+                chatFrame.chatButtons[chatId].pack(fill=tk.X, side=tk.TOP, pady=1)
+                for rowid in chatFrame.chatButtons:
+                    if rowid != chatId:
+                        chatFrame.chatButtons[rowid].pack(fill=tk.X, side=tk.TOP, pady=1)
+        else:
+            chat = api._loadChat(chatId)
+            chatFrame.addChat(chat)
+
+
         # 
     threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame: updateFrames(chatFrame, responseFrame)).start()
 
