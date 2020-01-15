@@ -88,7 +88,6 @@ class VerticalScrolledFrame(tk.Frame):
     def _on_mousewheel_linux(self, direction, event):
         self.canvas.yview_scroll(direction, "units")
 
-
 class ChatButton(tk.Frame):
     def __init__(self, parent, chat, responseFrame, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
@@ -161,8 +160,6 @@ class ChatButton(tk.Frame):
         self.number.configure(text=name)
         self.lastMessage.configure(text=text)
         self.lastMessageTime.configure(text=timeText)
-
-
 
 class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
@@ -348,9 +345,12 @@ def updateFrames(chatFrame, responseFrame):
                         chatFrame.chatButtons[rowid].pack(fill=tk.X, side=tk.TOP, pady=1)
         else:
             chat = api._loadChat(chatId)
-            chatFrame.addChat(chat)
-
-
+            for rowid in chatFrame.chatButtons:
+                chatFrame.chatButtons[rowid].pack_forget()
+            chatFrame.addChat(chat, responseFrame)
+            for rowid in chatFrame.chatButtons:
+                if rowid != chatId:            
+                    chatFrame.chatButtons[rowid].pack(fill=tk.X, side=tk.TOP, pady=1)
         # 
     threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame: updateFrames(chatFrame, responseFrame)).start()
 
