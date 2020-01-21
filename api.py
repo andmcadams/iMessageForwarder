@@ -2,7 +2,7 @@ import sqlite3
 import os
 import json
 import time
-
+import subprocess
 
 dbPath = 'sms.db'
 conn = sqlite3.connect(dbPath)
@@ -139,9 +139,9 @@ class Chat:
 		conn.close()
 
 	def sendMessage(self, messageText):
-		messageText = messageText.replace('\"', '\\\"')
-		cmd = "ssh root@{} \"python {} \\\"{}\\\" {}\"".format(ip, scriptPath, messageText, self.chatId)
-		os.system(cmd)
+		messageText = messageText.replace('\'', '\\\'')
+		cmd = "ssh root@{} $\'python {} \\\'{}\\\' {}\'".format(ip, scriptPath, messageText, self.chatId)
+		subprocess.run(["ssh", "root@{}".format(ip), "python {} $\'{}\' {}".format(scriptPath, messageText, self.chatId)])
 
 	def setAccessTime(self, t):
 		self.lastAccess = t - 978307400
