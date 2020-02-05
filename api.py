@@ -5,8 +5,7 @@ import time
 import subprocess
 
 dbPath = 'sms.db'
-conn = sqlite3.connect(dbPath)
-conn.row_factory = sqlite3.Row
+
 
 secrets = json.load(open('secrets.json'))
 ip = secrets['ip']
@@ -15,7 +14,7 @@ scriptPath = secrets['scriptPath']
 MessageList needs to satisfy two major criteria:
 	1. Easy lookup to find a message based on messageId (in order to update messages)
 	2. Ordering based on date
-1 allows O(1) time finding messages to update, which can be important if a user doesn't delete messages
+1 allows O(1) average time finding messages to update, which can be important if a user doesn't delete messages
 2 allows sorting to happen at insertion in order to save time when printing messages and fetching older ones
 Dictionary order is guaranteed in python 3.7+, so we will take advantage of that here
 """
@@ -140,7 +139,6 @@ class Chat:
 
 	def sendMessage(self, messageText):
 		messageText = messageText.replace('\'', '\\\'')
-		cmd = "ssh root@{} $\'python {} \\\'{}\\\' {}\'".format(ip, scriptPath, messageText, self.chatId)
 		subprocess.run(["ssh", "root@{}".format(ip), "python {} $\'{}\' {}".format(scriptPath, messageText, self.chatId)])
 
 	def setAccessTime(self, t):
@@ -172,6 +170,8 @@ def _loadChat(chatId):
 	return None
 
 def _loadChats():
+	conn = sqlite3.connect(dbPath)
+	conn.row_factory = sqlite3.Row
 	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat')
 	chats = []
 	for row in cursor.fetchall():
