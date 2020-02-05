@@ -370,28 +370,32 @@ def updateFrames(chatFrame, responseFrame):
             for rowid in chatFrame.chatButtons:
                 if rowid != chatId:            
                     chatFrame.chatButtons[rowid].pack(fill=tk.X, side=tk.TOP, pady=1)
+            #need to reconfigure scrollbars again
+            
         # 
     threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame: updateFrames(chatFrame, responseFrame)).start()
 
-root = tk.Tk()
-root.title("Scrollable Frame Demo")
-root.configure(background="gray99")
-minWidthChatFrame = 270
-minWidthResponseFrame = int(4*minWidthChatFrame/3)
-root.minsize(minWidthChatFrame+minWidthResponseFrame, 100)
-chatFrame = ChatFrame(root, 0, minWidthChatFrame)
-chatFrame.grid(row=0, column=0, sticky='nsew')
-responseFrame = ResponseFrame(root, minWidthResponseFrame)
-responseFrame.grid(row=0, column=1, sticky='nsew')
-root.columnconfigure(1, weight=1)
-root.rowconfigure(0, weight=1)
-chats = api._loadChats()
+
+def runGui():
+    root = tk.Tk()
+    root.title("Scrollable Frame Demo")
+    root.configure(background="gray99")
+    minWidthChatFrame = 270
+    minWidthResponseFrame = int(4*minWidthChatFrame/3)
+    root.minsize(minWidthChatFrame+minWidthResponseFrame, 100)
+    chatFrame = ChatFrame(root, 0, minWidthChatFrame)
+    chatFrame.grid(row=0, column=0, sticky='nsew')
+    responseFrame = ResponseFrame(root, minWidthResponseFrame)
+    responseFrame.grid(row=0, column=1, sticky='nsew')
+    root.columnconfigure(1, weight=1)
+    root.rowconfigure(0, weight=1)
+    chats = api._loadChats()
 
 
-for i, chat in enumerate(chats):
-    chatFrame.addChat(chat, responseFrame)
+    for i, chat in enumerate(chats):
+        chatFrame.addChat(chat, responseFrame)
 
-updateFrames(chatFrame, responseFrame)
+    updateFrames(chatFrame, responseFrame)
 
 
-root.mainloop()
+    root.mainloop()
