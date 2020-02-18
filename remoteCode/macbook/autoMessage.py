@@ -4,6 +4,7 @@ import sqlite3
 import time
 import subprocess
 import json
+import os
 
 dirname = os.path.dirname(__file__)
 configFile = os.path.join(dirname, 'config.json')

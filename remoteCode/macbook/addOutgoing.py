@@ -1,6 +1,7 @@
 import sqlite3
 import sys
 import os
+import json
 
 dirname = os.path.dirname(__file__)
 configFile = os.path.join(dirname, 'config.json')
