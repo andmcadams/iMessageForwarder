@@ -8,6 +8,7 @@ dbPath = 'sms.db'
 
 
 secrets = json.load(open('secrets.json'))
+user = secrets['user']
 ip = secrets['ip']
 scriptPath = secrets['scriptPath']
 """
@@ -112,7 +113,7 @@ class Chat:
 	
 	def getName(self):
 		if self.displayName:
-			return self.displayName
+			return ''.join([self.displayName[t] for t in range(len(self.displayName)) if ord(self.displayName[t]) in range(65536)])
 		else:
 			return ', '.join(self.recipientList)
 
@@ -139,7 +140,7 @@ class Chat:
 
 	def sendMessage(self, messageText):
 		messageText = messageText.replace('\'', '\\\'')
-		subprocess.run(["ssh", "root@{}".format(ip), "python {} $\'{}\' {}".format(scriptPath, messageText, self.chatId)])
+		subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} $\'{}\' {} {}".format(scriptPath, messageText, self.chatId, 0)])
 
 	def setAccessTime(self, t):
 		self.lastAccess = t - 978307400
@@ -162,6 +163,9 @@ def _loadChat(chatId):
 	conn.row_factory = sqlite3.Row
 	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat where ROWID = ?', (chatId, ))
 	row = cursor.fetchone()
+	if row == None:
+		print(chatId)
+		return None
 	chat = Chat(row[0], row[1], row[2])
 	conn.close()
 	if chat.getMostRecentMessage().attr['ROWID'] != None:
