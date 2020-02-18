@@ -141,7 +141,7 @@ class ChatButton(tk.Frame):
 
     def getTimeText(self, timeStamp):
         currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
-        msgTime = datetime.fromtimestamp(timeStamp + 978307200, tz=datetime.now().astimezone().tzinfo)
+        msgTime = datetime.fromtimestamp(timeStamp, tz=datetime.now().astimezone().tzinfo)
         if currentTime.date() == msgTime.date():
             timeText = msgTime.strftime('%I:%M %p')
         elif currentTime.date() - timedelta(days=1) == msgTime.date():

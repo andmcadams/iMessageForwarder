@@ -9,22 +9,21 @@ import sqlite3
 UNIX_TIME_OFFSET = 978307200 + 10
 
 secrets = json.load(open('secrets.json'))
+user = secrets['user']
 ip = secrets['ip']
 scriptPath = secrets['scriptPath']
 retrieveScriptPath = secrets['retrieveScriptPath']
 
 lastAccess = 0
 
-def setAccessTime(t):
-	global lastAccess
-	lastAccess = t - UNIX_TIME_OFFSET
-
 def retrieveUpdates():
+	global lastAccess
 	oldTime = lastAccess
-	tempLastAccess = int(time.time())
+	# Sub 10 seconds (likely too much) to account for possibility of missing messages that come in at the same time
+	tempLastAccess = int(time.time()) - 10
 	try:
-		cmd = ["ssh root@{} \"python {} {}\"".format(ip, retrieveScriptPath, lastAccess)]
-		setAccessTime(tempLastAccess)
+		cmd = ["ssh {}@{} \"python {} {}\"".format(user, ip, retrieveScriptPath, lastAccess)]
+		lastAccess = tempLastAccess
 		output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True)
 		output = json.loads(output.stdout)
 		conn = sqlite3.connect('sms.db')
@@ -39,7 +38,7 @@ def retrieveUpdates():
 		conn.commit()
 		conn.close()
 	except subprocess.CalledProcessError as e:
-		setAccessTime(lastAccess + UNIX_TIME_OFFSET)
+		lastAccess = oldTime
 		print('Failed to connect via ssh...')
 
 def runUpdater():
