@@ -5,7 +5,9 @@ import time
 import subprocess
 import json
 
-config = json.load(open('config.json'))
+dirname = os.path.dirname(__file__)
+configFile = os.path.join(dirname, 'config.json')
+config = json.load(open(configFile))
 QUEUE_DB_PATH = config['queueLocation']
 CHAT_DB_PATH = config['chatLocation']
 

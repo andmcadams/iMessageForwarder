@@ -1,5 +1,6 @@
 import sqlite3
 import sys
+import os
 import simplejson as json
 
 
@@ -7,7 +8,9 @@ if len(sys.argv) != 2:
 	print('Not enough args')
 	exit(1)
 
-config = json.load(open('config.json'))
+dirname = os.path.dirname(__file__)
+configFile = os.path.join(dirname, 'config.json')
+config = json.load(open(configFile))
 CHAT_DB_PATH = config['chatLocation']
 
 lastTime = (int(sys.argv[1]) - 978307200)*1000000000

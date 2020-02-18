@@ -1,7 +1,10 @@
 import sqlite3
 import sys
+import os
 
-config = json.load(open('config.json'))
+dirname = os.path.dirname(__file__)
+configFile = os.path.join(dirname, 'config.json')
+config = json.load(open(configFile))
 QUEUE_DB_PATH = config['queueLocation']
 
 if len(sys.argv) < 4:
