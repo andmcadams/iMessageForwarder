@@ -4,10 +4,12 @@ import json
 import time
 import subprocess
 
-dbPath = 'sms.db'
+dirname = os.path.dirname(__file__)
 
+dbPath = os.path.join(dirname, 'sms.db')
 
-secrets = json.load(open('secrets.json'))
+secretsFile = os.path.join(dirname, 'secrets.json')
+secrets = json.load(open(secretsFile))
 user = secrets['user']
 ip = secrets['ip']
 scriptPath = secrets['scriptPath']
