@@ -2,6 +2,7 @@ import json
 import subprocess
 import time
 import sqlite3
+import os
 
 dirname = os.path.dirname(__file__)
 secretsFile = os.path.join(dirname, 'secrets.json')
