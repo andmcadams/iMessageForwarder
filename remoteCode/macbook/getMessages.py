@@ -7,9 +7,12 @@ if len(sys.argv) != 2:
 	print('Not enough args')
 	exit(1)
 
+config = json.load(open('config.json'))
+CHAT_DB_PATH = config['chatLocation']
+
 lastTime = (int(sys.argv[1]) - 978307200)*1000000000
 
-conn = sqlite3.connect('/Users/andmcadams/Library/Messages/chat.db')
+conn = sqlite3.connect(CHAT_DB_PATH)
 
 conn.row_factory = sqlite3.Row
 

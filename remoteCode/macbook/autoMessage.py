@@ -3,9 +3,11 @@ import pyautogui
 import sqlite3
 import time
 import subprocess
+import json
 
-QUEUE_DB_PATH = '/Users/andmcadams/Library/Messages/msgqueue.db'
-CHAT_DB_PATH = '/Users/andmcadams/Library/Messages/chat.db'
+config = json.load(open('config.json'))
+QUEUE_DB_PATH = config['queueLocation']
+CHAT_DB_PATH = config['chatLocation']
 
 typeDict = {
 	2000: {'darkmode/dHeart.png', 'darkmode/aHeart.png'},
