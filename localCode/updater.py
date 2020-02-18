@@ -3,11 +3,6 @@ import subprocess
 import time
 import sqlite3
 
-
-# Adding 10 so that there's a bit of a "buffer", messages will be received if they
-# are under ten seconds old
-UNIX_TIME_OFFSET = 978307200 + 10
-
 dirname = os.path.dirname(__file__)
 secretsFile = os.path.join(dirname, 'secrets.json')
 secrets = json.load(open(secretsFile))
