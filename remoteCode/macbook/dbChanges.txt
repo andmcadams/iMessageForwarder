@@ -1,0 +1,8 @@
+In chat.db:
+
+create table message_update_date_join (message_id INTEGER REFERENCES message (ROWID) ON DELETE CASCADE, message_update_date INTEGER DEFAULT 0, PRIMARY KEY (message_id, message_update_date));
+CREATE TRIGGER insert_last_update_date AFTER INSERT ON message BEGIN INSERT INTO message_update_date_join (message_id, message_update_date) VALUES ( NEW.ROWID, strftime('%s','now') ); END;
+CREATE TRIGGER update_last_update_date AFTER UPDATE ON message BEGIN UPDATE message_update_date_join SET message_update_date = strftime('%s','now') WHERE message_id = OLD.ROWID; END;
+
+In msgqueue.db:
+CREATE TABLE outgoing ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, text text, chatId INTEGER, assocGUID text, assocType INTEGER, messageCode INTEGER );
