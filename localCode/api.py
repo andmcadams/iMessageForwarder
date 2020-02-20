@@ -87,6 +87,9 @@ class Message:
 			self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
 
 
+class ChatDeletedException(Exception):
+	pass
+
 class DummyChat:
 	def __init__(self, chatId):
 		self.chatId = chatId
@@ -166,10 +169,11 @@ def _loadChat(chatId):
 	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat where ROWID = ?', (chatId, ))
 	row = cursor.fetchone()
 	if row == None:
-		print(chatId)
-		return None
+		raise ChatDeletedException
 	chat = Chat(row[0], row[1], row[2])
 	conn.close()
+	if chat == None:
+		return None
 	if chat.getMostRecentMessage().attr['ROWID'] != None:
 		return chat
 
