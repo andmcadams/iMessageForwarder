@@ -13,12 +13,17 @@ QUEUE_DB_PATH = config['queueLocation']
 CHAT_DB_PATH = config['chatLocation']
 
 typeDict = {
-	2000: {'darkmode/dHeart.png', 'darkmode/aHeart.png'},
-	2001: {'darkmode/dThumbUp.png', 'darkmode/aThumbUp.png'},
-	2002: {'darkmode/dThumbDown.png', 'darkmode/aThumbDown.png'},
-	2003: {'darkmode/dHaha.png', 'darkmode/aHaha.png'},
-	2004: {'darkmode/dExclamation.png', 'darkmode/aExclamation.png'},
-	2005: {'darkmode/dQuestion.png', 'darkmode/aQuestion.png'}
+	2000: ['darkmode/dHeart.png', 'darkmode/aHeart.png'],
+	2001: ['darkmode/dThumbUp.png', 'darkmode/aThumbUp.png'],
+	2002: ['darkmode/dThumbDown.png', 'darkmode/aThumbDown.png'],
+	2003: ['darkmode/dHaha.png', 'darkmode/aHaha.png'],
+	2004: ['darkmode/dExclamation.png', 'darkmode/aExclamation.png'],
+	2005: ['darkmode/dQuestion.png', 'darkmode/aQuestion.png']
+}
+
+isFromMeDict = {
+	0: 637,
+	1: (2560-40)
 }
 
 class NewMessageException(Exception):
@@ -93,11 +98,17 @@ def getToChat(chatId):
 	# Add recips
 	print('Writing groupName: {}'.format(groupName))
 	pyautogui.write(groupName, interval=0.05)
+	pyautogui.press('space')
+	time.sleep(0.5)
+	pyautogui.press('backspace')
+	time.sleep(0.5)
+	pyautogui.press('enter')
+	time.sleep(0.1)
 	pyautogui.press('enter')
 
 
-def getLocationsToCheck():
-	im = pyautogui.screenshot('longStrip.png', region=(2560-36,100, 1, 1600-185))
+def getLocationsToCheck(isFromMe):
+	im = pyautogui.screenshot('longStrip.png', region=(isFromMeDict[isFromMe],100, 1, 1600-185))
 	onRun = False
 	pixels = []
 	for i in range(im.height):
@@ -122,8 +133,8 @@ def wrapLocateCenterOnScreen(filename, confidence=1.0):
 	return loc[0], loc[1]
 
 
-def checkText(p):
-	moveToAndClick((2560-40), p, click=RIGHT_CLICK, endDelay=1.5)
+def checkText(p, isFromMe):
+	moveToAndClick(isFromMeDict[isFromMe], p, click=RIGHT_CLICK, endDelay=1.5)
 	x, y = wrapLocateCenterOnScreen('darkmode/copy.png', confidence=0.97)
 	if x == None:
 		return False
@@ -135,8 +146,8 @@ def checkText(p):
 		return False
 	return True
 
-def hitReact(p):
-	moveToAndClick((2560-40), p, click=RIGHT_CLICK, endDelay=1.5)
+def hitReact(p, isFromMe):
+	moveToAndClick(isFromMeDict[isFromMe], p, click=RIGHT_CLICK, endDelay=1.5)
 
 	x, y = wrapLocateCenterOnScreen('darkmode/tapback.png', confidence=0.97)
 	if x == None:
@@ -175,6 +186,7 @@ while True:
 		if messageCode == 0:
 			print('Printing chatId: {}'.format(chatId))
 			pyautogui.write(text, interval=0.0001)
+			time.sleep(0.2)
 			pyautogui.press('enter')
 			cursor = conn.execute('delete from outgoing where ROWID = ?', (rowId, ))
 			conn.commit()
@@ -197,8 +209,10 @@ while True:
 
 		if messageCode == 1:
 			chatConn = sqlite3.connect(CHAT_DB_PATH)
-			chatCursor = chatConn.execute('select text from message where guid = ?', (assocGUID, ))
-			textToMatch = chatCursor.fetchone()[0]
+			chatCursor = chatConn.execute('select text, is_from_me from message where guid = ?', (assocGUID, ))
+			r = chatCursor.fetchone()
+			textToMatch = r[0]
+			isFromMe = r[1]
 
 			lastId = lastMessageId(chatId, chatConn)
 			print(lastId)
@@ -206,7 +220,7 @@ while True:
 			lastPixels = []
 			found = False
 			while not found:
-				pixels = getLocationsToCheck()
+				pixels = getLocationsToCheck(isFromMe)
 				# This is obviously less than ideal
 				if lastPixels == pixels:
 					break
@@ -215,14 +229,14 @@ while True:
 						newMessage(lastId, chatId, chatConn)
 						# Check to make sure there aren't any new messages in the chat.
 						# If there are, we need to relocate the pixels
-						if checkText(p) == False:
+						if checkText(p, isFromMe) == False:
 							continue
 
 						newMessage(lastId, chatId, chatConn)
 
 						# Might want to make this a decorator
 						attempts = 0
-						while hitReact(p) == False and attempts < 3:
+						while hitReact(p, isFromMe) == False and attempts < 3:
 							attempts += 1
 							newMessage(lastId, chatId, chatConn)
 

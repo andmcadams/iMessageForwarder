@@ -1,7 +1,7 @@
 import sqlite3
 import sys
 import os
-import simplejson as json
+import json
 
 
 if len(sys.argv) != 2:
@@ -13,8 +13,6 @@ configFile = os.path.join(dirname, 'config.json')
 config = json.load(open(configFile))
 CHAT_DB_PATH = config['chatLocation']
 
-lastTime = (int(sys.argv[1]) - 978307200)*1000000000
-
 conn = sqlite3.connect(CHAT_DB_PATH)
 
 conn.row_factory = sqlite3.Row
@@ -22,8 +20,9 @@ conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 
 # unix time 978307200 is 0 apple time
+lastTime = sys.argv[1]
 
-cursor.execute('select * from message inner join chat_message_join where (date > ? or date_read > ? or date_delivered > ?) and message.ROWID = chat_message_join.message_id', (lastTime, lastTime, lastTime))
+cursor.execute('select * from message inner join message_update_date_join inner join chat_message_join where message_update_date >= ? and message.ROWID = message_update_date_join.message_id and chat_message_join.message_id = message.ROWID', (lastTime, ))
 messages = []
 
 neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type']
