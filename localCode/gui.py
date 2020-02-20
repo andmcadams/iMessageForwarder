@@ -174,11 +174,11 @@ class ChatFrame(VerticalScrolledFrame):
 
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
-    def __init__(self, parent, minHeight, minWidth, *args, **kw):
+    def __init__(self, parent, minHeight, minWidth, messageMenu, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
         
         self.messageBubbles = {}
-        
+        self.messageMenu = messageMenu
         self.canvas.bind('<Configure>', self._configure_messages_canvas)
 
     # To change chats (ie display messages of a new chat)
@@ -206,7 +206,7 @@ class MessageFrame(VerticalScrolledFrame):
         # Add a new one if it does not exist
         for messageId in messageDict.keys():
             if not messageId in self.messageBubbles:
-                msg = MessageBubble(self.interior, messageDict[messageId], padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
+                msg = MessageBubble(self.interior, messageDict[messageId], self.messageMenu, padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
                 if messageDict[messageId].attr['is_from_me']:
                     msg.pack(anchor=tk.E, expand=tk.FALSE)
                 else:
@@ -236,14 +236,26 @@ class MessageFrame(VerticalScrolledFrame):
         self._configure_canvas(event)
         self.canvas.yview_moveto(bottom)
 
+class MessageMenu(tk.Menu):
+
+    def __init__(self, parent, *args, **kw):
+        tk.Menu.__init__(self, parent, tearoff=0, *args, **kw)
+        self.add_command(label="Love")
+        self.add_command(label="Like")
+        self.add_command(label="Dislike")
+        self.add_command(label="Laugh")
+        self.add_command(label="Emphasize")
+        self.add_command(label="Question")
+
 class MessageBubble(tk.Message):
 
-    def __init__(self, parent, message, *args, **kw):
+    def __init__(self, parent, message, messageMenu, *args, **kw):
         tk.Message.__init__(self, parent, *args, **kw)
         
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
         self.message = message
+        self.bind("<Button-3>", lambda event: messageMenu.tk_popup(event.x_root, event.y_root))
         self.update()
 
     def update(self):
@@ -313,10 +325,10 @@ class SendFrame(tk.Frame):
 
 # The entire right half of the app
 class ResponseFrame(tk.Frame):
-    def __init__(self, parent, minWidth, *args, **kw):
+    def __init__(self, parent, minWidth, messageMenu, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
         # This will eventually contain a RecipientFrame, MessageFrame, and a SendFrame
-        self.messageFrame = MessageFrame(self, 0, minWidth)
+        self.messageFrame = MessageFrame(self, 0, minWidth, messageMenu)
         self.messageFrame.grid(row=1, column=0, sticky='nsew')
 
         self.columnconfigure(0, weight=1)
@@ -380,8 +392,8 @@ def updateFrames(chatFrame, responseFrame):
         # 
     threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame: updateFrames(chatFrame, responseFrame)).start()
 
-
 def runGui():
+    global menu
     root = tk.Tk()
     root.title("Scrollable Frame Demo")
     root.configure(background="gray99")
@@ -390,12 +402,12 @@ def runGui():
     root.minsize(minWidthChatFrame+minWidthResponseFrame, 100)
     chatFrame = ChatFrame(root, 0, minWidthChatFrame)
     chatFrame.grid(row=0, column=0, sticky='nsew')
-    responseFrame = ResponseFrame(root, minWidthResponseFrame)
+    messageMenu = MessageMenu(root)
+    responseFrame = ResponseFrame(root, minWidthResponseFrame, messageMenu)
     responseFrame.grid(row=0, column=1, sticky='nsew')
     root.columnconfigure(1, weight=1)
     root.rowconfigure(0, weight=1)
     chats = api._loadChats()
-
 
     for i, chat in enumerate(chats):
         chatFrame.addChat(chat, responseFrame)
