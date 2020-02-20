@@ -1,6 +1,5 @@
 import tkinter as tk
 import time
-import api
 import threading
 from datetime import datetime, timedelta
 
@@ -404,8 +403,11 @@ def updateFrames(chatFrame, responseFrame):
         # 
     threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame: updateFrames(chatFrame, responseFrame)).start()
 
-def runGui():
-    global menu
+def runGui(DEBUG):
+    if DEBUG == 1:
+        globals()["api"] = __import__('dummyApi')
+    else:
+        globals()["api"] = __import__('api')
     root = tk.Tk()
     root.title("Scrollable Frame Demo")
     root.configure(background="gray99")
@@ -427,3 +429,6 @@ def runGui():
 
 
     root.mainloop()
+
+if __name__ == '__main__':
+    runGui(1)
