@@ -1,4 +1,6 @@
 import tkinter as tk
+import os
+from PIL import Image, ImageTk
 from verticalscrolledframe import VerticalScrolledFrame
 from constants import LINUX, MACOS
 
@@ -35,7 +37,10 @@ class MessageFrame(VerticalScrolledFrame):
         # Add a new one if it does not exist
         for messageId in messageDict.keys():
             if not messageId in self.messageBubbles:
-                msg = MessageBubble(self.interior, messageId, messageDict[messageId])
+                if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] == 'public.jpeg':
+                    msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId])
+                else:
+                    msg = TextMessageBubble(self.interior, messageId, messageDict[messageId])
                 if messageDict[messageId].attr['is_from_me']:
                     msg.pack(anchor=tk.E, expand=tk.FALSE)
                 else:
@@ -78,18 +83,21 @@ class MessageBubble(tk.Frame):
 
     def __init__(self, parent, messageId, message, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
-        self.msg = tk.Message(self, padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
-        
+
+        self.reactions = {}
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
         self.messageId = messageId
         self.message = message
+
+    # self.body MUST be assigned before calling this method
+    def initBody(self):
         # On right click, open the menu at the location of the mouse
         if LINUX:
-            self.msg.bind("<Button-3>", lambda event: self.onRightClick(event))
+            self.body.bind("<Button-3>", lambda event: self.onRightClick(event))
         elif MACOS:
-            self.msg.bind("<Button-2>", lambda event: self.onRightClick(event))
-        self.msg.pack()
+            self.body.bind("<Button-2>", lambda event: self.onRightClick(event))
+        self.body.pack()
         self.update()
 
     def onRightClick(self, event):
@@ -104,9 +112,26 @@ class MessageBubble(tk.Frame):
         messageMenu.tk_popup(event.x_root, event.y_root)
 
     def update(self):
-        self.msg.configure(text=self.message.attr['text'])
+        self.body.configure(text=self.message.attr['text'])
         for r in self.message.reactions:
             if self.message.reactions[r].attr['associated_message_type'] == 2000:
-                self.msg.configure(bg='red')
+                self.body.configure(bg='red')
             elif self.message.reactions[r].attr['associated_message_type'] == 3000:
-                self.msg.configure(bg='purple')
+                self.body.configure(bg='purple')
+
+class TextMessageBubble(MessageBubble):
+    def __init__(self, parent, messageId, message, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
+        self.body = tk.Message(self, padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
+        self.initBody()
+
+class ImageMessageBubble(MessageBubble):
+    def __init__(self, parent, messageId, message, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
+        load = Image.open(os.path.expanduser(message.attachment.attr['filename']))
+        load = load.resize((200, 200), Image.BICUBIC)
+        render = ImageTk.PhotoImage(load)
+        self.body = tk.Label(self, image=render)
+        self.body.image = render
+        self.body.pack()
+        self.initBody()
