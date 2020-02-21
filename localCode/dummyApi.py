@@ -130,7 +130,7 @@ class Chat:
 		conn = sqlite3.connect(dbPath)
 		conn.row_factory = sqlite3.Row
 		tempLastAccess = self.lastAccess
-		self.setAccessTime(int(time.time()))
+		self.lastAccess = int(time.time())
 		neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type']
 
 		columns = ', '.join(neededColumnsMessage)
@@ -145,9 +145,6 @@ class Chat:
 
 	def sendMessage(self, messageText):
 		pass
-
-	def setAccessTime(self, t):
-		self.lastAccess = t - 978307400
 
 	def getMostRecentMessage(self):
 		return self.messageList.getMostRecentMessage()
