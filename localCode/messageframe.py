@@ -35,7 +35,7 @@ class MessageFrame(VerticalScrolledFrame):
         # Add a new one if it does not exist
         for messageId in messageDict.keys():
             if not messageId in self.messageBubbles:
-                msg = MessageBubble(self.interior, messageId, messageDict[messageId], padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
+                msg = MessageBubble(self.interior, messageId, messageDict[messageId])
                 if messageDict[messageId].attr['is_from_me']:
                     msg.pack(anchor=tk.E, expand=tk.FALSE)
                 else:
@@ -74,10 +74,11 @@ class MessageMenu(tk.Menu):
         responseFrame = self.master.master.master.master.master
         #responseFrame.currentChat.sendReaction(messageId, reactionValue)
 
-class MessageBubble(tk.Message):
+class MessageBubble(tk.Frame):
 
     def __init__(self, parent, messageId, message, *args, **kw):
-        tk.Message.__init__(self, parent, *args, **kw)
+        tk.Frame.__init__(self, parent, *args, **kw)
+        self.msg = tk.Message(self, padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
         
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
@@ -85,10 +86,10 @@ class MessageBubble(tk.Message):
         self.message = message
         # On right click, open the menu at the location of the mouse
         if LINUX:
-            self.bind("<Button-3>", lambda event: self.onRightClick(event))
+            self.msg.bind("<Button-3>", lambda event: self.onRightClick(event))
         elif MACOS:
-            self.bind("<Button-2>", lambda event: self.onRightClick(event))
-
+            self.msg.bind("<Button-2>", lambda event: self.onRightClick(event))
+        self.msg.pack()
         self.update()
 
     def onRightClick(self, event):
@@ -103,4 +104,9 @@ class MessageBubble(tk.Message):
         messageMenu.tk_popup(event.x_root, event.y_root)
 
     def update(self):
-        self.configure(text=self.message.attr['text'])
+        self.msg.configure(text=self.message.attr['text'])
+        for r in self.message.reactions:
+            if self.message.reactions[r].attr['associated_message_type'] == 2000:
+                self.msg.configure(bg='red')
+            elif self.message.reactions[r].attr['associated_message_type'] == 3000:
+                self.msg.configure(bg='purple')
