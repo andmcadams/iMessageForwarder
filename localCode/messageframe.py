@@ -1,5 +1,6 @@
 import tkinter as tk
 from verticalscrolledframe import VerticalScrolledFrame
+from constants import LINUX, MACOS
 
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
@@ -83,7 +84,10 @@ class MessageBubble(tk.Message):
         self.messageId = messageId
         self.message = message
         # On right click, open the menu at the location of the mouse
-        self.bind("<Button-2>", lambda event: self.onRightClick(event))
+        if LINUX:
+            self.bind("<Button-3>", lambda event: self.onRightClick(event))
+        elif MACOS:
+            self.bind("<Button-2>", lambda event: self.onRightClick(event))
 
         self.update()
 
