@@ -37,7 +37,7 @@ class MessageFrame(VerticalScrolledFrame):
         # Add a new one if it does not exist
         for messageId in messageDict.keys():
             if not messageId in self.messageBubbles:
-                if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] == 'public.jpeg':
+                if messageDict[messageId].attachment != None and (messageDict[messageId].attachment.attr['uti'] == 'public.jpeg' or messageDict[messageId].attachment.attr['uti'] == 'public.png'):
                     msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId])
                 else:
                     msg = TextMessageBubble(self.interior, messageId, messageDict[messageId])
@@ -129,7 +129,7 @@ class ImageMessageBubble(MessageBubble):
     def __init__(self, parent, messageId, message, *args, **kw):
         MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
         load = Image.open(os.path.expanduser(message.attachment.attr['filename']))
-        load = load.resize((200, 200), Image.BICUBIC)
+        #load = load.resize((200, 200), Image.BICUBIC)
         render = ImageTk.PhotoImage(load)
         self.body = tk.Label(self, image=render)
         self.body.image = render
