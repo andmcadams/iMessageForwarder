@@ -167,7 +167,7 @@ class Chat:
 		neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type', 'attachment_id']
 
 		columns = ', '.join(neededColumnsMessage)
-		sql = 'SELECT {} FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?) and chat_message_join.chat_id = ? inner join message_attachment_join on message.ROWID = attachment_id'.format(columns)
+		sql = 'SELECT {} FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?) and chat_message_join.chat_id = ? left join message_attachment_join on message.ROWID = message_attachment_join.message_id'.format(columns)
 		cursor = conn.execute(sql, (tempLastAccess,tempLastAccess, tempLastAccess, self.chatId))
 
 		for row in cursor:
