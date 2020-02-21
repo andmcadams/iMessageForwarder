@@ -22,7 +22,7 @@ typeDict = {
 }
 
 isFromMeDict = {
-	0: 637,
+	0: 582,
 	1: (2560-40)
 }
 
