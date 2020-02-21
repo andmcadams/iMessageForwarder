@@ -24,6 +24,7 @@ Dictionary order is guaranteed in python 3.7+, so we will take advantage of that
 class MessageList(dict):
 	def __init__(self):
 		self.messages = {}
+		self.mostRecentMessage = None
 
 	# Is this going to be faster than just sorting the entire thing every append?
 	# Probably
@@ -71,13 +72,25 @@ class MessageList(dict):
 				updatedMessages[message.attr['ROWID']] = message
 		self.messages = updatedMessages
 
+		if self.mostRecentMessage == None or message.attr['date'] > self.mostRecentMessage.attr['date']:
+			self.mostRecentMessage = message
+
+	def addReaction(self, reaction):
+
+		if reaction.associatedMessageId in self.messages.keys():
+			self.messages[reaction.associatedMessageId].addReaction(reaction)
+
+		if self.mostRecentMessage == None or reaction.attr['date'] > self.mostRecentMessage.attr['date']:
+			self.mostRecentMessage = reaction
+
 	def getMostRecentMessage(self):
-		return list(self.messages.values())[-1]
+		return self.mostRecentMessage
 
 class Message:
 
 	def __init__(self, **kw):
 		self.attr = {}
+		self.reactions = {}
 		for key, value in kw.items():
 			self.attr[key] = value
 
@@ -85,6 +98,17 @@ class Message:
 		self.attr['text'] = None
 		if kw['text'] != None:
 			self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
+
+	def addReaction(self, reaction):
+		self.reactions[reaction.attr['ROWID']] = reaction
+
+class Reaction:
+
+	def __init__(self, associatedMessageId, **kw):
+		self.attr = {}
+		self.associatedMessageId = associatedMessageId
+		for key, value in kw.items():
+			self.attr[key] = value
 
 
 class ChatDeletedException(Exception):
@@ -130,7 +154,7 @@ class Chat:
 		conn = sqlite3.connect(dbPath)
 		conn.row_factory = sqlite3.Row
 		tempLastAccess = self.lastAccess
-		self.setAccessTime(int(time.time()))
+		self.lastAccess = int(time.time())
 		neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type']
 
 		columns = ', '.join(neededColumnsMessage)
@@ -138,8 +162,13 @@ class Chat:
 		cursor = conn.execute(sql, (tempLastAccess,tempLastAccess, tempLastAccess, self.chatId))
 
 		for row in cursor:
-			message = Message(**row)
-			self.messageList.append(message)
+			if row['associated_message_guid'] == None:
+				message = Message(**row)
+				self.messageList.append(message)
+			else:
+				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][4:], )).fetchone()[0]
+				reaction = Reaction(associatedMessageId, **row)
+				self.messageList.addReaction(reaction)
 
 		conn.close()
 
@@ -147,8 +176,6 @@ class Chat:
 		messageText = messageText.replace('\'', '\\\'')
 		subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} $\'{}\' {} {}".format(scriptPath, messageText, self.chatId, 0)])
 
-	def setAccessTime(self, t):
-		self.lastAccess = t - 978307400
 
 	def getMostRecentMessage(self):
 		return self.messageList.getMostRecentMessage()
@@ -156,12 +183,20 @@ class Chat:
 	def _loadMostRecentMessage(self):
 		conn = sqlite3.connect(dbPath)
 		conn.row_factory = sqlite3.Row		
-		cursor = conn.execute('select ROWID, handle_id, text, max(message.date), is_from_me from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ?', (self.chatId, ))
-		m = cursor.fetchone()
-		message = Message(**m)
-		message.attr['date'] = message.attr['max(message.date)']
-		del message.attr['max(message.date)']
-		self.messageList.append(message)
+		cursor = conn.execute('select ROWID, handle_id, text, max(message.date), is_from_me, associated_message_guid, associated_message_type from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ?', (self.chatId, ))
+		row = cursor.fetchone()
+
+		if row['associated_message_guid'] == None:
+			message = Message(**row)
+			message.attr['date'] = message.attr['max(message.date)']
+			del message.attr['max(message.date)']
+			self.messageList.append(message)
+		else:
+			associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][4:], )).fetchone()[0]
+			reaction = Reaction(associatedMessageId, **row)
+			reaction.attr['date'] = reaction.attr['max(message.date)']
+			del reaction.attr['max(message.date)']
+			self.messageList.addReaction(reaction)
 
 def _loadChat(chatId):
 	conn = sqlite3.connect(dbPath)
