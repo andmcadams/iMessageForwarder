@@ -25,6 +25,16 @@ def retrieveUpdates():
 		lastAccess = tempLastAccess
 		output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 		output = json.loads(output.stdout)
+
+		attachments = output['attachment']
+		for attachment in attachments:
+			# each attachment needs to be scp'ed over
+			# this will be a bottleneck when starting up
+			# Later, once lastAccess is tracked across sessions, this should be less of an issue
+			cmd = ["scp {}@{}:{} ./attachments/$(basename {})".format(user, ip, attachment['filename'], attachment['filename'])]
+			subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL)
+			attachment['filename'] = './attachments/{}'.format(os.path.basename(attachment['filename']))
+
 		conn = sqlite3.connect('sms.db')
 
 		for table in output:
@@ -45,3 +55,6 @@ def runUpdater():
 	while True:
 		retrieveUpdates()
 		time.sleep(1)
+
+if __name__ == '__main__':
+	runUpdater()
