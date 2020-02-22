@@ -209,6 +209,7 @@ class Chat:
 			reaction.attr['date'] = reaction.attr['max(message.date)']
 			del reaction.attr['max(message.date)']
 			self.messageList.addReaction(reaction)
+		conn.close()
 
 def _loadChat(chatId):
 	conn = sqlite3.connect(dbPath)
