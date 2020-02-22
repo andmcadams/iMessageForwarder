@@ -1,5 +1,7 @@
 import tkinter as tk
 import os
+import threading
+
 from PIL import Image, ImageTk
 from verticalscrolledframe import VerticalScrolledFrame
 from constants import LINUX, MACOS
@@ -11,6 +13,7 @@ class MessageFrame(VerticalScrolledFrame):
         
         self.messageBubbles = {}
         self.canvas.bind('<Configure>', self._configure_messages_canvas)
+        self.lock = threading.Lock()
 
     # To change chats (ie display messages of a new chat)
     # we need to delete all the MessageBubbles of the old chat
@@ -28,14 +31,17 @@ class MessageFrame(VerticalScrolledFrame):
         self.addMessages(chat)    
 
     # Add the chat's messages to the MessageFrame as MessageBubbles
+    # A lock is required here since both changing the chat and the constant frame updates can add messages
+    # This can result in two copies of certain messages appearing.
     def addMessages(self, chat):
+        self.lock.acquire()
         chat._loadMessages()
         messageDict = chat.getMessages()
 
         # For each message in messageDict
         # Update the message bubble if it exists
         # Add a new one if it does not exist
-        for messageId in messageDict.keys():
+        for messageId in messageDict:
             if not messageId in self.messageBubbles:
                 if messageDict[messageId].attachment != None and (messageDict[messageId].attachment.attr['uti'] == 'public.jpeg' or messageDict[messageId].attachment.attr['uti'] == 'public.png'):
                     msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId])
@@ -50,6 +56,7 @@ class MessageFrame(VerticalScrolledFrame):
                 self._configure_message_scrollbars()
             else:
                 self.messageBubbles[messageId].update()
+        self.lock.release()
 
     # This function fixes the scrollbar for the message frame
     # VSF _configure_scrollbars just adds or removes them based on how much stuff is displayed.
@@ -112,7 +119,8 @@ class MessageBubble(tk.Frame):
         messageMenu.tk_popup(event.x_root, event.y_root)
 
     def update(self):
-        self.body.configure(text=self.message.attr['text'])
+        if self.message.attr['text'] != None:
+            self.body.configure(text=self.message.attr['text'])
         for r in self.message.reactions:
             if self.message.reactions[r].attr['associated_message_type'] == 2000:
                 self.body.configure(bg='red')
