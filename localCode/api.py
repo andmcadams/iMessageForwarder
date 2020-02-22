@@ -86,9 +86,16 @@ class MessageList(dict):
 	def getMostRecentMessage(self):
 		return self.mostRecentMessage
 
+class Attachment:
+	def __init__(self, **kw):
+		self.attr = {}
+		for key, value in kw.items():
+			self.attr[key] = value
+
+
 class Message:
 
-	def __init__(self, **kw):
+	def __init__(self, attachment=None, **kw):
 		self.attr = {}
 		self.reactions = {}
 		for key, value in kw.items():
@@ -98,6 +105,8 @@ class Message:
 		self.attr['text'] = None
 		if kw['text'] != None:
 			self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
+
+		self.attachment = attachment
 
 	def addReaction(self, reaction):
 		self.reactions[reaction.attr['ROWID']] = reaction
@@ -155,15 +164,19 @@ class Chat:
 		conn.row_factory = sqlite3.Row
 		tempLastAccess = self.lastAccess
 		self.lastAccess = int(time.time())
-		neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type']
+		neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type', 'attachment_id']
 
 		columns = ', '.join(neededColumnsMessage)
-		sql = 'SELECT {} FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?) and chat_message_join.chat_id = ? '.format(columns)
+		sql = 'SELECT {} FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?) and chat_message_join.chat_id = ? left join message_attachment_join on message.ROWID = message_attachment_join.message_id'.format(columns)
 		cursor = conn.execute(sql, (tempLastAccess,tempLastAccess, tempLastAccess, self.chatId))
 
 		for row in cursor:
 			if row['associated_message_guid'] == None:
-				message = Message(**row)
+				attachment = None
+				if row['attachment_id'] != None:
+					a = conn.execute('SELECT filename, uti from attachment where ROWID = ?', (row['attachment_id'], )).fetchone()
+					attachment = Attachment(**a)
+				message = Message(attachment, **row)
 				self.messageList.append(message)
 			else:
 				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][4:], )).fetchone()[0]
@@ -175,7 +188,6 @@ class Chat:
 	def sendMessage(self, messageText):
 		messageText = messageText.replace('\'', '\\\'')
 		subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} $\'{}\' {} {}".format(scriptPath, messageText, self.chatId, 0)])
-
 
 	def getMostRecentMessage(self):
 		return self.messageList.getMostRecentMessage()
@@ -223,6 +235,7 @@ def _loadChats():
 		chat = Chat(row[0], row[1], row[2])
 		if chat.getMostRecentMessage().attr['ROWID'] != None:
 			chats.append(chat)
+	conn.close()
 	chats = sorted(chats, key=lambda chat: chat.getMostRecentMessage().attr['date'], reverse=True)
 	return chats
 
