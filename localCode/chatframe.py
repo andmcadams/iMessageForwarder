@@ -1,17 +1,35 @@
 import tkinter as tk
+import threading
 from datetime import datetime, timedelta
 from verticalscrolledframe import VerticalScrolledFrame
 
 class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
-        self.chatButtons = {}
+        self.chatButtons = []
+        self.lock = threading.Lock()
 
     def addChat(self, chat, responseFrame):
-        btn = ChatButton(self.interior, chat, responseFrame, bg='orange')
-        btn.pack(fill=tk.X, side=tk.TOP, pady=1)
-        self.chatButtons[chat.chatId] = btn
-        self._configure_scrollbars()    
+        # btn.pack(fill=tk.X, side=tk.TOP, pady=1)
+        if not self.isLoaded(chat):
+            btn = ChatButton(self.interior, chat, responseFrame, bg='orange')
+            self.chatButtons.append(btn)
+            # self._configure_scrollbars()
+
+    def isLoaded(self, chat):
+        for chatButton in self.chatButtons:
+            if chat.chatId == chatButton.chat.chatId:
+                return True
+        return False
+
+    def packChatButtons(self):
+        for chatButton in self.chatButtons:
+            chatButton.pack_forget()
+            chatButton.isVisible = False
+        for chatButton in self.chatButtons:
+            chatButton.pack(fill=tk.X, side=tk.TOP, pady=1)
+            chatButton.isVisible = True
+        self._configure_scrollbars()
 
 class ChatButton(tk.Frame):
     def __init__(self, parent, chat, responseFrame, *args, **kw):
@@ -19,12 +37,12 @@ class ChatButton(tk.Frame):
 
         self.chat = chat
         self.lastMessageId = chat.getMostRecentMessage().attr['ROWID']
+        self.isVisible = False
 
         self.picture = tk.Label(self, height=1, width=1, text='picture')
         self.number = tk.Label(self, height=1, width=1, anchor='nw', justify='left', font=("helvetica", 10), wraplength=0)
         self.lastMessage = tk.Label(self, height=2, width=1, anchor='nw', justify='left', font=("helvetica", 10), wraplength=200)
         self.lastMessageTime = tk.Label(self, height=1, width=1, anchor='se', justify='right', font=("helvetica", 8))
-
         # Populate the above Label widgets
         self.update()
 
@@ -85,3 +103,4 @@ class ChatButton(tk.Frame):
         self.number.configure(text=name)
         self.lastMessage.configure(text=text)
         self.lastMessageTime.configure(text=timeText)
+        self.lastMessageTimeValue = self.chat.getMostRecentMessage().attr['date']

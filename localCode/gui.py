@@ -5,39 +5,35 @@ from chatframe import ChatFrame
 
 def updateFrames(chatFrame, responseFrame):
     chatIds = api._getChatsToUpdate(0)
+    chatFrame.lock.acquire()
     for chatIdTuple in chatIds:
         try:
             chatId = chatIdTuple[0]
             if chatId == responseFrame.currentChat.chatId:
                 responseFrame.messageFrame.addMessages(responseFrame.currentChat)
-            # If there's a change in the number of messages in this chat
-            # push the chat to the top
-            if chatId in chatFrame.chatButtons:
-                oldMessageId = chatFrame.chatButtons[chatId].lastMessageId
-                chatFrame.chatButtons[chatId].chat._loadMostRecentMessage()
-                mostRecent = chatFrame.chatButtons[chatId].chat.getMostRecentMessage()
-                if oldMessageId != mostRecent.attr['ROWID']:
-                    # Push this chat to the top
-                    for rowid in chatFrame.chatButtons:
-                        chatFrame.chatButtons[rowid].pack_forget()
-                    chatFrame.chatButtons[chatId].update()
-                    chatFrame.chatButtons[chatId].pack(fill=tk.X, side=tk.TOP, pady=1)
-                    for rowid in chatFrame.chatButtons:
-                        if rowid != chatId:
-                            chatFrame.chatButtons[rowid].pack(fill=tk.X, side=tk.TOP, pady=1)
-            else:
+
+            if not chatId in chatFrame.chatButtons:
                 chat = api._loadChat(chatId)
-                for rowid in chatFrame.chatButtons:
-                    chatFrame.chatButtons[rowid].pack_forget()
                 chatFrame.addChat(chat, responseFrame)
-                for rowid in chatFrame.chatButtons:
-                    if rowid != chatId:            
-                        chatFrame.chatButtons[rowid].pack(fill=tk.X, side=tk.TOP, pady=1)
-                #need to reconfigure scrollbars again
+
+            for chatButton in chatFrame.chatButtons:
+                if chatId == chatButton.chat.chatId:
+                    chatButton.chat._loadMostRecentMessage()
+                    chatButton.update()
+
         except api.ChatDeletedException as e:
             # Probably want to delete the messages to avoid unnecessary computation.
             # But should deleting the chat on another device delete it from here?
             continue
+
+    sortedChats = sorted(chatFrame.chatButtons, key=lambda chatButton: chatButton.lastMessageTimeValue, reverse=True)
+    for i in range(len(sortedChats)):
+        if sortedChats[i].chat.chatId != chatFrame.chatButtons[i].chat.chatId or sortedChats[i].isVisible == False:
+            chatFrame.chatButtons = sortedChats
+            chatFrame.packChatButtons()
+            break
+
+    chatFrame.lock.release()
             
         # 
     threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame: updateFrames(chatFrame, responseFrame)).start()
@@ -60,9 +56,6 @@ def runGui(DEBUG):
     root.columnconfigure(1, weight=1)
     root.rowconfigure(0, weight=1)
     chats = api._loadChats()
-
-    for i, chat in enumerate(chats):
-        chatFrame.addChat(chat, responseFrame)
 
     updateFrames(chatFrame, responseFrame)
 
