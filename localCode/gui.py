@@ -1,24 +1,29 @@
 import tkinter as tk
 import threading
+from playsound import playsound
 from responseframe import ResponseFrame
 from chatframe import ChatFrame
 
 def updateFrames(chatFrame, responseFrame, lastAccessTime):
-    chatIds, lastAccessTime = api._getChatsToUpdate(lastAccessTime)
+    chatIds, newLastAccessTime = api._getChatsToUpdate(lastAccessTime)
     chatFrame.lock.acquire()
+    newMessageFlag = False
     for chatId in chatIds:
         try:
+            for chatButton in chatFrame.chatButtons:
+                if chatId == chatButton.chat.chatId:
+                    chatButton.chat._loadMostRecentMessage()
+                    if chatButton.update():
+                        newMessageFlag = True
+
             if chatId == responseFrame.currentChat.chatId:
                 responseFrame.messageFrame.addMessages(responseFrame.currentChat)
 
             if not chatId in chatFrame.chatButtons:
                 chat = api._loadChat(chatId)
                 chatFrame.addChat(chat, responseFrame)
-
-            for chatButton in chatFrame.chatButtons:
-                if chatId == chatButton.chat.chatId:
-                    chatButton.chat._loadMostRecentMessage()
-                    chatButton.update()
+                if lastAccessTime == 0:
+                    newMessageFlag = False
 
         except api.ChatDeletedException as e:
             # Probably want to delete the messages to avoid unnecessary computation.
@@ -32,10 +37,12 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime):
             chatFrame.packChatButtons()
             break
 
+    if newMessageFlag:
+        threading.Thread(target=lambda: playsound('bing.wav')).start()
+
     chatFrame.lock.release()
-            
-        # 
-    threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame, lastAccessTime=lastAccessTime: updateFrames(chatFrame, responseFrame, lastAccessTime)).start()
+    
+    threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame, lastAccessTime=newLastAccessTime: updateFrames(chatFrame, responseFrame, lastAccessTime)).start()
 
 def runGui(DEBUG):
     if DEBUG == 1:

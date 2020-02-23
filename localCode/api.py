@@ -137,7 +137,7 @@ class Chat:
 		self.messageList = MessageList()
 		self.recipientList = self._loadRecipients()
 		self._loadMostRecentMessage()
-		self.lastAccess = 0
+		self.lastAccessTime = 0
 
 	def _loadRecipients(self):
 		conn = sqlite3.connect(dbPath)
@@ -162,15 +162,15 @@ class Chat:
 		# if self.messages is not none, we should just query for messages received after last message
 		conn = sqlite3.connect(dbPath)
 		conn.row_factory = sqlite3.Row
-		tempLastAccess = self.lastAccess
-		self.lastAccess = int(time.time())
+		tempLastAccess = self.lastAccessTime
 		neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type', 'attachment_id']
-
 		columns = ', '.join(neededColumnsMessage)
-		sql = 'SELECT {} FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?) and chat_message_join.chat_id = ? left join message_attachment_join on message.ROWID = message_attachment_join.message_id'.format(columns)
-		cursor = conn.execute(sql, (tempLastAccess,tempLastAccess, tempLastAccess, self.chatId))
+		sql = 'SELECT {}, message_update_date FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? inner join message_update_date_join on message.ROWID = message_update_date_join.message_id and message_update_date_join.message_update_date > ? left join message_attachment_join on message.ROWID = message_attachment_join.message_id'.format(columns)
+		cursor = conn.execute(sql, (self.chatId, tempLastAccess))
 
 		for row in cursor:
+			if row['message_update_date'] > tempLastAccess:
+				tempLastAccess = row['message_update_date']
 			if row['associated_message_guid'] == None:
 				attachment = None
 				if row['attachment_id'] != None:
@@ -184,6 +184,8 @@ class Chat:
 				self.messageList.addReaction(reaction)
 
 		conn.close()
+
+		self.lastAccessTime = max(self.lastAccessTime, tempLastAccess)
 
 	def sendMessage(self, messageText):
 		messageText = messageText.replace('\'', '\\\'')
@@ -246,7 +248,7 @@ def _getChatsToUpdate(lastAccessTime):
 	sql = 'SELECT chat_id, max(message_update_date), text FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id inner join message_update_date_join on message.ROWID = message_update_date_join.message_id and message_update_date_join.message_update_date > ? group by chat_id'
 	cursor = conn.execute(sql, (lastAccessTime, ))
 	chatIds = []
-	maxUpdate = 0
+	maxUpdate = lastAccessTime
 	for row in cursor.fetchall():
 		chatIds.append(row['chat_id'])
 		if row['max(message_update_date)'] > maxUpdate:
