@@ -248,6 +248,6 @@ def _getChatsToUpdate(lastAccessTime):
 	chatIds = []
 	for row in cursor.fetchall():
 		chatIds.append((row['chat_id'], row['max(date)']))
-	chatIds = sorted(chatIds, key=lambda chatId: chatId[1])
+	chatIds = sorted(chatIds, key=lambda chatId: chatId[1], reverse=True)
 	conn.close()
 	return chatIds
