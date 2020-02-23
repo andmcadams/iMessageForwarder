@@ -243,11 +243,13 @@ def _loadChats():
 def _getChatsToUpdate(lastAccessTime):
 	conn = sqlite3.connect(dbPath)
 	conn.row_factory = sqlite3.Row
-	sql = 'SELECT chat_id, max(date), text FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and (date > ? or date_read > ? or date_delivered > ?) group by chat_id'
-	cursor = conn.execute(sql, (lastAccessTime, lastAccessTime, lastAccessTime))
+	sql = 'SELECT chat_id, max(message_update_date), text FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id inner join message_update_date_join on message.ROWID = message_update_date_join.message_id and message_update_date_join.message_update_date > ? group by chat_id'
+	cursor = conn.execute(sql, (lastAccessTime, ))
 	chatIds = []
+	maxUpdate = 0
 	for row in cursor.fetchall():
-		chatIds.append((row['chat_id'], row['max(date)']))
-	chatIds = sorted(chatIds, key=lambda chatId: chatId[1], reverse=True)
+		chatIds.append(row['chat_id'])
+		if row['max(message_update_date)'] > maxUpdate:
+			maxUpdate = row['max(message_update_date)']
 	conn.close()
-	return chatIds
+	return chatIds, maxUpdate

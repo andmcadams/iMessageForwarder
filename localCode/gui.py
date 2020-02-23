@@ -3,12 +3,11 @@ import threading
 from responseframe import ResponseFrame
 from chatframe import ChatFrame
 
-def updateFrames(chatFrame, responseFrame):
-    chatIds = api._getChatsToUpdate(0)
+def updateFrames(chatFrame, responseFrame, lastAccessTime):
+    chatIds, lastAccessTime = api._getChatsToUpdate(lastAccessTime)
     chatFrame.lock.acquire()
-    for chatIdTuple in chatIds:
+    for chatId in chatIds:
         try:
-            chatId = chatIdTuple[0]
             if chatId == responseFrame.currentChat.chatId:
                 responseFrame.messageFrame.addMessages(responseFrame.currentChat)
 
@@ -36,7 +35,7 @@ def updateFrames(chatFrame, responseFrame):
     chatFrame.lock.release()
             
         # 
-    threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame: updateFrames(chatFrame, responseFrame)).start()
+    threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame, lastAccessTime=lastAccessTime: updateFrames(chatFrame, responseFrame, lastAccessTime)).start()
 
 def runGui(DEBUG):
     if DEBUG == 1:
@@ -57,7 +56,7 @@ def runGui(DEBUG):
     root.rowconfigure(0, weight=1)
     chats = api._loadChats()
 
-    updateFrames(chatFrame, responseFrame)
+    updateFrames(chatFrame, responseFrame, 0)
 
     while True:
         try:
