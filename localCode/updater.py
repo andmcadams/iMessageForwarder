@@ -32,9 +32,10 @@ def retrieveUpdates():
 			# Later, once lastAccess is tracked across sessions, this should be less of an issue
 			# Obviously using basename leads to squashing attachments with the same basename. This should be changed later.
 			# I just didn't want to navigate a nest of folders while working on this.
-			cmd = ["scp {}@{}:\"{}\" ./attachments/{}".format(user, ip, attachment['filename'].replace(' ', '\\ '), os.path.basename(attachment['filename']).replace(' ', '_'))]
-			subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-			attachment['filename'] = './attachments/{}'.format(os.path.basename(attachment['filename']).replace(' ', '_'))
+			if attachment['filename']:
+				cmd = ["scp {}@{}:\"{}\" ./attachments/{}".format(user, ip, attachment['filename'].replace(' ', '\\ '), os.path.basename(attachment['filename']).replace(' ', '_'))]
+				subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+				attachment['filename'] = './attachments/{}'.format(os.path.basename(attachment['filename']).replace(' ', '_'))
 
 		conn = sqlite3.connect('sms.db')
 
