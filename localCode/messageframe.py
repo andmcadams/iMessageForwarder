@@ -43,7 +43,8 @@ class MessageFrame(VerticalScrolledFrame):
         # Add a new one if it does not exist
         for messageId in messageDict:
             if not messageId in self.messageBubbles:
-                if messageDict[messageId].attachment != None and (messageDict[messageId].attachment.attr['uti'] == 'public.jpeg' or messageDict[messageId].attachment.attr['uti'] == 'public.png'):
+                allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
+                if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
                     msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId])
                 else:
                     msg = TextMessageBubble(self.interior, messageId, messageDict[messageId])
