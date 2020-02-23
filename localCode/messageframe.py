@@ -53,10 +53,9 @@ class MessageFrame(VerticalScrolledFrame):
                 else:
                     msg.pack(anchor=tk.W, expand=tk.FALSE)
                 self.messageBubbles[messageId] = msg
-                # Maybe make it do this after all messages are added, set a flag or something
-                self._configure_message_scrollbars()
             else:
                 self.messageBubbles[messageId].update()
+        self._configure_message_scrollbars()
         self.lock.release()
 
     # This function fixes the scrollbar for the message frame
@@ -75,7 +74,10 @@ class MessageFrame(VerticalScrolledFrame):
     # locked in place so the most recent messages stay in view.
     def _configure_messages_canvas(self, event):
         (_, bottom) = self.vscrollbar.get()
+        for messageBubble in self.messageBubbles:
+            self.messageBubbles[messageBubble].resize(event)
         self._configure_canvas(event)
+
         self.canvas.yview_moveto(bottom)
 
 class MessageMenu(tk.Menu):
@@ -128,6 +130,10 @@ class MessageBubble(tk.Frame):
             elif self.message.reactions[r].attr['associated_message_type'] == 3000:
                 self.body.configure(bg='purple')
 
+    def resize(self, event):
+        pass
+        #print("resizing text message bubble")
+
 class TextMessageBubble(MessageBubble):
     def __init__(self, parent, messageId, message, *args, **kw):
         MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
@@ -137,10 +143,41 @@ class TextMessageBubble(MessageBubble):
 class ImageMessageBubble(MessageBubble):
     def __init__(self, parent, messageId, message, *args, **kw):
         MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
-        load = Image.open(os.path.expanduser(message.attachment.attr['filename']))
-        #load = load.resize((200, 200), Image.BICUBIC)
-        render = ImageTk.PhotoImage(load)
-        self.body = tk.Label(self, image=render)
-        self.body.image = render
-        self.body.pack()
+        self.columnconfigure(0,weight=1)
+        self.rowconfigure(0,weight=1)
+        self.display = tk.Canvas(self, bd=0, highlightthickness=0, bg='green')
+        self.display.grid(row=0, sticky='nsew')
+        self.body = tk.Label(self.display, bg='red')
+        self.body.original = Image.open(os.path.expanduser(message.attachment.attr['filename']))
+        newSize = self.getNewSize(self.body.original, self.master.master.winfo_width(), self.master.master.winfo_height())
+        self.body.image = ImageTk.PhotoImage(self.body.original.resize(newSize, Image.ANTIALIAS))
+        self.body.configure(image=self.body.image)
+        self.body.grid(row=0, sticky='nsew')
+        self.display.configure(width=newSize[0], height=newSize[1])
         self.initBody()
+
+
+    def getNewSize(self, im, winWidth, winHeight):
+        maxWidth = 3*winWidth//4
+        maxHeight = 4*winHeight//5
+
+        resized = im
+        size = (im.width, im.height)
+
+        if im.height > maxHeight or im.width > maxWidth:
+            h = int(im.height*(maxWidth/im.width))
+            if h > maxHeight:
+                w = int(im.width*(maxHeight/im.height))
+                size = (w, maxHeight)
+            else:
+                size = (maxWidth, h)
+        return size
+
+
+    def resize(self, event):
+        newSize = self.getNewSize(self.body.original, event.width, event.height)
+        resized = self.body.original.resize(newSize, Image.ANTIALIAS)
+
+        self.body.image = ImageTk.PhotoImage(resized)
+        self.body.configure(image=self.body.image)
+        self.display.configure(width=newSize[0], height=newSize[1])
