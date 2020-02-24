@@ -14,6 +14,32 @@ class MessageFrame(VerticalScrolledFrame):
         self.messageBubbles = {}
         self.canvas.bind('<Configure>', self._configure_messages_canvas)
         self.lock = threading.Lock()
+        self.canvas.configure(yscrollcommand=self.checkScroll)
+        # Arbitrary initial limit
+        self.messageLimit = 20
+        # This almost certainly introduces more race conditions
+        self.addedMessages = False
+        self.scrollLock = threading.Lock()
+
+
+    # This probably has some nasty race conditions.
+    def checkScroll(self, x, y):
+        self.vscrollbar.set(x, y)
+        (top, bottom) = self.vscrollbar.get()
+        if top < 0.05 and self.addedMessages == True:
+            self.addedMessages = False
+            self.messageLimit += 20
+            oldHeight = self.interior.winfo_height()
+            for widget in self.interior.winfo_children():
+                widget.destroy()
+            self.messageBubbles = {}
+            hitLimit = self.addMessages(self.master.currentChat)
+            self._configure_message_scrollbars()
+            self.addedMessages = not hitLimit
+            newHeight = self.interior.winfo_reqheight()
+
+            self.canvas.yview_moveto((top*oldHeight+(newHeight-oldHeight))/newHeight)
+
 
     # To change chats (ie display messages of a new chat)
     # we need to delete all the MessageBubbles of the old chat
@@ -25,38 +51,54 @@ class MessageFrame(VerticalScrolledFrame):
     # However, this probably needs to follow restricting chats to their first x messages
     # without scrolling up to avoid consuming too much memory.
     def changeChat(self, chat):
+        self.addedMessages = False
         for widget in self.interior.winfo_children():
             widget.destroy()
         self.messageBubbles = {}
-        self.addMessages(chat)    
+        # Reset the message limit before opening a new chat
+        self.messageLimit = 15
+        hitLimit = self.addMessages(chat)
+        self._configure_message_scrollbars()
+        self.addedMessages = not hitLimit
+        (top, bottom) = self.vscrollbar.get()
+        self.checkScroll(top, bottom)
+        self.canvas.yview_moveto(self.interior.winfo_reqheight())
+   
 
     # Add the chat's messages to the MessageFrame as MessageBubbles
     # A lock is required here since both changing the chat and the constant frame updates can add messages
     # This can result in two copies of certain messages appearing.
     def addMessages(self, chat):
         self.lock.acquire()
-        chat._loadMessages()
-        messageDict = chat.getMessages()
+        if chat.chatId == self.master.currentChat.chatId:
+            chat._loadMessages()
+            messageDict = chat.getMessages()
 
-        # For each message in messageDict
-        # Update the message bubble if it exists
-        # Add a new one if it does not exist
-        for messageId in messageDict:
-            if not messageId in self.messageBubbles:
-                allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
-                if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
-                    msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId])
+            # For each message in messageDict
+            # Update the message bubble if it exists
+            # Add a new one if it does not exist
+            for messageId in list(messageDict.keys())[-self.messageLimit:]:
+                if not messageId in self.messageBubbles:
+                    allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
+                    if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
+                        msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId])
+                    else:
+                        msg = TextMessageBubble(self.interior, messageId, messageDict[messageId])
+                    if messageDict[messageId].attr['is_from_me']:
+                        msg.pack(anchor=tk.E, expand=tk.FALSE)
+                    else:
+                        msg.pack(anchor=tk.W, expand=tk.FALSE)
+                    self.messageBubbles[messageId] = msg
                 else:
-                    msg = TextMessageBubble(self.interior, messageId, messageDict[messageId])
-                if messageDict[messageId].attr['is_from_me']:
-                    msg.pack(anchor=tk.E, expand=tk.FALSE)
-                else:
-                    msg.pack(anchor=tk.W, expand=tk.FALSE)
-                self.messageBubbles[messageId] = msg
-            else:
-                self.messageBubbles[messageId].update()
-        self._configure_message_scrollbars()
-        self.lock.release()
+                    self.messageBubbles[messageId].update()
+            self.lock.release()
+            if self.messageLimit > len(list(messageDict.keys())):
+                return True
+            return False
+        else:
+            self.lock.release()
+            return None
+
 
     # This function fixes the scrollbar for the message frame
     # VSF _configure_scrollbars just adds or removes them based on how much stuff is displayed.
@@ -65,10 +107,10 @@ class MessageFrame(VerticalScrolledFrame):
     # The interior is updated to get the new winfo_reqheight set.
     # Scrollbars are then moved to the bottom of the canvas so that the most recent messages are showing.
     def _configure_message_scrollbars(self):
-        self.canvas.yview_moveto(0)       
+        # self.canvas.yview_moveto(0)       
         self._configure_scrollbars()
         self.interior.update()
-        self.canvas.yview_moveto(self.interior.winfo_reqheight())
+        # self.canvas.yview_moveto(self.interior.winfo_reqheight())
 
     # When the window changes size, this keeps the scrollbar's bottom location
     # locked in place so the most recent messages stay in view.
