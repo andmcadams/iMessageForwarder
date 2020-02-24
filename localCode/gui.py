@@ -54,7 +54,7 @@ def runGui(DEBUG):
     root.configure(background="gray99")
     minWidthChatFrame = 270
     minWidthResponseFrame = int(4*minWidthChatFrame/3)
-    root.minsize(minWidthChatFrame+minWidthResponseFrame, 100)
+    root.minsize(minWidthChatFrame+minWidthResponseFrame, (minWidthChatFrame+minWidthResponseFrame)//2)
     chatFrame = ChatFrame(root, 0, minWidthChatFrame)
     chatFrame.grid(row=0, column=0, sticky='nsew')
     responseFrame = ResponseFrame(root, minWidthResponseFrame, api)
