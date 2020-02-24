@@ -73,12 +73,14 @@ class MessageFrame(VerticalScrolledFrame):
     # When the window changes size, this keeps the scrollbar's bottom location
     # locked in place so the most recent messages stay in view.
     def _configure_messages_canvas(self, event):
-        (_, bottom) = self.vscrollbar.get()
+        (top, bottom) = self.vscrollbar.get()
         for messageBubble in self.messageBubbles:
             self.messageBubbles[messageBubble].resize(event)
         self._configure_canvas(event)
-
-        self.canvas.yview_moveto(bottom)
+        if bottom == 1.0:
+            self.canvas.yview_moveto(bottom)
+        else:
+            self.vscrollbar.set(top, bottom)
 
 class MessageMenu(tk.Menu):
 
@@ -93,7 +95,6 @@ class MessageBubble(tk.Frame):
 
     def __init__(self, parent, messageId, message, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
-
         self.reactions = {}
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
@@ -137,8 +138,12 @@ class MessageBubble(tk.Frame):
 class TextMessageBubble(MessageBubble):
     def __init__(self, parent, messageId, message, *args, **kw):
         MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
-        self.body = tk.Message(self, padx=0, pady=5, width=200, fg='white', bg='blue', font="Dosis")
+        maxWidth = 3*self.master.master.winfo_width()//5
+        self.body = tk.Message(self, padx=0, pady=5, width=maxWidth, fg='white', bg='blue', font="Dosis")
         self.initBody()
+
+    def resize(self, event):
+        self.body.configure(width=3*event.width//5)
 
 class ImageMessageBubble(MessageBubble):
     def __init__(self, parent, messageId, message, *args, **kw):

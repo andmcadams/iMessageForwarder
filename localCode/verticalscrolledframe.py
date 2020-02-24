@@ -67,6 +67,8 @@ class VerticalScrolledFrame(tk.Frame):
         else:
             self.vscrollbar.grid(row=0, column=1, sticky='ns')
             self.canvas.grid_configure(padx=(0,0))
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
 
     def _bound_to_mousewheel(self, event):
         self.canvas.bind_all('<MouseWheel>', self._on_mousewheel_windows)
@@ -79,7 +81,9 @@ class VerticalScrolledFrame(tk.Frame):
         self.canvas.unbind_all('<Button-5>')
 
     def _on_mousewheel_windows(self, event):
-        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        if self.canvas.winfo_height() < self.interior.winfo_reqheight():
+            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
     def _on_mousewheel_linux(self, direction, event):
-        self.canvas.yview_scroll(direction, "units")
+        if self.canvas.winfo_height() < self.interior.winfo_reqheight():
+            self.canvas.yview_scroll(direction, "units")
