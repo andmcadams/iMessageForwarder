@@ -24,6 +24,7 @@ class MessageFrame(VerticalScrolledFrame):
 
 
     # This probably has some nasty race conditions.
+    # This also has unfortunate recursion issues that should be fixed
     def checkScroll(self, x, y):
         self.vscrollbar.set(x, y)
         (top, bottom) = self.vscrollbar.get()
@@ -79,13 +80,15 @@ class MessageFrame(VerticalScrolledFrame):
             # For each message in messageDict
             # Update the message bubble if it exists
             # Add a new one if it does not exist
-            for messageId in list(messageDict.keys())[-self.messageLimit:]:
+            subList = list(messageDict.keys())[-self.messageLimit:]
+            for i in range(len(subList)):
+                messageId = subList[i]
                 if not messageId in self.messageBubbles:
                     allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
                     if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
                         msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId])
                     else:
-                        msg = TextMessageBubble(self.interior, messageId, messageDict[messageId])
+                        msg = TextMessageBubble(self.interior, messageId, messageDict[messageId], i)
                     if messageDict[messageId].attr['is_from_me']:
                         msg.pack(anchor=tk.E, expand=tk.FALSE)
                     else:
@@ -135,11 +138,12 @@ class MessageMenu(tk.Menu):
         responseFrame = self.master.master.master.master.master
         #responseFrame.currentChat.sendReaction(messageId, reactionValue)
 
-class MessageBubble(ttk.Frame):
+class MessageBubble(tk.Frame):
 
     def __init__(self, parent, messageId, message, *args, **kw):
-        ttk.Frame.__init__(self, parent, *args, **kw)
+        tk.Frame.__init__(self, parent, padx=4, pady=4, *args, **kw)
 
+        self.messageInterior = ttk.Frame(self, padding=6)
         self.reactions = {}
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
@@ -150,10 +154,13 @@ class MessageBubble(ttk.Frame):
     def initBody(self):
         # On right click, open the menu at the location of the mouse
         if LINUX:
+            self.messageInterior.bind("<Button-3>", lambda event: self.onRightClick(event))
             self.body.bind("<Button-3>", lambda event: self.onRightClick(event))
         elif MACOS:
+            self.messageInterior.bind("<Button-2>", lambda event: self.onRightClick(event))
             self.body.bind("<Button-2>", lambda event: self.onRightClick(event))
-        self.body.pack()
+        self.body.grid(row=1)
+        self.messageInterior.grid(row=1)
         self.update()
 
     def onRightClick(self, event):
@@ -172,7 +179,10 @@ class MessageBubble(ttk.Frame):
             self.body.configure(text=self.message.attr['text'])
         for r in self.message.reactions:
             if self.message.reactions[r].attr['associated_message_type'] == 2000:
-                self.body.configure(bg='red')
+                if not r in self.reactions:
+                    self.reactions[r] = ReactionBubble(self)
+                    self.reactions[r].grid(row=0)
+                    self.body.configure(bg='red')
             elif self.message.reactions[r].attr['associated_message_type'] == 3000:
                 self.body.configure(bg='purple')
 
@@ -180,11 +190,21 @@ class MessageBubble(ttk.Frame):
         pass
         #print("resizing text message bubble")
 
+class ReactionBubble(tk.Label):
+    def __init__(self, parent, *args, **kw):
+        tk.Label.__init__(self, parent, *args, **kw)
+        self.original = Image.open('loveReact.png')
+        self.original.image = ImageTk.PhotoImage(self.original)
+        self.configure(image=self.original.image)
+
 class TextMessageBubble(MessageBubble):
-    def __init__(self, parent, messageId, message, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, message, style="RoundedFrame", padding=12, *args, **kw)
+    def __init__(self, parent, messageId, message, index, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
         maxWidth = 3*self.master.master.winfo_width()//5
-        self.body = tk.Message(self, padx=0, pady=3, width=maxWidth, font="Dosis")
+        # Could make color a gradient depending on index later but it will add a lot of
+        # dumb code.
+        self.messageInterior.configure(style="RoundedFrame")
+        self.body = tk.Message(self.messageInterior, padx=0, pady=3, bg='#01cdfe', width=maxWidth, font="Dosis")
         self.initBody()
 
     def resize(self, event):
@@ -193,11 +213,11 @@ class TextMessageBubble(MessageBubble):
 class ImageMessageBubble(MessageBubble):
     def __init__(self, parent, messageId, message, *args, **kw):
         MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
-        self.columnconfigure(0,weight=1)
-        self.rowconfigure(0,weight=1)
-        self.display = tk.Canvas(self, bd=0, highlightthickness=0, bg='green')
+        self.messageInterior.columnconfigure(0,weight=1)
+        self.messageInterior.rowconfigure(0,weight=1)
+        self.display = tk.Canvas(self.messageInterior, bd=0, highlightthickness=0, bg='green')
         self.display.grid(row=0, sticky='nsew')
-        self.body = tk.Label(self.display, bg='red')
+        self.body = tk.Label(self.display)
         self.body.original = Image.open(os.path.expanduser(message.attachment.attr['filename']))
         newSize = self.getNewSize(self.body.original, self.master.master.winfo_width(), self.master.master.winfo_height())
         self.body.image = ImageTk.PhotoImage(self.body.original.resize(newSize, Image.ANTIALIAS))
