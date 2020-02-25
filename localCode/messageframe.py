@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 import os
 import threading
 
@@ -68,6 +69,7 @@ class MessageFrame(VerticalScrolledFrame):
     # Add the chat's messages to the MessageFrame as MessageBubbles
     # A lock is required here since both changing the chat and the constant frame updates can add messages
     # This can result in two copies of certain messages appearing.
+
     def addMessages(self, chat):
         self.lock.acquire()
         if chat.chatId == self.master.currentChat.chatId:
@@ -133,10 +135,11 @@ class MessageMenu(tk.Menu):
         responseFrame = self.master.master.master.master.master
         #responseFrame.currentChat.sendReaction(messageId, reactionValue)
 
-class MessageBubble(tk.Frame):
+class MessageBubble(ttk.Frame):
 
     def __init__(self, parent, messageId, message, *args, **kw):
-        tk.Frame.__init__(self, parent, *args, **kw)
+        ttk.Frame.__init__(self, parent, *args, **kw)
+
         self.reactions = {}
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
@@ -179,9 +182,9 @@ class MessageBubble(tk.Frame):
 
 class TextMessageBubble(MessageBubble):
     def __init__(self, parent, messageId, message, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
+        MessageBubble.__init__(self, parent, messageId, message, style="RoundedFrame", padding=12, *args, **kw)
         maxWidth = 3*self.master.master.winfo_width()//5
-        self.body = tk.Message(self, padx=0, pady=5, width=maxWidth, fg='white', bg='blue', font="Dosis")
+        self.body = tk.Message(self, padx=0, pady=3, width=maxWidth, font="Dosis")
         self.initBody()
 
     def resize(self, event):

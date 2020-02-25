@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 import threading
 from playsound import playsound
 from responseframe import ResponseFrame
@@ -52,6 +53,18 @@ def runGui(DEBUG):
     root = tk.Tk()
     root.title("Scrollable Frame Demo")
     root.configure(background="gray99")
+
+    style = ttk.Style()
+
+
+    borderImage = tk.PhotoImage("borderImage", file='messageBox.png')
+    style.element_create("RoundedFrame",
+                 "image", borderImage,
+                ("focus", borderImage),
+                 border=16, sticky="nsew")
+    style.layout("RoundedFrame",
+         [("RoundedFrame", {"sticky": "nsew"})])
+
     minWidthChatFrame = 270
     minWidthResponseFrame = int(4*minWidthChatFrame/3)
     root.minsize(minWidthChatFrame+minWidthResponseFrame, (minWidthChatFrame+minWidthResponseFrame)//2)
