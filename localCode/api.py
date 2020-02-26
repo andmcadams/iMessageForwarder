@@ -53,6 +53,8 @@ class MessageList(dict):
 					key = keys[i]
 					if message.attr['date'] > updatedMessages[key].attr['date']:
 						break
+					if message.attr['date'] == updatedMessages[key].attr['date'] and message.attr['ROWID'] > updatedMessages[key].attr['ROWID']:
+						break
 
 				# Find the keys that will need to come after this new message
 				keysToRemove = [k for k in keys[i+1:]]
@@ -72,7 +74,7 @@ class MessageList(dict):
 				updatedMessages[message.attr['ROWID']] = message
 		self.messages = updatedMessages
 
-		if self.mostRecentMessage == None or message.attr['date'] > self.mostRecentMessage.attr['date']:
+		if self.mostRecentMessage == None or message.attr['date'] > self.mostRecentMessage.attr['date'] or (message.attr['date'] == self.mostRecentMessage.attr['date'] and message.attr['ROWID'] > self.mostRecentMessage.attr['ROWID']):
 			self.mostRecentMessage = message
 
 	def addReaction(self, reaction):
@@ -109,7 +111,13 @@ class Message:
 		self.attachment = attachment
 
 	def addReaction(self, reaction):
-		self.reactions[reaction.attr['ROWID']] = reaction
+		if not reaction.attr['handle_id'] in self.reactions:
+			self.reactions[reaction.attr['handle_id']] = {}
+		reactionVal = int(reaction.attr['associated_message_type'])%1000
+		if reactionVal in self.reactions[reaction.attr['handle_id']] and self.reactions[reaction.attr['handle_id']][reactionVal].attr['ROWID'] < reaction.attr['ROWID']:
+			self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
+		elif not reactionVal in self.reactions[reaction.attr['handle_id']]:
+			self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
 
 class Reaction:
 
@@ -179,7 +187,7 @@ class Chat:
 				message = Message(attachment, **row)
 				self.messageList.append(message)
 			else:
-				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][4:], )).fetchone()[0]
+				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][-36:], )).fetchone()[0]
 				reaction = Reaction(associatedMessageId, **row)
 				self.messageList.addReaction(reaction)
 
@@ -197,20 +205,16 @@ class Chat:
 	def _loadMostRecentMessage(self):
 		conn = sqlite3.connect(dbPath)
 		conn.row_factory = sqlite3.Row		
-		cursor = conn.execute('select ROWID, handle_id, text, max(message.date), is_from_me, associated_message_guid, associated_message_type from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ?', (self.chatId, ))
+		cursor = conn.execute('select ROWID, handle_id, text, date, is_from_me, associated_message_guid, associated_message_type from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? where date = (select max(date) from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ?) order by ROWID desc', (self.chatId, self.chatId))
 		row = cursor.fetchone()
-
-		if row['associated_message_guid'] == None:
-			message = Message(**row)
-			message.attr['date'] = message.attr['max(message.date)']
-			del message.attr['max(message.date)']
-			self.messageList.append(message)
-		else:
-			associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][4:], )).fetchone()[0]
-			reaction = Reaction(associatedMessageId, **row)
-			reaction.attr['date'] = reaction.attr['max(message.date)']
-			del reaction.attr['max(message.date)']
-			self.messageList.addReaction(reaction)
+		if row:
+			if row['associated_message_guid'] == None:
+				message = Message(**row)
+				self.messageList.append(message)
+			else:
+				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][-36:], )).fetchone()[0]
+				reaction = Reaction(associatedMessageId, **row)
+				self.messageList.addReaction(reaction)
 		conn.close()
 
 def _loadChat(chatId):
