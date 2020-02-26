@@ -97,7 +97,7 @@ class Attachment:
 
 class Message:
 
-	def __init__(self, attachment=None, **kw):
+	def __init__(self, attachment=None, handleName=None, **kw):
 		self.attr = {}
 		self.reactions = {}
 		for key, value in kw.items():
@@ -109,6 +109,7 @@ class Message:
 			self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
 
 		self.attachment = attachment
+		self.handleName = handleName
 
 	def addReaction(self, reaction):
 		if not reaction.attr['handle_id'] in self.reactions:
@@ -121,9 +122,10 @@ class Message:
 
 class Reaction:
 
-	def __init__(self, associatedMessageId, **kw):
+	def __init__(self, associatedMessageId, handleName=None, **kw):
 		self.attr = {}
 		self.associatedMessageId = associatedMessageId
+		self.handleName = handleName
 		for key, value in kw.items():
 			self.attr[key] = value
 
@@ -137,7 +139,7 @@ class DummyChat:
 
 class Chat:
 
-	def __init__(self, chatId, chatIdentifier, displayName):
+	def __init__(self, chatId, chatIdentifier, displayName, **kw):
 		self.chatId = chatId
 		self.chatIdentifier = chatIdentifier
 		self.displayName = displayName
@@ -146,6 +148,10 @@ class Chat:
 		self.recipientList = self._loadRecipients()
 		self._loadMostRecentMessage()
 		self.lastAccessTime = 0
+
+		self.attr = {}
+		for key, value in kw.items():
+			self.attr[key] = value
 
 	def _loadRecipients(self):
 		conn = sqlite3.connect(dbPath)
@@ -177,6 +183,13 @@ class Chat:
 		cursor = conn.execute(sql, (self.chatId, tempLastAccess))
 
 		for row in cursor:
+			handleSql = 'SELECT id from handle where ROWID = ?'
+			handleName = conn.execute(handleSql, (row['handle_id'], )).fetchone()
+			if handleName:
+				handleName = handleName[0]
+			else:
+				handleName = ''
+
 			if row['message_update_date'] > tempLastAccess:
 				tempLastAccess = row['message_update_date']
 			if not row['associated_message_guid']:
@@ -184,13 +197,13 @@ class Chat:
 				if row['attachment_id'] != None:
 					a = conn.execute('SELECT filename, uti from attachment where ROWID = ?', (row['attachment_id'], )).fetchone()
 					attachment = Attachment(**a)
-				message = Message(attachment, **row)
+				message = Message(attachment, handleName, **row)
 				self.messageList.append(message)
 			else:
 				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][-36:], )).fetchone()
 				if associatedMessageId:
 					associatedMessageId = associatedMessageId[0]
-					reaction = Reaction(associatedMessageId, **row)
+					reaction = Reaction(associatedMessageId, handleName, **row)
 					self.messageList.addReaction(reaction)
 
 		conn.close()
@@ -222,11 +235,11 @@ class Chat:
 def _loadChat(chatId):
 	conn = sqlite3.connect(dbPath)
 	conn.row_factory = sqlite3.Row
-	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat where ROWID = ?', (chatId, ))
+	cursor = conn.execute('select ROWID, chat_identifier, display_name, style from chat where ROWID = ?', (chatId, ))
 	row = cursor.fetchone()
 	if row == None:
 		raise ChatDeletedException
-	chat = Chat(row[0], row[1], row[2])
+	chat = Chat(row[0], row[1], row[2], **row)
 	conn.close()
 	if chat == None:
 		return None
@@ -238,10 +251,10 @@ def _loadChat(chatId):
 def _loadChats():
 	conn = sqlite3.connect(dbPath)
 	conn.row_factory = sqlite3.Row
-	cursor = conn.execute('select ROWID, chat_identifier, display_name from chat')
+	cursor = conn.execute('select ROWID, chat_identifier, display_name, style from chat')
 	chats = []
 	for row in cursor.fetchall():
-		chat = Chat(row[0], row[1], row[2])
+		chat = Chat(row[0], row[1], row[2], **row)
 		if chat.getMostRecentMessage().attr['ROWID'] != None:
 			chats.append(chat)
 	conn.close()
