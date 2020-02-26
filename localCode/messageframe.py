@@ -85,10 +85,22 @@ class MessageFrame(VerticalScrolledFrame):
                 messageId = subList[i]
                 if not messageId in self.messageBubbles:
                     allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
+                    # Need slightly more complex logic for when to use sender labels (label showing who the sender is)
+                    # addLabel is True iff
+                    # 1) This is a group message
+                    # 2) The sender of this message is not the same as the last sender
+                    # 3) The sender of the message is not me
+
+                    addLabel = False
+
+                    if chat.attr['style'] == 43:
+                        if not (i-1) in range(len(subList)) or messageDict[subList[i-1]].attr['handle_id'] != messageDict[messageId].attr['handle_id']:
+                            if messageDict[messageId].attr['is_from_me'] == 0:
+                                addLabel = True
                     if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
-                        msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId])
+                        msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId], i, addLabel)
                     else:
-                        msg = TextMessageBubble(self.interior, messageId, messageDict[messageId], i)
+                        msg = TextMessageBubble(self.interior, messageId, messageDict[messageId], i, addLabel)
                     if messageDict[messageId].attr['is_from_me']:
                         msg.pack(anchor=tk.E, expand=tk.FALSE)
                     else:
@@ -143,9 +155,12 @@ class MessageMenu(tk.Menu):
 
 class MessageBubble(tk.Frame):
 
-    def __init__(self, parent, messageId, message, *args, **kw):
+    def __init__(self, parent, messageId, message, addLabel, *args, **kw):
         tk.Frame.__init__(self, parent, padx=4, pady=4, *args, **kw)
 
+        self.senderLabel = None
+        if addLabel == True:
+            self.senderLabel = tk.Label(self, height=1, text=message.handleName)
         self.messageInterior = ttk.Frame(self, padding=6)
         self.reactions = {}
         # Store a pointer to message object, so when this object is updated
@@ -163,7 +178,9 @@ class MessageBubble(tk.Frame):
             self.messageInterior.bind("<Button-2>", lambda event: self.onRightClick(event))
             self.body.bind("<Button-2>", lambda event: self.onRightClick(event))
         self.body.grid(row=1)
-        self.messageInterior.grid(row=1)
+        self.messageInterior.grid(row=2, sticky='w')
+        if self.senderLabel:
+            self.senderLabel.grid(row=0, sticky='w')
         self.update()
 
     def onRightClick(self, event):
@@ -179,8 +196,11 @@ class MessageBubble(tk.Frame):
         messageMenu.tk_popup(event.x_root, event.y_root)
 
     def update(self):
+        # Text probably won't change but this is nice for initially populating.
         if self.message.attr['text'] != None:
             self.body.configure(text=self.message.attr['text'])
+
+        # Handle reactions
         for handle in self.message.reactions:
             if not handle in self.reactions:
                 self.reactions[handle] = {}
@@ -189,9 +209,9 @@ class MessageBubble(tk.Frame):
                     if not r in self.reactions[handle]:
                         self.reactions[handle][r] = ReactionBubble(self, self.message.reactions[handle][r].attr['associated_message_type'])
                         if self.message.attr['is_from_me'] == 1:
-                            self.reactions[handle][r].grid(row=0, sticky='w')
+                            self.reactions[handle][r].grid(row=1, sticky='w')
                         else:
-                            self.reactions[handle][r].grid(row=0, sticky='e')
+                            self.reactions[handle][r].grid(row=1, sticky='e')
                         self.body.configure(bg='red')
                 elif self.message.reactions[handle][r].attr['associated_message_type'] >= 3000:
                     if r in self.reactions[handle]:
@@ -220,8 +240,8 @@ class ReactionBubble(tk.Label):
         self.configure(image=self.original.image)
 
 class TextMessageBubble(MessageBubble):
-    def __init__(self, parent, messageId, message, index, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
+    def __init__(self, parent, messageId, message, index, addLabel, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, message, addLabel, *args, **kw)
         maxWidth = 3*self.master.master.winfo_width()//5
         # Could make color a gradient depending on index later but it will add a lot of
         # dumb code.
@@ -233,8 +253,8 @@ class TextMessageBubble(MessageBubble):
         self.body.configure(width=3*event.width//5)
 
 class ImageMessageBubble(MessageBubble):
-    def __init__(self, parent, messageId, message, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, message, *args, **kw)
+    def __init__(self, parent, messageId, message, index, addLabel, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, message, addLabel, *args, **kw)
         self.messageInterior.columnconfigure(0,weight=1)
         self.messageInterior.rowconfigure(0,weight=1)
         self.display = tk.Canvas(self.messageInterior, bd=0, highlightthickness=0, bg='green')
