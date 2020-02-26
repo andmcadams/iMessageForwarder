@@ -166,6 +166,7 @@ class MessageBubble(tk.Frame):
     def onRightClick(self, event):
         messageMenu = MessageMenu(self)
         react = lambda reactionValue: lambda messageId=self.messageId: messageMenu.sendReaction(messageId, reactionValue)
+        messageMenu.add_command(label=self.messageId)
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
         messageMenu.add_command(label="Dislike", command=react(2002))
@@ -177,23 +178,38 @@ class MessageBubble(tk.Frame):
     def update(self):
         if self.message.attr['text'] != None:
             self.body.configure(text=self.message.attr['text'])
-        for r in self.message.reactions:
-            if self.message.reactions[r].attr['associated_message_type'] == 2000:
-                if not r in self.reactions:
-                    self.reactions[r] = ReactionBubble(self)
-                    self.reactions[r].grid(row=0)
-                    self.body.configure(bg='red')
-            elif self.message.reactions[r].attr['associated_message_type'] == 3000:
-                self.body.configure(bg='purple')
+        for handle in self.message.reactions:
+            if not handle in self.reactions:
+                self.reactions[handle] = {}
+            for r in self.message.reactions[handle]:
+                if self.message.reactions[handle][r].attr['associated_message_type'] < 3000:
+                    if not r in self.reactions[handle]:
+                        self.reactions[handle][r] = ReactionBubble(self, self.message.reactions[handle][r].attr['associated_message_type'])
+                        self.reactions[handle][r].grid(row=0, sticky='e')
+                        self.body.configure(bg='red')
+                elif self.message.reactions[handle][r].attr['associated_message_type'] >= 3000:
+                    if r in self.reactions[handle]:
+                        self.reactions[handle][r].destroy()
+                        del self.reactions[handle][r]
+                        self.body.configure(bg='green')
 
     def resize(self, event):
         pass
         #print("resizing text message bubble")
 
 class ReactionBubble(tk.Label):
-    def __init__(self, parent, *args, **kw):
+    def __init__(self, parent, associatedMessageType, *args, **kw):
         tk.Label.__init__(self, parent, *args, **kw)
-        self.original = Image.open('loveReact.png')
+
+        imageDictionary = {
+            2000: 'loveReact.png',
+            2001: 'thumbsupReact.png',
+            2002: 'thumbsdownReact.png',
+            2003: 'hahaReact.png',
+            2004: 'emphasizeReact.png',
+            2005: 'questionReact.png'
+        }
+        self.original = Image.open(imageDictionary[associatedMessageType])
         self.original.image = ImageTk.PhotoImage(self.original)
         self.configure(image=self.original.image)
 
