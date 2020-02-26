@@ -97,6 +97,9 @@ class MessageFrame(VerticalScrolledFrame):
                 else:
                     self.messageBubbles[messageId].update()
             self.lock.release()
+            (top, bottom) = self.vscrollbar.get()
+            if bottom == 1.0:
+                self.canvas.yview_moveto(self.interior.winfo_reqheight())
             if self.messageLimit > len(list(messageDict.keys())):
                 return True
             return False
