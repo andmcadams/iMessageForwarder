@@ -185,7 +185,10 @@ class MessageBubble(tk.Frame):
                 if self.message.reactions[handle][r].attr['associated_message_type'] < 3000:
                     if not r in self.reactions[handle]:
                         self.reactions[handle][r] = ReactionBubble(self, self.message.reactions[handle][r].attr['associated_message_type'])
-                        self.reactions[handle][r].grid(row=0, sticky='e')
+                        if self.message.attr['is_from_me'] == 1:
+                            self.reactions[handle][r].grid(row=0, sticky='w')
+                        else:
+                            self.reactions[handle][r].grid(row=0, sticky='e')
                         self.body.configure(bg='red')
                 elif self.message.reactions[handle][r].attr['associated_message_type'] >= 3000:
                     if r in self.reactions[handle]:
