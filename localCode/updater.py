@@ -37,7 +37,6 @@ def retrieveUpdates():
 					cmd = ["scp {}@{}:\"{}\" ./attachments/{}".format(user, ip, attachment['filename'].replace(' ', '\\ '), os.path.basename(attachment['filename']).replace(' ', '_'))]
 					subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 				attachment['filename'] = './attachments/{}'.format(os.path.basename(attachment['filename']).replace(' ', '_'))
-		print('Done scping...')
 
 		conn = sqlite3.connect('sms.db')
 
