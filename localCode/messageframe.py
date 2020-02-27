@@ -8,6 +8,17 @@ from PIL import Image, ImageTk
 from verticalscrolledframe import VerticalScrolledFrame
 from constants import LINUX, MACOS
 
+def getTimeText(timeStamp):
+    currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
+    msgTime = datetime.fromtimestamp(timeStamp, tz=datetime.now().astimezone().tzinfo)
+    if currentTime.date() == msgTime.date():
+        timeText = msgTime.strftime('%-I:%M %p')
+    elif currentTime.date() - timedelta(days=1) == msgTime.date():
+        timeText = 'Yesterday, ' + msgTime.strftime('%-I:%M %p')
+    else:
+        timeText = msgTime.strftime('%-m/%-d/%Y at %-I:%M %p')  
+    return timeText  
+
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
@@ -98,6 +109,16 @@ class MessageFrame(VerticalScrolledFrame):
                         if not (i-1) in range(len(subList)) or messageDict[subList[i-1]].attr['handle_id'] != messageDict[messageId].attr['handle_id']:
                             if messageDict[messageId].attr['is_from_me'] == 0:
                                 addLabel = True
+
+                    # A time label should be added iff
+                    # 1) The previous message was from 15+ minutes ago
+                    # 2) There is no previous message
+                    timeDiff = datetime.fromtimestamp(messageDict[messageId].attr['date'], tz=datetime.now().astimezone().tzinfo) - datetime.fromtimestamp(messageDict[subList[i-1]].attr['date'], tz=datetime.now().astimezone().tzinfo)
+                    
+                    if not (i-1) in range(len(subList)) or timeDiff > timedelta(minutes=15):
+                        timeLabel = tk.Label(self.interior, text=getTimeText(messageDict[messageId].attr['date']))
+                        timeLabel.pack()
+
                     if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
                         msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId], i, addLabel)
                     else:
@@ -184,23 +205,11 @@ class MessageBubble(tk.Frame):
             self.senderLabel.grid(row=0, sticky='w')
         self.update()
 
-    def getTimeText(self, timeStamp):
-        currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
-        msgTime = datetime.fromtimestamp(timeStamp, tz=datetime.now().astimezone().tzinfo)
-        if currentTime.date() == msgTime.date():
-            timeText = msgTime.strftime('%I:%M %p')
-        elif currentTime.date() - timedelta(days=1) == msgTime.date():
-            timeText = 'Yesterday, ' + msgTime.strftime('%I:%M %p')
-        else:
-            timeText = msgTime.strftime('%m/%d/%Y at %I:%M %p')  
-        return timeText  
-
-
     def onRightClick(self, event):
         messageMenu = MessageMenu(self)
         react = lambda reactionValue: lambda messageId=self.messageId: messageMenu.sendReaction(messageId, reactionValue)
         messageMenu.add_command(label=self.messageId)
-        messageMenu.add_command(label=self.getTimeText(self.message.attr['date']))
+        messageMenu.add_command(label=getTimeText(self.message.attr['date']))
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
         messageMenu.add_command(label="Dislike", command=react(2002))
