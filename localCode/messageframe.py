@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 import threading
+from datetime import datetime, timedelta
 
 from PIL import Image, ImageTk
 from verticalscrolledframe import VerticalScrolledFrame
@@ -183,10 +184,23 @@ class MessageBubble(tk.Frame):
             self.senderLabel.grid(row=0, sticky='w')
         self.update()
 
+    def getTimeText(self, timeStamp):
+        currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
+        msgTime = datetime.fromtimestamp(timeStamp, tz=datetime.now().astimezone().tzinfo)
+        if currentTime.date() == msgTime.date():
+            timeText = msgTime.strftime('%I:%M %p')
+        elif currentTime.date() - timedelta(days=1) == msgTime.date():
+            timeText = 'Yesterday, ' + msgTime.strftime('%I:%M %p')
+        else:
+            timeText = msgTime.strftime('%m/%d/%Y at %I:%M %p')  
+        return timeText  
+
+
     def onRightClick(self, event):
         messageMenu = MessageMenu(self)
         react = lambda reactionValue: lambda messageId=self.messageId: messageMenu.sendReaction(messageId, reactionValue)
         messageMenu.add_command(label=self.messageId)
+        messageMenu.add_command(label=self.getTimeText(self.message.attr['date']))
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
         messageMenu.add_command(label="Dislike", command=react(2002))
