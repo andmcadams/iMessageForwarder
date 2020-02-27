@@ -129,6 +129,12 @@ class Reaction:
 		for key, value in kw.items():
 			self.attr[key] = value
 
+		# This has to be done since tkinter only supports some unicode characters
+		self.attr['text'] = None
+		if kw['text'] != None:
+			self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
+
+
 
 class ChatDeletedException(Exception):
 	pass
