@@ -45,9 +45,9 @@ for row in cursor:
 	message = {}
 	for column in neededColumnsMessage:
 		message[column] = row[column]
-	message['date'] = message['date']//1000000000 + 978307200
-	message['date_read'] = message['date_read']//1000000000 + 978307200
-	message['date_delivered'] = message['date_delivered']//1000000000 + 978307200
+	message['date'] = message['date']//1000000000 + 978307200 if message['date'] != 0 else 0
+	message['date_read'] = message['date_read']//1000000000 + 978307200 if message['date_read'] != 0 else 0
+	message['date_delivered'] = message['date_delivered']//1000000000 + 978307200 if message['date_delivered'] != 0 else 0
 	chat_message_joins.append({
 		'message_id': row['ROWID'],
 		'chat_id': row['chat_id']
