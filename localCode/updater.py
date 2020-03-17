@@ -23,7 +23,7 @@ def retrieveUpdates():
 	try:
 		cmd = ["ssh {}@{} \"python {} {}\"".format(user, ip, retrieveScriptPath, lastAccess)]
 		lastAccess = tempLastAccess
-		output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True)
+		output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, check=True)
 		output = json.loads(output.stdout)
 
 		for attachment in output['attachment']:
@@ -34,8 +34,8 @@ def retrieveUpdates():
 			# I just didn't want to navigate a nest of folders while working on this.
 			if attachment['filename']:
 				if not os.path.isfile('./attachments/{}'.format(os.path.basename(attachment['filename']).replace(' ', '_'))):
-					cmd = ["scp {}@{}:\"{}\" ./attachments/{}".format(user, ip, attachment['filename'].replace(' ', '\\ '), os.path.basename(attachment['filename']).replace(' ', '_'))]
-					subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+					cmd = ["scp {}@{}:\"{}\" ./attachments/{}".format(user, ip, attachment['filename'].replace(' ', '\\ ').replace('(','\\(').replace(')','\\)'), os.path.basename(attachment['filename']).replace(' ', '_').replace('(','\\(').replace(')','\\)'))]
+					subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL)
 				attachment['filename'] = './attachments/{}'.format(os.path.basename(attachment['filename']).replace(' ', '_'))
 
 		conn = sqlite3.connect('sms.db')
