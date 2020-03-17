@@ -316,19 +316,25 @@ class TextMessageBubble(MessageBubble):
         self.body.configure(width=3*event.width//5)
 
 class ImageMessageBubble(MessageBubble):
-    def __init__(self, parent, messageId, message, index, addLabel, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, message, addLabel, *args, **kw)
+    def __init__(self, parent, messageId, message, index, addLabel, addReadReceipt, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, message, addLabel, addReadReceipt, *args, **kw)
         self.messageInterior.columnconfigure(0,weight=1)
         self.messageInterior.rowconfigure(0,weight=1)
-        self.display = tk.Canvas(self.messageInterior, bd=0, highlightthickness=0, bg='green')
+        self.display = tk.Canvas(self.messageInterior, bd=0, highlightthickness=0)
         self.display.grid(row=0, sticky='nsew')
         self.body = tk.Label(self.display)
-        self.body.original = Image.open(os.path.expanduser(message.attachment.attr['filename']))
-        newSize = self.getNewSize(self.body.original, self.master.master.winfo_width(), self.master.master.winfo_height())
-        self.body.image = ImageTk.PhotoImage(self.body.original.resize(newSize, Image.ANTIALIAS))
-        self.body.configure(image=self.body.image)
+        try:
+            self.body.original = Image.open(os.path.expanduser(message.attachment.attr['filename']))
+            newSize = self.getNewSize(self.body.original, self.master.master.winfo_width(), self.master.master.winfo_height())
+            self.body.image = ImageTk.PhotoImage(self.body.original.resize(newSize, Image.ANTIALIAS))
+            self.body.configure(image=self.body.image)
+            self.display.configure(width=newSize[0], height=newSize[1])
+
+        except FileNotFoundError as e:
+            print(e)
+            self.body.original = None
+            self.body.configure(text='Image not found')
         self.body.grid(row=0, sticky='nsew')
-        self.display.configure(width=newSize[0], height=newSize[1])
         self.initBody()
 
 
@@ -350,9 +356,12 @@ class ImageMessageBubble(MessageBubble):
 
 
     def resize(self, event):
-        newSize = self.getNewSize(self.body.original, event.width, event.height)
-        resized = self.body.original.resize(newSize, Image.ANTIALIAS)
+        if self.body.original:
+            newSize = self.getNewSize(self.body.original, event.width, event.height)
+            resized = self.body.original.resize(newSize, Image.ANTIALIAS)
 
-        self.body.image = ImageTk.PhotoImage(resized)
-        self.body.configure(image=self.body.image)
-        self.display.configure(width=newSize[0], height=newSize[1])
+            self.body.image = ImageTk.PhotoImage(resized)
+            self.body.configure(image=self.body.image)
+            self.display.configure(width=newSize[0], height=newSize[1])
+        else:
+            self.body.configure(width=3*event.width//5)
