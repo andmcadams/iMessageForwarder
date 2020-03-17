@@ -34,6 +34,8 @@ class MessageFrame(VerticalScrolledFrame):
         self.addedMessages = False
         self.scrollLock = threading.Lock()
 
+        self.readReceiptMessageId = None
+
 
     # This probably has some nasty race conditions.
     # This also has unfortunate recursion issues that should be fixed
@@ -93,6 +95,13 @@ class MessageFrame(VerticalScrolledFrame):
             # Update the message bubble if it exists
             # Add a new one if it does not exist
             subList = list(messageDict.keys())[-self.messageLimit:]
+
+            lastFromMeId = -1
+            for i in reversed(subList):
+                if messageDict[i].attr['is_from_me']:
+                    lastFromMeId = messageDict[i].attr['ROWID']
+                    break
+
             for i in range(len(subList)):
                 messageId = subList[i]
                 if not messageId in self.messageBubbles:
@@ -114,15 +123,26 @@ class MessageFrame(VerticalScrolledFrame):
                     # 1) The previous message was from 15+ minutes ago
                     # 2) There is no previous message
                     timeDiff = datetime.fromtimestamp(messageDict[messageId].attr['date'], tz=datetime.now().astimezone().tzinfo) - datetime.fromtimestamp(messageDict[subList[i-1]].attr['date'], tz=datetime.now().astimezone().tzinfo)
-                    
+
                     if not (i-1) in range(len(subList)) or timeDiff > timedelta(minutes=15):
                         timeLabel = tk.Label(self.interior, text=getTimeText(messageDict[messageId].attr['date']))
                         timeLabel.pack()
 
+                    # Need to add a read receipt iff
+                    # 1) The chat is not a group chat
+                    # 2) The message was sent by me
+                    # 3) There is no later message than this one sent by me
+                    addReadReceipt = False
+                    if chat.attr['style'] == 45 and messageDict[messageId].attr['is_from_me'] == 1 and messageId == lastFromMeId:
+                        addReadReceipt = True
+                        if self.readReceiptMessageId != None and self.readReceiptMessageId in self.messageBubbles:
+                            self.messageBubbles[self.readReceiptMessageId].removeReadReceipt()
+                        self.readReceiptMessageId = messageId
+
                     if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
-                        msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId], i, addLabel)
+                        msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId], i, addLabel, addReadReceipt)
                     else:
-                        msg = TextMessageBubble(self.interior, messageId, messageDict[messageId], i, addLabel)
+                        msg = TextMessageBubble(self.interior, messageId, messageDict[messageId], i, addLabel, addReadReceipt)
                     if messageDict[messageId].attr['is_from_me']:
                         msg.pack(anchor=tk.E, expand=tk.FALSE)
                     else:
@@ -177,7 +197,7 @@ class MessageMenu(tk.Menu):
 
 class MessageBubble(tk.Frame):
 
-    def __init__(self, parent, messageId, message, addLabel, *args, **kw):
+    def __init__(self, parent, messageId, message, addLabel, addReadReceipt, *args, **kw):
         tk.Frame.__init__(self, parent, padx=4, pady=4, *args, **kw)
 
         self.senderLabel = None
@@ -190,6 +210,10 @@ class MessageBubble(tk.Frame):
         self.messageId = messageId
         self.message = message
 
+        self.readReceipt = None
+        if addReadReceipt:
+            self.readReceipt = tk.Label(self, text='')
+
     # self.body MUST be assigned before calling this method
     def initBody(self):
         # On right click, open the menu at the location of the mouse
@@ -200,14 +224,19 @@ class MessageBubble(tk.Frame):
             self.messageInterior.bind("<Button-2>", lambda event: self.onRightClick(event))
             self.body.bind("<Button-2>", lambda event: self.onRightClick(event))
         self.body.grid(row=1)
-        self.messageInterior.grid(row=2, sticky='w')
+
+        stickyValue = 'e' if self.message.attr['is_from_me'] == 1 else 'w'
+        self.messageInterior.grid(row=2, sticky=stickyValue)
         if self.senderLabel:
             self.senderLabel.grid(row=0, sticky='w')
+
+        if self.readReceipt:
+            self.readReceipt.grid(row=3, sticky='e')
         self.update()
 
     def onRightClick(self, event):
         messageMenu = MessageMenu(self)
-        react = lambda reactionValue: lambda messageId=self.messageId: messageMenu.sendReaction(messageId, reactionValue)
+        react = lambda reactionValue: lambda messageMenu=messageMenu, messageId=self.messageId: messageMenu.sendReaction(messageId, reactionValue)
         messageMenu.add_command(label=self.messageId)
         messageMenu.add_command(label=getTimeText(self.message.attr['date']))
         messageMenu.add_command(label="Love", command=react(2000))
@@ -223,6 +252,13 @@ class MessageBubble(tk.Frame):
         if self.message.attr['text'] != None:
             self.body.configure(text=self.message.attr['text'])
 
+        if self.readReceipt:
+            if self.message.attr['date_read'] != 0:
+                self.readReceipt.configure(text='Read at {}'.format(getTimeText(self.message.attr['date_read'])))
+            elif self.message.attr['is_delivered'] == 1:
+                self.readReceipt.configure(text='Delivered')
+            else:
+                self.readReceipt.configure(text='Sending...')
         # Handle reactions
         for handle in self.message.reactions:
             if not handle in self.reactions:
@@ -241,6 +277,10 @@ class MessageBubble(tk.Frame):
                         self.reactions[handle][r].destroy()
                         del self.reactions[handle][r]
                         self.body.configure(bg='green')
+
+    def removeReadReceipt(self):
+        self.readReceipt.grid_forget()
+        self.readReceipt = None
 
     def resize(self, event):
         pass
@@ -263,8 +303,8 @@ class ReactionBubble(tk.Label):
         self.configure(image=self.original.image)
 
 class TextMessageBubble(MessageBubble):
-    def __init__(self, parent, messageId, message, index, addLabel, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, message, addLabel, *args, **kw)
+    def __init__(self, parent, messageId, message, index, addLabel, addReadReceipt, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, message, addLabel, addReadReceipt, *args, **kw)
         maxWidth = 3*self.master.master.winfo_width()//5
         # Could make color a gradient depending on index later but it will add a lot of
         # dumb code.
