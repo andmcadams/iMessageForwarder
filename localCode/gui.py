@@ -51,7 +51,7 @@ def runGui(DEBUG):
     else:
         globals()["api"] = __import__('api')
     root = tk.Tk()
-    root.title("Scrollable Frame Demo")
+    root.title("Messages")
     root.configure(background="gray99")
 
     style = ttk.Style()
