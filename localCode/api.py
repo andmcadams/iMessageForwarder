@@ -220,6 +220,10 @@ class Chat:
 		messageText = messageText.replace('\'', '\\\'')
 		subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} $\'{}\' {} {}".format(scriptPath, messageText, self.chatId, 0)])
 
+	def sendReaction(self, messageId, assocType):
+		subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} \'{}\' {} {} \'{}\' {}".format(scriptPath, '', self.chatId, 1, messageId, assocType)])
+
+
 	def getMostRecentMessage(self):
 		return self.messageList.getMostRecentMessage()
 
