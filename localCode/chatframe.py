@@ -99,6 +99,9 @@ class ChatButton(tk.Frame):
 
         name = self.truncate(self.chat.getName(), 20)
         text = self.truncate(self.chat.getMostRecentMessage().attr['text'], 50)
+        # TODO 4: Need to grab the type of message and set the text to that. Perhaps this should be implemented on message load.
+        if text == '￼':
+            text = 'Attachment: 1 Image'
         timeText = self.getTimeText(self.chat.getMostRecentMessage().attr['date'])
 
         self.number.configure(text=name)
