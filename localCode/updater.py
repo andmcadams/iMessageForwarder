@@ -70,7 +70,8 @@ def retrieveUpdates():
 		conn.close()
 		updateLastAccess(tempLastAccess)
 	except subprocess.CalledProcessError as e:
-		print(e.stderr)
+		if e.returncode == -2:
+			print('Updater ssh call interrupted by SIGINT...')
 		print('Failed to connect via ssh...')
 
 class UpdaterThread(threading.Thread):
