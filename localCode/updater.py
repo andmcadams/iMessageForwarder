@@ -1,3 +1,4 @@
+import threading
 import json
 import subprocess
 import time
@@ -13,17 +14,36 @@ ip = secrets['ip']
 scriptPath = secrets['scriptPath']
 retrieveScriptPath = secrets['retrieveScriptPath']
 
-# TODO 3: Make lastAccess stored and read upon shutdown/startup in order to avoid grabbing old messages every time. 
-lastAccess = 0
-
-def retrieveUpdates():
+def updateLastAccess(newTime):
 	global lastAccess
+	lastAccess = newTime
+	print('Last access time updated to {}'.format(lastAccess))
+
+def readLastAccess():
+	try:
+		with open(os.path.join(dirname, 'data.json')) as infile:
+			data = json.load(infile)
+			updateLastAccess(data['lastAccess'])
+	except FileNotFoundError as e:
+		# This is hit when the data.json file is blank.
+		updateLastAccess(0)	
+
+def writeLastAccess():
+	with open(os.path.join(dirname, 'data.json'), 'w+') as outfile:
+		try:
+			data = json.load(outfile)
+			data['lastAccess'] = lastAccess
+		except json.decoder.JSONDecodeError as e:
+			# This is hit when the data.json file is blank.
+			outfile.write(json.dumps({ 'lastAccess': lastAccess }))
+	print('Wrote last access time of {}'.format(lastAccess))
+	
+def retrieveUpdates():
 	oldTime = lastAccess
 	# Sub 10 seconds (likely too much) to account for possibility of missing messages that come in at the same time
 	tempLastAccess = int(time.time()) - 10
 	try:
 		cmd = ["ssh {}@{} \"python {} {}\"".format(user, ip, retrieveScriptPath, lastAccess)]
-		lastAccess = tempLastAccess
 		output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, check=True)
 		output = json.loads(output.stdout)
 		for attachment in output['attachment']:
@@ -49,15 +69,29 @@ def retrieveUpdates():
 					conn.execute(sql, tuple(row.values()))
 		conn.commit()
 		conn.close()
+		updateLastAccess(tempLastAccess)
 	except subprocess.CalledProcessError as e:
 		print(e.stderr)
-		lastAccess = oldTime
 		print('Failed to connect via ssh...')
 
-def runUpdater():
-	while True:
-		retrieveUpdates()
-		time.sleep(1)
+class UpdaterThread(threading.Thread):
+
+	def __init__(self, name='UpdaterThread'):
+		self._stopevent = threading.Event()
+		threading.Thread.__init__(self, name=name)
+
+	def run(self):
+		readLastAccess()
+		while not self._stopevent.isSet():
+			retrieveUpdates()
+			time.sleep(1)
+		self.terminate()
+
+	def terminate(self):
+		writeLastAccess()
+
+	def stopThread(self):
+		self._stopevent.set()
 
 if __name__ == '__main__':
 	runUpdater()
