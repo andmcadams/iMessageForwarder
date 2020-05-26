@@ -105,7 +105,7 @@ class Message:
 
 		# This has to be done since tkinter only supports some unicode characters
 		self.attr['text'] = None
-		if kw['text'] != None:
+		if 'text' in kw and kw['text'] != None:
 			self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
 
 		self.attachment = attachment
@@ -149,7 +149,6 @@ class Chat:
 		self.chatId = chatId
 		self.chatIdentifier = chatIdentifier
 		self.displayName = displayName
-		# This should probably eventually be a list where the messages are in order
 		self.messageList = MessageList()
 		self.recipientList = self._loadRecipients()
 		self._loadMostRecentMessage()
