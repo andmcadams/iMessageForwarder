@@ -5,11 +5,13 @@ import updater
 import gui
 
 if __name__ == '__main__':
-    def terminateThreads(signalNumber, frame):
+    def terminateUpdateThread(signalNumber=0, frame=None):
         t1.stopThread()
-    signal.signal(signal.SIGINT, terminateThreads)
+    signal.signal(signal.SIGINT, terminateUpdateThread)
     t1 = updater.UpdaterThread()
     t1.start()
     t2 = threading.Thread(target=lambda debug=0: gui.runGui(debug))
     t2.daemon = True
     t2.start()
+    t2.join()
+    terminateUpdateThread()
