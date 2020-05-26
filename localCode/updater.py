@@ -13,6 +13,7 @@ ip = secrets['ip']
 scriptPath = secrets['scriptPath']
 retrieveScriptPath = secrets['retrieveScriptPath']
 
+# TODO 3: Make lastAccess stored and read upon shutdown/startup in order to avoid grabbing old messages every time. 
 lastAccess = 0
 
 def retrieveUpdates():
@@ -25,7 +26,6 @@ def retrieveUpdates():
 		lastAccess = tempLastAccess
 		output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, check=True)
 		output = json.loads(output.stdout)
-
 		for attachment in output['attachment']:
 			# each attachment needs to be scp'ed over
 			# this will be a bottleneck when starting up
