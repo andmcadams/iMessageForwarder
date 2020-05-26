@@ -49,7 +49,6 @@ def retrieveUpdates():
 		for attachment in output['attachment']:
 			# each attachment needs to be scp'ed over
 			# this will be a bottleneck when starting up
-			# Later, once lastAccess is tracked across sessions, this should be less of an issue
 			# Obviously using basename leads to squashing attachments with the same basename. This should be changed later.
 			# I just didn't want to navigate a nest of folders while working on this.
 			if attachment['filename']:
