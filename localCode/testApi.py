@@ -112,24 +112,36 @@ class TestDummyChatMethods(unittest.TestCase):
 
 class TestChatMethods(unittest.TestCase):
 
-    def test_real_chat_creation(self):
+    def setUp(self):
         api._useTestDatabase()
+
+    def test_real_chat_creation(self):
         chat = api.Chat(82, 'testEmail@test.com', None)
         self.assertEqual(chat.chatId, 82)
         self.assertEqual(chat.chatIdentifier, 'testEmail@test.com')
         self.assertEqual(chat.displayName, None)
 
     def test_chat_recipient_list(self):
-        api._useTestDatabase()
         chat = api.Chat(82, 'testEmail@test.com', None)
         self.assertEqual(chat.recipientList, ['testEmail@test.com'])
 
     def test_chat_most_recent_message(self):
-        api._useTestDatabase()
-        kwNew = {'ROWID': 12732, 'guid': 'F207C7C1-59D8-4D8E-B17C-E4BF38A3075D', 'text': 'Hi again', 'handle_id': 86, 'service': 'iMessage', 'error': 0, 'date': 1590497693, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None}
         chat = api.Chat(82, 'testEmail@test.com', None)
-        messageNew = api.Message(**kwNew)
-        self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], messageNew.attr['ROWID'])
+        self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 12732)
+
+    def test_chat_initial_message_list(self):
+        chat = api.Chat(82, 'testEmail@test.com', None)
+        self.assertEqual(len(chat.getMessages()), 1)
+        self.assertEqual(list(chat.getMessages().keys()), [12732])
+
+    def test_chat_after_message_load(self):
+        chat = api.Chat(82, 'testEmail@test.com', None)
+        self.assertEqual(len(chat.getMessages()), 1)
+        self.assertEqual(list(chat.getMessages().keys()), [12732])
+        chat._loadMessages()
+        self.assertEqual(len(chat.getMessages()), 2)
+        self.assertEqual(list(chat.getMessages().keys()), [12727, 12732])
+        self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 12732)
 
 if __name__ == '__main__':
     unittest.main()
