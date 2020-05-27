@@ -104,5 +104,32 @@ class TestReactionMethods(unittest.TestCase):
         self.assertEqual(reaction.handleName, None)
         self.assertEqual(reaction.attr, kw)
 
+class TestDummyChatMethods(unittest.TestCase):
+
+    def test_basic_creation(self):
+        dummyChat = api.DummyChat(1)
+        self.assertEqual(dummyChat.chatId, 1)
+
+class TestChatMethods(unittest.TestCase):
+
+    def test_real_chat_creation(self):
+        api._useTestDatabase()
+        chat = api.Chat(82, 'testEmail@test.com', None)
+        self.assertEqual(chat.chatId, 82)
+        self.assertEqual(chat.chatIdentifier, 'testEmail@test.com')
+        self.assertEqual(chat.displayName, None)
+
+    def test_chat_recipient_list(self):
+        api._useTestDatabase()
+        chat = api.Chat(82, 'testEmail@test.com', None)
+        self.assertEqual(chat.recipientList, ['testEmail@test.com'])
+
+    def test_chat_most_recent_message(self):
+        api._useTestDatabase()
+        kwNew = {'ROWID': 12732, 'guid': 'F207C7C1-59D8-4D8E-B17C-E4BF38A3075D', 'text': 'Hi again', 'handle_id': 86, 'service': 'iMessage', 'error': 0, 'date': 1590497693, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None}
+        chat = api.Chat(82, 'testEmail@test.com', None)
+        messageNew = api.Message(**kwNew)
+        self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], messageNew.attr['ROWID'])
+
 if __name__ == '__main__':
     unittest.main()
