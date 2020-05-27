@@ -21,6 +21,9 @@ class TestMessageMethods(unittest.TestCase):
             'c': 'c text'
         }
         msg = api.Message(**kw)
+        self.assertEqual(msg.reactions, {})
+        self.assertEqual(msg.attachment, None)
+        self.assertEqual(msg.handleName, None)
         self.assertEqual(kw, msg.attr)
 
     # Test the creation of a message with an emoji in its text.
@@ -31,6 +34,9 @@ class TestMessageMethods(unittest.TestCase):
             'text': 'This 🍄 is a mushroom'
         }
         msg = api.Message(**kw)
+        self.assertEqual(msg.reactions, {})
+        self.assertEqual(msg.attachment, None)
+        self.assertEqual(msg.handleName, None)
         self.assertEquals('This  is a mushroom', msg.attr['text'])
 
     # Test the creation of a real message, similarly to how it is done in api.
@@ -38,7 +44,41 @@ class TestMessageMethods(unittest.TestCase):
     def test_real_message(self):
         kw = {'ROWID': 581, 'guid': 'A153E7D9-8246-481C-96D4-4C15023658E1', 'text': 'This is some example text.', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582434588, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None, 'message_update_date': 1584480798}   
         msg = api.Message(**kw)
+        self.assertEqual(msg.reactions, {})
+        self.assertEqual(msg.attachment, None)
+        self.assertEqual(msg.handleName, None)
         self.assertEquals(kw, msg.attr)
+
+class TestReactionMethods(unittest.TestCase):
+
+    def test_basic_creation(self):
+        reaction = api.Reaction(1)
+        self.assertEqual(reaction.associatedMessageId, 1)
+        self.assertEqual(reaction.attr, { 'text': None })
+        self.assertEqual(reaction.handleName, None)
+
+    def text_text_with_emojis(self):
+        kw = {
+            'text': 'This 🍄 is a mushroom'
+        }
+        reaction = api.Reaction(1, **kw)
+        self.assertEqual(reaction.associatedMessageId, 1)
+        self.assertEqual(reaction.handleName, None)
+        self.assertEqual(reaction.attr, { 'text': 'This  is a mushroom' })
+
+    def test_real_reaction(self):
+        kw = {'ROWID': 627, 'guid': '3D8E90A2-B06A-44D1-BF62-F419320592A3', 'text': 'Loved “Bye”', 'handle_id': 1, 'service': 'iMessage', 'error': 0, 'date': 1582480858, 'date_read': 978307200, 'date_delivered': 978307200, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/495488E4-10A7-4BA2-A070-DE82AB2C2401', 'associated_message_type': 2000, 'attachment_id': None}
+        reaction = api.reaction(1, **kw)
+        self.assertEqual(reaction.associatedMessageId, 1)
+        self.assertEqual(reaction.handleName, None)
+        self.assertEqual(reaction.attr, kw)
+
+    def test_real_reaction_removal(self):
+        kw = {'ROWID': 1393, 'guid': '7A291C84-F43E-4127-AC16-BD0BE4DBD7EC', 'text': 'Removed an exclamation from “..”', 'handle_id': 1, 'service': 'iMessage', 'error': 0, 'date': 1582726653, 'date_read': 1582726656, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 0, 'is_read': 1, 'is_sent': 0, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/459BDF3C-599E-4A86-A6C5-76F6AF93BE65', 'associated_message_type': 3004, 'attachment_id': None}
+        reaction = api.reaction(1, **kw)
+        self.assertEqual(reaction.associatedMessageId, 1)
+        self.assertEqual(reaction.handleName, None)
+        self.assertEqual(reaction.attr, kw)
 
 if __name__ == '__main__':
     unittest.main()
