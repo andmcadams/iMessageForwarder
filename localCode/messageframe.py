@@ -131,7 +131,8 @@ class MessageFrame(VerticalScrolledFrame):
                     # Need to add a read receipt iff
                     # 1) The chat is not a group chat
                     # 2) The message was sent by me
-                    # 3) There is no later message than this one sent by me
+                    # 3) The message is an iMessage
+                    # 4) There is no later message than this one sent by me
                     addReadReceipt = False
                     if chat.attr['style'] == 45 and messageDict[messageId].attr['is_from_me'] == 1 and messageDict[messageId].attr['service'] == 'iMessage' and messageId == lastFromMeId:
                         addReadReceipt = True
