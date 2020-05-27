@@ -283,3 +283,7 @@ def _getChatsToUpdate(lastAccessTime):
 			maxUpdate = row['max(message_update_date)']
 	conn.close()
 	return chatIds, maxUpdate
+
+def _useTestDatabase():
+    global dbPath
+    dbPath = os.path.join(dirname, 'testDb.db')
