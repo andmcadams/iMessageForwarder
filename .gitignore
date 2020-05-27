@@ -1,6 +1,9 @@
 *.pyc
 *.swp
 *~
+*.png
+*.db
+*.json
 localCode/sms.db
 localCode/secrets.json
 remoteCode/macbook/config.json
