@@ -133,7 +133,7 @@ class MessageFrame(VerticalScrolledFrame):
                     # 2) The message was sent by me
                     # 3) There is no later message than this one sent by me
                     addReadReceipt = False
-                    if chat.attr['style'] == 45 and messageDict[messageId].attr['is_from_me'] == 1 and messageId == lastFromMeId:
+                    if chat.attr['style'] == 45 and messageDict[messageId].attr['is_from_me'] == 1 and messageDict[messageId].attr['service'] == 'iMessage' and messageId == lastFromMeId:
                         addReadReceipt = True
                         if self.readReceiptMessageId != None and self.readReceiptMessageId in self.messageBubbles:
                             self.messageBubbles[self.readReceiptMessageId].removeReadReceipt()
