@@ -279,8 +279,9 @@ class MessageBubble(tk.Frame):
                         self.body.configure(bg='green')
 
     def removeReadReceipt(self):
-        self.readReceipt.grid_forget()
-        self.readReceipt = None
+        if self.readReceipt != None:
+            self.readReceipt.grid_forget()
+            self.readReceipt = None
 
     def resize(self, event):
         pass
