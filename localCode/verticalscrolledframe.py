@@ -54,7 +54,8 @@ class VerticalScrolledFrame(tk.Frame):
             # update the inner frame's width to fill the canvas
             self.canvas.itemconfigure(self.interior_id, width=self.canvas.winfo_width())
         # Remove or add scrollbars depending on whether or not they're necessary
-        self._configure_scrollbars()
+        if self.canvas.winfo_height() > self.interior.winfo_reqheight():
+            self._configure_scrollbars()
 
     # If the scrollable area is smaller than the window size, get rid of the
     # scroll bars. Keep space while the scrollbars are gone though.
