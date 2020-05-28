@@ -229,7 +229,7 @@ class Chat:
 	def _loadMostRecentMessage(self):
 		conn = sqlite3.connect(dbPath)
 		conn.row_factory = sqlite3.Row		
-		cursor = conn.execute('select ROWID, handle_id, text, date, is_from_me, associated_message_guid, associated_message_type from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? order by date desc', (self.chatId, ))
+		cursor = conn.execute('select ROWID, handle_id, text, date, is_from_me, associated_message_guid, associated_message_type from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? order by date desc, ROWID desc', (self.chatId, ))
 		for row in cursor.fetchall():
 			if not row['associated_message_guid']:
 				message = Message(**row)
