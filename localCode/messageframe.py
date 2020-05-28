@@ -141,9 +141,9 @@ class MessageFrame(VerticalScrolledFrame):
                         self.readReceiptMessageId = messageId
 
                     if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
-                        msg = ImageMessageBubble(self.interior, messageId, messageDict[messageId], i, addLabel, addReadReceipt)
+                        msg = ImageMessageBubble(self.interior, messageId, chat, i, addLabel, addReadReceipt)
                     else:
-                        msg = TextMessageBubble(self.interior, messageId, messageDict[messageId], i, addLabel, addReadReceipt)
+                        msg = TextMessageBubble(self.interior, messageId, chat, i, addLabel, addReadReceipt)
                     if messageDict[messageId].attr['is_from_me']:
                         msg.pack(anchor=tk.E, expand=tk.FALSE)
                     else:
@@ -198,18 +198,18 @@ class MessageMenu(tk.Menu):
 
 class MessageBubble(tk.Frame):
 
-    def __init__(self, parent, messageId, message, addLabel, addReadReceipt, *args, **kw):
+    def __init__(self, parent, messageId, chat, addLabel, addReadReceipt, *args, **kw):
         tk.Frame.__init__(self, parent, padx=4, pady=4, *args, **kw)
 
         self.senderLabel = None
         if addLabel == True:
-            self.senderLabel = tk.Label(self, height=1, text=message.handleName)
+            self.senderLabel = tk.Label(self, height=1, text=chat.getMessages()[messageId].handleName)
         self.messageInterior = ttk.Frame(self, padding=6)
         self.reactions = {}
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
         self.messageId = messageId
-        self.message = message
+        self.chat = chat 
 
         self.readReceipt = None
         if addReadReceipt:
@@ -226,7 +226,7 @@ class MessageBubble(tk.Frame):
             self.body.bind("<Button-2>", lambda event: self.onRightClick(event))
         self.body.grid(row=1)
 
-        stickyValue = 'e' if self.message.attr['is_from_me'] == 1 else 'w'
+        stickyValue = 'e' if self.chat.getMessages()[self.messageId].attr['is_from_me'] == 1 else 'w'
         self.messageInterior.grid(row=2, sticky=stickyValue)
         if self.senderLabel:
             self.senderLabel.grid(row=0, sticky='w')
@@ -239,7 +239,8 @@ class MessageBubble(tk.Frame):
         messageMenu = MessageMenu(self)
         react = lambda reactionValue: lambda messageMenu=messageMenu, messageId=self.messageId: messageMenu.sendReaction(messageId, reactionValue)
         messageMenu.add_command(label=self.messageId)
-        messageMenu.add_command(label=getTimeText(self.message.attr['date']))
+        messageMenu.add_command(label=self.chat.getMessages()[self.messageId].reactions)
+        messageMenu.add_command(label=getTimeText(self.chat.getMessages()[self.messageId].attr['date']))
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
         messageMenu.add_command(label="Dislike", command=react(2002))
@@ -250,30 +251,31 @@ class MessageBubble(tk.Frame):
 
     def update(self):
         # Text probably won't change but this is nice for initially populating.
-        if self.message.attr['text'] != None:
-            self.body.configure(text=self.message.attr['text'])
+        message = self.chat.getMessages()[self.messageId]
+        if message.attr['text'] != None:
+            self.body.configure(text=message.attr['text'])
 
         if self.readReceipt:
-            if self.message.attr['date_read'] != 0:
-                self.readReceipt.configure(text='Read at {}'.format(getTimeText(self.message.attr['date_read'])))
-            elif self.message.attr['is_delivered'] == 1:
+            if message.attr['date_read'] != 0:
+                self.readReceipt.configure(text='Read at {}'.format(getTimeText(message.attr['date_read'])))
+            elif message.attr['is_delivered'] == 1:
                 self.readReceipt.configure(text='Delivered')
             else:
                 self.readReceipt.configure(text='Sending...')
         # Handle reactions
-        for handle in self.message.reactions:
+        for handle in message.reactions:
             if not handle in self.reactions:
                 self.reactions[handle] = {}
-            for r in self.message.reactions[handle]:
-                if self.message.reactions[handle][r].attr['associated_message_type'] < 3000:
+            for r in message.reactions[handle]:
+                if message.reactions[handle][r].attr['associated_message_type'] < 3000:
                     if not r in self.reactions[handle]:
-                        self.reactions[handle][r] = ReactionBubble(self, self.message.reactions[handle][r].attr['associated_message_type'])
-                        if self.message.attr['is_from_me'] == 1:
+                        self.reactions[handle][r] = ReactionBubble(self, message.reactions[handle][r].attr['associated_message_type'])
+                        if message.attr['is_from_me'] == 1:
                             self.reactions[handle][r].grid(row=1, sticky='w')
                         else:
                             self.reactions[handle][r].grid(row=1, sticky='e')
                         self.body.configure(bg='red')
-                elif self.message.reactions[handle][r].attr['associated_message_type'] >= 3000:
+                elif message.reactions[handle][r].attr['associated_message_type'] >= 3000:
                     if r in self.reactions[handle]:
                         self.reactions[handle][r].destroy()
                         del self.reactions[handle][r]
@@ -305,8 +307,8 @@ class ReactionBubble(tk.Label):
         self.configure(image=self.original.image)
 
 class TextMessageBubble(MessageBubble):
-    def __init__(self, parent, messageId, message, index, addLabel, addReadReceipt, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, message, addLabel, addReadReceipt, *args, **kw)
+    def __init__(self, parent, messageId, chat, index, addLabel, addReadReceipt, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, chat, addLabel, addReadReceipt, *args, **kw)
         maxWidth = 3*self.master.master.winfo_width()//5
         # Could make color a gradient depending on index later but it will add a lot of
         # dumb code.
@@ -318,15 +320,15 @@ class TextMessageBubble(MessageBubble):
         self.body.configure(width=3*event.width//5)
 
 class ImageMessageBubble(MessageBubble):
-    def __init__(self, parent, messageId, message, index, addLabel, addReadReceipt, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, message, addLabel, addReadReceipt, *args, **kw)
+    def __init__(self, parent, messageId, chat, index, addLabel, addReadReceipt, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, chat, addLabel, addReadReceipt, *args, **kw)
         self.messageInterior.columnconfigure(0,weight=1)
         self.messageInterior.rowconfigure(0,weight=1)
         self.display = tk.Canvas(self.messageInterior, bd=0, highlightthickness=0)
         self.display.grid(row=0, sticky='nsew')
         self.body = tk.Label(self.display)
         try:
-            self.body.original = Image.open(os.path.expanduser(message.attachment.attr['filename']))
+            self.body.original = Image.open(os.path.expanduser(chat.getMessages()[messageId].attachment.attr['filename']))
             newSize = self.getNewSize(self.body.original, self.master.master.winfo_width(), self.master.master.winfo_height())
             self.body.image = ImageTk.PhotoImage(self.body.original.resize(newSize, Image.ANTIALIAS))
             self.body.configure(image=self.body.image)
