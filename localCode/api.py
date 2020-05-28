@@ -131,7 +131,7 @@ class Reaction:
 
 		# This has to be done since tkinter only supports some unicode characters
 		self.attr['text'] = None
-		if kw['text'] != None:
+		if 'text' in kw and kw['text'] != None:
 			self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
 
 
@@ -283,3 +283,7 @@ def _getChatsToUpdate(lastAccessTime):
 			maxUpdate = row['max(message_update_date)']
 	conn.close()
 	return chatIds, maxUpdate
+
+def _useTestDatabase():
+    global dbPath
+    dbPath = os.path.join(dirname, 'testDb.db')
