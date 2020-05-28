@@ -31,3 +31,8 @@ class ResponseFrame(tk.Frame):
             self.recipientFrame.addRecipients(chat)
             self.sendFrame.updateSendButton(chat)
 
+    def isCurrentChat(self, chatToCompare):
+        if chatToCompare.chatId == self.currentChat.chatId:
+            return True
+        return False
+
