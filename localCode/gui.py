@@ -5,7 +5,7 @@ from playsound import playsound
 from responseframe import ResponseFrame
 from chatframe import ChatFrame
 
-def updateFrames(chatFrame, responseFrame, lastAccessTime, currentThread):
+def updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, currentThread):
 	if currentThread._stopevent.isSet():
 		chatFrame.master.quit()
 		# chatFrame.master.destroy()
@@ -42,12 +42,14 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime, currentThread):
 			chatFrame.packChatButtons()
 			break
 
-	if newMessageFlag:
+	if newMessageFlag and lastSoundTime == 0:
+		lastSoundTime = 5
 		threading.Thread(target=lambda: playsound('bing.wav')).start()
 
 	chatFrame.lock.release()
 	
-	threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame, lastAccessTime=newLastAccessTime, currentThread=currentThread: updateFrames(chatFrame, responseFrame, lastAccessTime, currentThread)).start()
+	lastSoundTime = 0 if lastSoundTime == 0 else lastSoundTime - 1
+	threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame, lastAccessTime=newLastAccessTime, lastSoundTime=lastSoundTime, currentThread=currentThread: updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, currentThread)).start()
 
 def runGui(DEBUG, currentThread):
 	if DEBUG == 1:
@@ -80,7 +82,7 @@ def runGui(DEBUG, currentThread):
 	root.rowconfigure(0, weight=1)
 	chats = api._loadChats()
 
-	updateFrames(chatFrame, responseFrame, 0, currentThread)
+	updateFrames(chatFrame, responseFrame, 0, 0, currentThread)
 
 	while True:
 		try:
