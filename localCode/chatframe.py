@@ -36,6 +36,7 @@ class ChatButton(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kw)
 
         self.chat = chat
+        self.responseFrame = responseFrame
         self.lastMessageId = chat.getMostRecentMessage().attr['ROWID']
         self.lastMessageTimeValue = self.chat.getMostRecentMessage().attr['date']
         self.isVisible = False
@@ -108,7 +109,8 @@ class ChatButton(tk.Frame):
         self.lastMessage.configure(text=text)
         self.lastMessageTime.configure(text=timeText)
         tempLastMessageTimeValue = self.lastMessageTimeValue
-        self.lastMessageTimeValue = self.chat.getMostRecentMessage().attr['date']
-        if tempLastMessageTimeValue != self.lastMessageTimeValue:
+        lastMsg = self.chat.getMostRecentMessage()
+        self.lastMessageTimeValue = lastMsg.attr['date']
+        if tempLastMessageTimeValue != self.lastMessageTimeValue and lastMsg.attr['is_from_me'] == 0 and self.responseFrame.isCurrentChat(self.chat) == False:
             return True
         return False
