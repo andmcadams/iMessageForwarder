@@ -229,16 +229,19 @@ class Chat:
 	def _loadMostRecentMessage(self):
 		conn = sqlite3.connect(dbPath)
 		conn.row_factory = sqlite3.Row		
-		cursor = conn.execute('select ROWID, handle_id, text, date, is_from_me, associated_message_guid, associated_message_type from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? where date = (select max(date) from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ?) order by ROWID desc', (self.chatId, self.chatId))
-		row = cursor.fetchone()
-		if row:
+		cursor = conn.execute('select ROWID, handle_id, text, date, is_from_me, associated_message_guid, associated_message_type from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? order by date desc', (self.chatId, ))
+		for row in cursor.fetchall():
 			if not row['associated_message_guid']:
 				message = Message(**row)
 				self.messageList.append(message)
+				break
 			else:
-				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][-36:], )).fetchone()[0]
-				reaction = Reaction(associatedMessageId, **row)
-				self.messageList.addReaction(reaction)
+				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][-36:], )).fetchone()
+				if associatedMessageId:
+					associatedMessageId = associatedMessageId[0]
+					reaction = Reaction(associatedMessageId, **row)
+					self.messageList.addReaction(reaction)
+					break
 		conn.close()
 
 def _loadChat(chatId):
