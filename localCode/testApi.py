@@ -81,7 +81,7 @@ class TestReactionMethods(unittest.TestCase):
         self.assertEqual(reaction.attr, { 'text': None })
         self.assertEqual(reaction.handleName, None)
 
-    def text_text_with_emojis(self):
+    def test_text_with_emojis(self):
         kw = {
             'text': 'This 🍄 is a mushroom'
         }
