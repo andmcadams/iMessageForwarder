@@ -102,6 +102,7 @@ class MessageFrame(VerticalScrolledFrame):
                     lastFromMeId = messageDict[i].attr['ROWID']
                     break
 
+            (top, bottom) = self.vscrollbar.get()
             for i in range(len(subList)):
                 messageId = subList[i]
                 if not messageId in self.messageBubbles:
@@ -152,8 +153,8 @@ class MessageFrame(VerticalScrolledFrame):
                 else:
                     self.messageBubbles[messageId].update()
             self.lock.release()
-            (top, bottom) = self.vscrollbar.get()
-            if bottom == 1.0:
+            if bottom >= 0.99:
+                self.canvas.update()
                 self.canvas.yview_moveto(self.interior.winfo_reqheight())
             if self.messageLimit > len(list(messageDict.keys())):
                 return True
