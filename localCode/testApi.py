@@ -121,7 +121,7 @@ class TestDummyChatMethods(unittest.TestCase):
 class TestChatMethods(unittest.TestCase):
 
     def setUp(self):
-        api._useTestDatabase()
+        api._useTestDatabase('testDb.db')
 
     def test_real_chat_creation(self):
         chat = api.Chat(82, 'testEmail@test.com', None)
