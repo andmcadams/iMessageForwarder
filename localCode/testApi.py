@@ -10,16 +10,22 @@ class TestMessageMethods(unittest.TestCase):
 
     # Test the creation of a message with no optional parameters.
     def test_basic_creation(self):
-        msg = api.Message()
-        self.assertEqual(msg.attr, { 'text': None })
+        msg = api.Message(**{'ROWID': 1})
+        self.assertEqual(msg.attr, { 'ROWID': 1, 'text': None })
         self.assertEqual(msg.reactions, {})
         self.assertEqual(msg.attachment, None)
         self.assertEqual(msg.handleName, None)
+
+    # Test that attempting to create a message without a 'ROWID' arg fails.
+    def test_missing_rowid_creation(self):
+        with self.assertRaises(api.MessageNoIdException):
+            api.Message()
 
     # Test the creation of a message with only kw as an optional parameter (expanded).
     # The kw dictionary passed in should be the same as the message objects attr attribute.
     def test_kw_only(self):
         kw = {
+            'ROWID': 1,
             'text': 'test',
             'a': 'a text',
             'b': 'b text',
@@ -36,6 +42,7 @@ class TestMessageMethods(unittest.TestCase):
     # They are retained in the local database.
     def test_text_with_emojis(self):
         kw = {
+            'ROWID': 1,
             'text': 'This 🍄 is a mushroom'
         }
         msg = api.Message(**kw)
@@ -76,19 +83,20 @@ class TestMessageMethods(unittest.TestCase):
 class TestReactionMethods(unittest.TestCase):
 
     def test_basic_creation(self):
-        reaction = api.Reaction(1)
+        reaction = api.Reaction(1, **{'ROWID': 1})
         self.assertEqual(reaction.associatedMessageId, 1)
-        self.assertEqual(reaction.attr, { 'text': None })
+        self.assertEqual(reaction.attr, { 'ROWID': 1, 'text': None })
         self.assertEqual(reaction.handleName, None)
 
     def test_text_with_emojis(self):
         kw = {
+            'ROWID': 1,
             'text': 'This 🍄 is a mushroom'
         }
         reaction = api.Reaction(1, **kw)
         self.assertEqual(reaction.associatedMessageId, 1)
         self.assertEqual(reaction.handleName, None)
-        self.assertEqual(reaction.attr, { 'text': 'This  is a mushroom' })
+        self.assertEqual(reaction.attr, { 'ROWID': 1, 'text': 'This  is a mushroom' })
 
     def test_real_reaction(self):
         kw = {'ROWID': 627, 'guid': '3D8E90A2-B06A-44D1-BF62-F419320592A3', 'text': 'Loved “Bye”', 'handle_id': 1, 'service': 'iMessage', 'error': 0, 'date': 1582480858, 'date_read': 978307200, 'date_delivered': 978307200, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/495488E4-10A7-4BA2-A070-DE82AB2C2401', 'associated_message_type': 2000, 'attachment_id': None}
