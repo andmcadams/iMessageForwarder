@@ -183,13 +183,15 @@ class TestMessageListMethods(unittest.TestCase):
         self.assertEqual(msgList.getMostRecentMessage(), None)
 
     def test_addition(self):
+        messageKw = {'ROWID': 581, 'guid': 'A153E7D9-8246-481C-96D4-4C15023658E1', 'text': 'This is some example text.', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582434588, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None, 'message_update_date': 1584480798}
+        messageKw2 = {'ROWID': 582, 'guid': 'B153E7D9-8246-481C-96D4-4C15023658E1', 'text': 'This is some more example text.', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582434598, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None, 'message_update_date': 1584480798}
         msgList = api.MessageList()
-        kw = {
-                'ROWID': 1
-        }
-        msg = api.Message(**kw)
+        msg = api.Message(**messageKw)
+        msg2 = api.Message(**messageKw2)
         msgList.append(msg)
-        self.assertEqual(msgList.getMostRecentMessage(), msg)
+        msgList.append(msg2)
+        self.assertEqual(list(msgList.messages.keys()), [581, 582])
+        self.assertEqual(msgList.getMostRecentMessage(), msg2)
         
 
 if __name__ == '__main__':
