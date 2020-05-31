@@ -94,6 +94,8 @@ class Attachment:
 		for key, value in kw.items():
 			self.attr[key] = value
 
+class MessageNoIdException(Exception):
+	pass
 
 class Message:
 
@@ -103,6 +105,8 @@ class Message:
 		for key, value in kw.items():
 			self.attr[key] = value
 
+		if not 'ROWID' in self.attr:
+			raise MessageNoIdException
 		# This has to be done since tkinter only supports some unicode characters
 		self.attr['text'] = None
 		if 'text' in kw and kw['text'] != None:
