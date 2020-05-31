@@ -193,6 +193,16 @@ class TestMessageListMethods(unittest.TestCase):
         self.assertEqual(list(msgList.messages.keys()), [581, 582])
         self.assertEqual(msgList.getMostRecentMessage(), msg2)
         
+    def test_reaction_addition(self):
+        messageKw = {'ROWID': 581, 'guid': 'A153E7D9-8246-481C-96D4-4C15023658E1', 'text': 'This is some example text.', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582434588, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None, 'message_update_date': 1584480798}
+        reactionKw = {'ROWID': 628, 'guid': '3D8E90A2-B06A-44D1-BF62-F419320592A3', 'text': 'Loved “This is some example text.”', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582480858, 'date_read': 978307200, 'date_delivered': 978307200, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/4A153E7D9-8246-481C-96D4-4C15023658E1', 'associated_message_type': 2000, 'attachment_id': None}
+        msgList = api.MessageList()
+        msg = api.Message(**messageKw)
+        reaction = api.Reaction(581, None, **reactionKw)
+        msgList.append(msg)
+        msgList.addReaction(reaction)
+        self.assertEqual(msgList.getMostRecentMessage().attr['ROWID'], 628)
+        self.assertEqual(len(list(msgList.messages.keys())), 1)
 
 if __name__ == '__main__':
     unittest.main()
