@@ -175,5 +175,22 @@ class TestChatMethods(unittest.TestCase):
         self.assertEqual(list(chat.getMessages().keys()), [12727, 12732])
         self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 12732)
 
+class TestMessageListMethods(unittest.TestCase):
+
+    def test_basic_creation(self):
+        msgList = api.MessageList()
+        self.assertEqual(msgList.messages, {})
+        self.assertEqual(msgList.getMostRecentMessage(), None)
+
+    def test_addition(self):
+        msgList = api.MessageList()
+        kw = {
+                'ROWID': 1
+        }
+        msg = api.Message(**kw)
+        msgList.append(msg)
+        self.assertEqual(msgList.getMostRecentMessage(), msg)
+        
+
 if __name__ == '__main__':
     unittest.main()
