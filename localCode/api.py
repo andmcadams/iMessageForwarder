@@ -291,6 +291,6 @@ def _getChatsToUpdate(lastAccessTime):
 	conn.close()
 	return chatIds, maxUpdate
 
-def _useTestDatabase():
+def _useTestDatabase(dbName):
     global dbPath
-    dbPath = os.path.join(dirname, 'testDb.db')
+    dbPath = os.path.join(dirname, dbName)
