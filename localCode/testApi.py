@@ -10,16 +10,22 @@ class TestMessageMethods(unittest.TestCase):
 
     # Test the creation of a message with no optional parameters.
     def test_basic_creation(self):
-        msg = api.Message()
-        self.assertEqual(msg.attr, { 'text': None })
+        msg = api.Message(**{'ROWID': 1})
+        self.assertEqual(msg.attr, { 'ROWID': 1, 'text': None })
         self.assertEqual(msg.reactions, {})
         self.assertEqual(msg.attachment, None)
         self.assertEqual(msg.handleName, None)
+
+    # Test that attempting to create a message without a 'ROWID' arg fails.
+    def test_missing_rowid_creation(self):
+        with self.assertRaises(api.MessageNoIdException):
+            api.Message()
 
     # Test the creation of a message with only kw as an optional parameter (expanded).
     # The kw dictionary passed in should be the same as the message objects attr attribute.
     def test_kw_only(self):
         kw = {
+            'ROWID': 1,
             'text': 'test',
             'a': 'a text',
             'b': 'b text',
@@ -36,6 +42,7 @@ class TestMessageMethods(unittest.TestCase):
     # They are retained in the local database.
     def test_text_with_emojis(self):
         kw = {
+            'ROWID': 1,
             'text': 'This 🍄 is a mushroom'
         }
         msg = api.Message(**kw)
@@ -76,19 +83,20 @@ class TestMessageMethods(unittest.TestCase):
 class TestReactionMethods(unittest.TestCase):
 
     def test_basic_creation(self):
-        reaction = api.Reaction(1)
+        reaction = api.Reaction(1, **{'ROWID': 1})
         self.assertEqual(reaction.associatedMessageId, 1)
-        self.assertEqual(reaction.attr, { 'text': None })
+        self.assertEqual(reaction.attr, { 'ROWID': 1, 'text': None })
         self.assertEqual(reaction.handleName, None)
 
-    def text_text_with_emojis(self):
+    def test_text_with_emojis(self):
         kw = {
+            'ROWID': 1,
             'text': 'This 🍄 is a mushroom'
         }
         reaction = api.Reaction(1, **kw)
         self.assertEqual(reaction.associatedMessageId, 1)
         self.assertEqual(reaction.handleName, None)
-        self.assertEqual(reaction.attr, { 'text': 'This  is a mushroom' })
+        self.assertEqual(reaction.attr, { 'ROWID': 1, 'text': 'This  is a mushroom' })
 
     def test_real_reaction(self):
         kw = {'ROWID': 627, 'guid': '3D8E90A2-B06A-44D1-BF62-F419320592A3', 'text': 'Loved “Bye”', 'handle_id': 1, 'service': 'iMessage', 'error': 0, 'date': 1582480858, 'date_read': 978307200, 'date_delivered': 978307200, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/495488E4-10A7-4BA2-A070-DE82AB2C2401', 'associated_message_type': 2000, 'attachment_id': None}
@@ -113,7 +121,7 @@ class TestDummyChatMethods(unittest.TestCase):
 class TestChatMethods(unittest.TestCase):
 
     def setUp(self):
-        api._useTestDatabase()
+        api._useTestDatabase('testDb.db')
 
     def test_real_chat_creation(self):
         chat = api.Chat(82, 'testEmail@test.com', None)
@@ -166,6 +174,53 @@ class TestChatMethods(unittest.TestCase):
         self.assertEqual(len(chat.getMessages()), 2)
         self.assertEqual(list(chat.getMessages().keys()), [12727, 12732])
         self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 12732)
+
+    def test_chat_name(self):
+        chat = api.Chat(82, 'testEmail@test.com', None)
+        self.assertEqual(chat.getName(), 'testEmail@test.com')
+
+    def test_chat_name_with_display_name(self):
+        chat = api.Chat(82, 'testEmail@test.com', 'Group Message Name')
+        self.assertEqual(chat.getName(), 'Group Message Name')
+        
+    def test_chat_name_with_emoji(self):
+        chat = api.Chat(82, 'testEmail@test.com', 'Group Message 🍄 Name')
+        self.assertEqual(chat.getName(), 'Group Message  Name')
+        
+class TestMessageListMethods(unittest.TestCase):
+
+    def test_basic_creation(self):
+        msgList = api.MessageList()
+        self.assertEqual(msgList.messages, {})
+        self.assertEqual(msgList.getMostRecentMessage(), None)
+
+    def test_addition(self):
+        messageKw = {'ROWID': 581, 'guid': 'A153E7D9-8246-481C-96D4-4C15023658E1', 'text': 'This is some example text.', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582434588, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None, 'message_update_date': 1584480798}
+        messageKw2 = {'ROWID': 582, 'guid': 'B153E7D9-8246-481C-96D4-4C15023658E1', 'text': 'This is some more example text.', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582434598, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None, 'message_update_date': 1584480798}
+        msgList = api.MessageList()
+        msg = api.Message(**messageKw)
+        msg2 = api.Message(**messageKw2)
+        msgList.append(msg)
+        msgList.append(msg2)
+        self.assertEqual(list(msgList.messages.keys()), [581, 582])
+        self.assertEqual(msgList.getMostRecentMessage(), msg2)
+        
+    def test_reaction_addition(self):
+        messageKw = {'ROWID': 581, 'guid': 'A153E7D9-8246-481C-96D4-4C15023658E1', 'text': 'This is some example text.', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582434588, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None, 'message_update_date': 1584480798}
+        reactionKw = {'ROWID': 628, 'guid': '3D8E90A2-B06A-44D1-BF62-F419320592A3', 'text': 'Loved “This is some example text.”', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582480858, 'date_read': 978307200, 'date_delivered': 978307200, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/4A153E7D9-8246-481C-96D4-4C15023658E1', 'associated_message_type': 2000, 'attachment_id': None}
+        msgList = api.MessageList()
+        msg = api.Message(**messageKw)
+        reaction = api.Reaction(581, None, **reactionKw)
+        msgList.append(msg)
+        msgList.addReaction(reaction)
+        self.assertEqual(msgList.getMostRecentMessage().attr['ROWID'], 628)
+        self.assertEqual(len(list(msgList.messages.keys())), 1)
+
+class TestAttachmentMethods(unittest.TestCase):
+
+    def test_basic_creation(self):
+        attachment = api.Attachment()
+        self.assertEqual(attachment.attr, {})
 
 if __name__ == '__main__':
     unittest.main()
