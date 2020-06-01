@@ -175,6 +175,18 @@ class TestChatMethods(unittest.TestCase):
         self.assertEqual(list(chat.getMessages().keys()), [12727, 12732])
         self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 12732)
 
+    def test_chat_name(self):
+        chat = api.Chat(82, 'testEmail@test.com', None)
+        self.assertEqual(chat.getName(), 'testEmail@test.com')
+
+    def test_chat_name_with_display_name(self):
+        chat = api.Chat(82, 'testEmail@test.com', 'Group Message Name')
+        self.assertEqual(chat.getName(), 'Group Message Name')
+        
+    def test_chat_name_with_emoji(self):
+        chat = api.Chat(82, 'testEmail@test.com', 'Group Message 🍄 Name')
+        self.assertEqual(chat.getName(), 'Group Message  Name')
+        
 class TestMessageListMethods(unittest.TestCase):
 
     def test_basic_creation(self):
