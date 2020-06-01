@@ -216,5 +216,11 @@ class TestMessageListMethods(unittest.TestCase):
         self.assertEqual(msgList.getMostRecentMessage().attr['ROWID'], 628)
         self.assertEqual(len(list(msgList.messages.keys())), 1)
 
+class TestAttachmentMethods(unittest.TestCase):
+
+    def test_basic_creation(self):
+        attachment = api.Attachment()
+        self.assertEqual(attachment.attr, {})
+
 if __name__ == '__main__':
     unittest.main()
