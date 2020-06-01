@@ -38,6 +38,14 @@ def writeLastAccess():
 			outfile.write(json.dumps({ 'lastAccess': lastAccess }))
 	print('Wrote last access time of {}'.format(lastAccess))
 	
+def translatePath(filename):
+	(head, rightPath) = os.path.split(filename)
+	rightFolder = os.path.basename(head).replace(' ', '_')
+	rightPath = rightPath.replace(' ', '_')
+	if rightFolder:
+		rightPath = '{}/{}'.format(rightFolder, rightPath)
+	return (rightFolder, rightPath)
+
 def retrieveUpdates():
 	oldTime = lastAccess
 	# Sub 10 seconds (likely too much) to account for possibility of missing messages that come in at the same time
@@ -52,10 +60,14 @@ def retrieveUpdates():
 			# Obviously using basename leads to squashing attachments with the same basename. This should be changed later.
 			# I just didn't want to navigate a nest of folders while working on this.
 			if attachment['filename']:
-				if not os.path.isfile('./attachments/{}'.format(os.path.basename(attachment['filename']).replace(' ', '_'))):
-					cmd = ["scp {}@{}:\"{}\" ./attachments/{}".format(user, ip, attachment['filename'].replace(' ', '\\ ').replace('(','\\(').replace(')','\\)'), os.path.basename(attachment['filename']).replace(' ', '_').replace('(','\\(').replace(')','\\)'))]
+				(rightFolder, rightPath) = translatePath(attachment['filename'])
+				if rightFolder:
+					if not os.path.isdir('./attachments/{}'.format(rightFolder)):
+						os.mkdir('./attachments/{}'.format(rightFolder))
+				if not os.path.isfile('./attachments/{}'.format(rightPath)):
+					cmd = ["scp {}@{}:\"{}\" ./attachments/{}".format(user, ip, attachment['filename'].replace(' ', '\\ ').replace('(','\\(').replace(')','\\)'), rightPath.replace('(','\\(').replace(')','\\)'))]
 					subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL)
-				attachment['filename'] = './attachments/{}'.format(os.path.basename(attachment['filename']).replace(' ', '_'))
+				attachment['filename'] = './attachments/{}'.format(rightPath)
 
 		conn = sqlite3.connect('sms.db')
 
