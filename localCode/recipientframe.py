@@ -6,12 +6,15 @@ class RecipientFrame(tk.Frame):
 
         self.labelFrame = None
 
+        self.andMore = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
+        self.andMore.configure(bg='gray')
+        self.andMore.grid(row=0, column=1, padx=(5, 0), sticky='se')
+
         self.details = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
         self.details.configure(bg='red')
-        self.details.grid(row=0, column=1, sticky='se')
+        self.details.grid(row=0, column=2, sticky='se')
 
         self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, minsize=75)
 
     def addRecipients(self, chat):
         if self.labelFrame:
@@ -45,16 +48,31 @@ class RecipientLabelFrame(tk.Frame):
         for i in range(len(chat.recipientList)):
             c = chat.recipientList[i]
             r = RecipientLabel(self)
+            isLast = i == len(chat.recipientList) - 1
             text = c + ',' if i != len(chat.recipientList) - 1 else c
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
             if self.topSize + r.winfo_reqwidth() < self.winfo_width():
                 self.topFrame.addLabel(r)
                 self.topFrame.configure(height=r.winfo_reqheight())
                 self.topSize += r.winfo_reqwidth()
-            else:
+            elif self.topSize == 0:
+                r.resizeLabel(c, isLast, self.winfo_width())
+                self.topFrame.addLabel(r)
+                self.topFrame.configure(height=r.winfo_reqheight())
+                self.topSize += r.winfo_reqwidth()
+            elif self.bottomSize + r.winfo_reqwidth() < self.winfo_width():
                 self.bottomFrame.addLabel(r)
                 self.bottomFrame.configure(height=r.winfo_reqheight())
                 self.bottomSize += r.winfo_reqwidth()
+            elif self.bottomSize == 0:
+                r.resizeLabel(c, isLast, self.winfo_width())
+                self.bottomFrame.addLabel(r)
+                self.bottomFrame.configure(height=r.winfo_reqheight())
+                self.bottomSize += r.winfo_reqwidth()
+            else:
+                # This is going to mess up the previously calculated values, resulting in another run
+                self.master.andMore.configure(text='and {} more...'.format(len(chat.recipientList)-i))
+                break
         self.master.details.configure(text='Details')
 
 class RecipientLabelSubframe(tk.Frame):
@@ -70,3 +88,6 @@ class RecipientLabelSubframe(tk.Frame):
 class RecipientLabel(tk.Label):
     def __init__(self, parent, *args, **kw):
         tk.Label.__init__(self, parent, *args, **kw)
+
+    def resizeLabel(self, text, isLast, maxSize):
+        self.configure(text=text[0:len(text)//2])
