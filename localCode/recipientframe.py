@@ -19,6 +19,7 @@ class RecipientFrame(tk.Frame):
     def addRecipients(self, chat):
         if self.labelFrame:
             self.labelFrame.destroy()
+        self.andMore.configure(text='')
         self.labelFrame = RecipientLabelFrame(self)
         self.labelFrame.grid(row=0, column=0, sticky='nsew')
         self.labelFrame.update()
@@ -51,24 +52,25 @@ class RecipientLabelFrame(tk.Frame):
             isLast = i == len(chat.recipientList) - 1
             text = c + ',' if i != len(chat.recipientList) - 1 else c
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
-            if self.topSize + r.winfo_reqwidth() < self.winfo_width():
+            w = r.winfo_reqwidth() + 10
+            if self.topSize + w < self.winfo_width():
                 self.topFrame.addLabel(r)
                 self.topFrame.configure(height=r.winfo_reqheight())
-                self.topSize += r.winfo_reqwidth()
+                self.topSize += w
             elif self.topSize == 0:
                 r.resizeLabel(c, isLast, self.winfo_width())
                 self.topFrame.addLabel(r)
                 self.topFrame.configure(height=r.winfo_reqheight())
-                self.topSize += r.winfo_reqwidth()
-            elif self.bottomSize + r.winfo_reqwidth() < self.winfo_width():
+                self.topSize += w
+            elif self.bottomSize + w < self.winfo_width():
                 self.bottomFrame.addLabel(r)
                 self.bottomFrame.configure(height=r.winfo_reqheight())
-                self.bottomSize += r.winfo_reqwidth()
+                self.bottomSize += w
             elif self.bottomSize == 0:
                 r.resizeLabel(c, isLast, self.winfo_width())
                 self.bottomFrame.addLabel(r)
                 self.bottomFrame.configure(height=r.winfo_reqheight())
-                self.bottomSize += r.winfo_reqwidth()
+                self.bottomSize += w
             else:
                 # This is going to mess up the previously calculated values, resulting in another run
                 self.master.andMore.configure(text='and {} more...'.format(len(chat.recipientList)-i))
