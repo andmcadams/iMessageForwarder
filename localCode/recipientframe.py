@@ -43,11 +43,21 @@ class RecipientLabelFrame(tk.Frame):
         # Apple's version adds one to the number of members to include yourself.
         # This seems a bit counterintuitive honestly, so I don't do that here.
         if chat.attr['style'] == 43:
+            if chat.attr['service_name'] == 'iMessage':
+                menu.add_command(label='Name: {}'.format(chat.attr['display_name'] if chat.attr['display_name'] else 'Add group name...'))
             menu.add_command(label='{} members'.format(len(chat.recipientList)))
+        # Single chats lack the message about the number of members.
         elif chat.attr['style'] == 45:
-            menu.add_command(label='{} non-group members'.format(len(chat.recipientList)))
+            pass #menu.add_command(label='{} non-group members'.format(len(chat.recipientList)))
         for r in chat.recipientList:
             menu.add_command(label=r)
+        if chat.attr['style'] == 43 and chat.attr['service_name'] == 'iMessage':
+            menu.add_command(label='Add Member')
+        menu.add_command(label='Do Not Disturb')
+        if chat.attr['style'] == 43 and chat.attr['service_name'] == 'iMessage':
+            menu.add_command(label='Leave this Conversation')
+        elif chat.attr['style'] == 45 and chat.attr['service_name'] == 'iMessage':
+            menu.add_command(label='Send Read Receipts')
         menu.tk_popup(event.x_root, event.y_root)
 
     def addRecipients(self, chat):
