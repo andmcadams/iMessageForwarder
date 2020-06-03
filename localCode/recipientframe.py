@@ -88,16 +88,11 @@ class RecipientLabelFrame(tk.Frame):
             self.bottomFrame.addLabel(r.cget('text'))
             self.bottomFrame.configure(height=r.winfo_reqheight())
 
-    # Move around recipient labels in order to meet sizing requirements.
-    # Keep in mind that both the "and more" and "Details" labels should be updated at this point.
-    def resizeRecipients(self, event, chat):
-        if self.topSize == 0 and self.bottomSize == 0:
-            return
-
+    def moveFromBottomToTop(self, width):
         bottomChildren = self.bottomFrame.labels
         for b in bottomChildren:
             # If the top frame can hold b, move it up there.
-            if self.topSize + b.winfo_reqwidth() <= event.width:
+            if self.topSize + b.winfo_reqwidth() <= width:
                 self.topSize += b.winfo_reqwidth()
                 self.bottomSize -= b.winfo_reqwidth()
                 self.topFrame.addLabel(b.cget('text'))
@@ -105,6 +100,8 @@ class RecipientLabelFrame(tk.Frame):
             # If we can't move the next one up, don't move any following ones up.
             else:
                 break
+
+    def moveFromMissingToBottom(self, chat, width):
         children = (len(self.topFrame.labels) + len(self.bottomFrame.labels))
         for i in range(children, len(chat.recipientList)):
             c = chat.recipientList[i]
@@ -113,12 +110,23 @@ class RecipientLabelFrame(tk.Frame):
             text = c + ',' if i != len(chat.recipientList) - 1 else c + ' '
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
             w = r.winfo_reqwidth()
-            if self.bottomSize + w <= event.width:
+            if self.bottomSize + w <= width:
                 self.bottomSize += w
                 self.bottomFrame.addLabel(r.cget('text'))
             else:
                 break
 
+    # Move around recipient labels in order to meet sizing requirements.
+    # Keep in mind that both the "and more" and "Details" labels should be updated at this point.
+    def resizeRecipients(self, event, chat):
+        if self.topSize == 0 and self.bottomSize == 0:
+            return
+
+        # Try to add labels to the bottom frame, then the top frame
+        self.moveFromBottomToTop(event.width)
+        self.moveFromMissingToBottom(chat, event.width)
+
+        # Try to remove labels from the top frame, then the bottom frame
         topChildren = reversed(self.topFrame.labels)
         if event.width < self.topSize:
             for t in topChildren:
@@ -137,8 +145,17 @@ class RecipientLabelFrame(tk.Frame):
                 if event.width >= self.bottomSize:
                     break
 
+        children = (len(self.topFrame.labels) + len(self.bottomFrame.labels))
+        if children == len(chat.recipientList):
+            self.master.andMore.configure(text='')
+            self.moveFromBottomToTop(event.width + self.master.andMore.winfo_width())
+        else:
+            self.master.andMore.configure(text='and {} more...'.format(len(chat.recipientList)-children))
+
         if self.bottomSize == 0:
             self.bottomFrame.configure(height=1)
+        elif self.bottomFrame.labels:
+            self.bottomFrame.configure(height=self.bottomFrame.labels[0].winfo_reqheight())
 
 class RecipientLabelSubframe(tk.Frame):
 
