@@ -20,6 +20,7 @@ class RecipientFrame(tk.Frame):
         if self.labelFrame:
             self.labelFrame.destroy()
         self.andMore.configure(text='')
+        self.details.configure(text='')
         self.labelFrame = RecipientLabelFrame(self)
         self.labelFrame.grid(row=0, column=0, sticky='nsew')
         self.labelFrame.update()
@@ -46,14 +47,62 @@ class RecipientLabelFrame(tk.Frame):
         # limit number of lines. Not hard to do if I hardcode the font size (17) to adjust height.
         # Seems inelegant, will return later.
 
+        recipLabels = {
+                'top': [],
+                'bottom': []
+        }
+
+        self.master.details.configure(text='Details')
+        self.master.details.update()
         for i in range(len(chat.recipientList)):
             c = chat.recipientList[i]
             r = RecipientLabel(self)
             isLast = i == len(chat.recipientList) - 1
             text = c + ',' if i != len(chat.recipientList) - 1 else c
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
-            w = r.winfo_reqwidth() + 10
+            w = r.winfo_reqwidth()
             if self.topSize + w < self.winfo_width():
+                self.topSize += w
+                recipLabels['top'].append(r)
+            elif self.topSize == 0:
+                r.resizeLabel(c, isLast, self.winfo_width())
+                self.topSize += w
+                recipLabels['top'].append(r)
+            elif self.bottomSize + w < self.winfo_width():
+                self.bottomSize += w
+                recipLabels['bottom'].append(r)
+            elif self.bottomSize == 0:
+                r.resizeLabel(c, isLast, self.winfo_width())
+                self.bottomSize += w
+                recipLabels['bottom'].append(r)
+            else:
+                # This is going to mess up the previously calculated values, resulting in another run
+                print(self.winfo_width())
+                self.master.andMore.configure(text='and {} more...'.format(len(chat.recipientList)-i))
+                self.master.andMore.update()
+                self.resizeRecipients(chat)
+                return
+        for r in recipLabels['top']:
+            self.topFrame.addLabel(r)
+            self.topFrame.configure(height=r.winfo_reqheight())
+        for r in recipLabels['bottom']:
+            self.bottomFrame.addLabel(r)
+            self.bottomFrame.configure(height=r.winfo_reqheight())
+
+    # Move around recipient labels in order to meet sizing requirements.
+    # Keep in mind that both the "and more" and "Details" labels should be updated at this point.
+    def resizeRecipients(self, chat):
+        self.topSize = 0
+        self.bottomSize = 0
+        for i in range(len(chat.recipientList)):
+            c = chat.recipientList[i]
+            r = RecipientLabel(self)
+            isLast = i == len(chat.recipientList) - 1
+            text = c + ',' if i != len(chat.recipientList) - 1 else c
+            r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
+            w = r.winfo_reqwidth()
+            totalWidth = self.winfo_width()
+            if self.topSize + w <= totalWidth:
                 self.topFrame.addLabel(r)
                 self.topFrame.configure(height=r.winfo_reqheight())
                 self.topSize += w
@@ -62,7 +111,7 @@ class RecipientLabelFrame(tk.Frame):
                 self.topFrame.addLabel(r)
                 self.topFrame.configure(height=r.winfo_reqheight())
                 self.topSize += w
-            elif self.bottomSize + w < self.winfo_width():
+            elif self.bottomSize + w <= totalWidth:
                 self.bottomFrame.addLabel(r)
                 self.bottomFrame.configure(height=r.winfo_reqheight())
                 self.bottomSize += w
@@ -75,7 +124,6 @@ class RecipientLabelFrame(tk.Frame):
                 # This is going to mess up the previously calculated values, resulting in another run
                 self.master.andMore.configure(text='and {} more...'.format(len(chat.recipientList)-i))
                 break
-        self.master.details.configure(text='Details')
 
 class RecipientLabelSubframe(tk.Frame):
 
