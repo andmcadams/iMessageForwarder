@@ -38,7 +38,13 @@ class RecipientLabelFrame(tk.Frame):
         self.bottomSize = 0
         self.hiddenLabels = []
         self.bind('<Configure>', lambda event, chat=chat: self.resizeRecipients(event, chat))
+        self.master.andMore.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
 
+    def onClick(self, event, chat):
+        menu = tk.Menu(self, tearoff=0)
+        for r in chat.recipientList:
+            menu.add_command(label=r)
+        menu.tk_popup(event.x_root, event.y_root)
 
     def addRecipients(self, chat):
         # Fix resizing of label,
