@@ -42,21 +42,21 @@ class RecipientLabelFrame(tk.Frame):
         menu = tk.Menu(self, tearoff=0)
         # Apple's version adds one to the number of members to include yourself.
         # This seems a bit counterintuitive honestly, so I don't do that here.
-        if chat.attr['style'] == 43:
-            if chat.attr['service_name'] == 'iMessage':
+        if chat.isGroup():
+            if chat.isiMessage():
                 menu.add_command(label='Name: {}'.format(chat.attr['display_name'] if chat.attr['display_name'] else 'Add group name...'))
             menu.add_command(label='{} members'.format(len(chat.recipientList)))
         # Single chats lack the message about the number of members.
-        elif chat.attr['style'] == 45:
-            pass #menu.add_command(label='{} non-group members'.format(len(chat.recipientList)))
+        else:
+            pass 
         for r in chat.recipientList:
             menu.add_command(label=r)
-        if chat.attr['style'] == 43 and chat.attr['service_name'] == 'iMessage':
+        if chat.isGroup()  and chat.isiMessage():
             menu.add_command(label='Add Member')
         menu.add_command(label='Do Not Disturb')
-        if chat.attr['style'] == 43 and chat.attr['service_name'] == 'iMessage':
+        if chat.isGroup() and chat.isiMessage():
             menu.add_command(label='Leave this Conversation')
-        elif chat.attr['style'] == 45 and chat.attr['service_name'] == 'iMessage':
+        elif not chat.isGroup() and chat.isiMessage():
             menu.add_command(label='Send Read Receipts')
         menu.tk_popup(event.x_root, event.y_root)
 
@@ -65,13 +65,10 @@ class RecipientLabelFrame(tk.Frame):
         # limit number of lines. Not hard to do if I hardcode the font size (17) to adjust height.
         # Seems inelegant, will return later.
         self.bind('<Configure>', lambda event, chat=chat: self.resizeRecipients(event, chat))
+
+        # These should do different things, but just let them do the same thing for now.
         self.master.andMore.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
-        if chat.attr['service_name'] == 'SMS':
-            self.master.details.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
-        # Let the iMessage chat details do the same as the SMS version for now.
-        # The features in the iMessage details are not yet implemented, so everything would be mock anyway.
-        elif chat.attr['service_name'] == 'iMessage':
-            self.master.details.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
+        self.master.details.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
 
         recipLabels = {
                 'top': [],
