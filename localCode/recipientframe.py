@@ -60,7 +60,7 @@ class RecipientLabelFrame(tk.Frame):
             c = chat.recipientList[i]
             r = RecipientLabel(self)
             isLast = i == len(chat.recipientList) - 1
-            text = c + ',' if i != len(chat.recipientList) - 1 else c
+            text = c + ',' if i != len(chat.recipientList) - 1 else c + ' '
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
             w = r.winfo_reqwidth()
             if self.topSize + w <= self.winfo_width():
@@ -94,77 +94,49 @@ class RecipientLabelFrame(tk.Frame):
         if self.topSize == 0 and self.bottomSize == 0:
             return
 
-        # If the window shrunk, try to remove stuff.
-        # If the window grew, try to add stuff.
-        # If the window grew, try to add stuff.
-        if event.width > self.topFrame.winfo_width():
-            bottomChildren = self.bottomFrame.labels
-            for b in bottomChildren:
-                # If the top frame can hold b, move it up there.
-                if self.topSize + b.winfo_reqwidth() <= event.width:
-                    self.topSize += b.winfo_reqwidth()
-                    self.bottomSize -= b.winfo_reqwidth()
-                    self.topFrame.addLabel(b.cget('text'))
-                    self.bottomFrame.removeLabel(b)
-                # If we can't move the next one up, don't move any following ones up.
-                else:
+        bottomChildren = self.bottomFrame.labels
+        for b in bottomChildren:
+            # If the top frame can hold b, move it up there.
+            if self.topSize + b.winfo_reqwidth() <= event.width:
+                self.topSize += b.winfo_reqwidth()
+                self.bottomSize -= b.winfo_reqwidth()
+                self.topFrame.addLabel(b.cget('text'))
+                self.bottomFrame.removeLabel(b)
+            # If we can't move the next one up, don't move any following ones up.
+            else:
+                break
+        children = (len(self.topFrame.labels) + len(self.bottomFrame.labels))
+        for i in range(children, len(chat.recipientList)):
+            c = chat.recipientList[i]
+            r = RecipientLabel(self)
+            isLast = i == len(chat.recipientList) - 1
+            text = c + ',' if i != len(chat.recipientList) - 1 else c + ' '
+            r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
+            w = r.winfo_reqwidth()
+            if self.bottomSize + w <= event.width:
+                self.bottomSize += w
+                self.bottomFrame.addLabel(r.cget('text'))
+            else:
+                break
+
+        topChildren = reversed(self.topFrame.labels)
+        if event.width < self.topSize:
+            for t in topChildren:
+                # If the top frame can no longer hold t, push it down.
+                self.topSize -= t.winfo_reqwidth()
+                self.bottomSize += t.winfo_reqwidth()
+                self.bottomFrame.addLabel(t.cget('text'), lift=True)
+                self.topFrame.removeLabel(t)
+                if event.width >= self.topSize:
                     break
-            children = (len(self.topFrame.labels) + len(self.bottomFrame.labels))
-            for i in range(children, len(chat.recipientList)):
-                c = chat.recipientList[i]
-                r = RecipientLabel(self)
-                isLast = i == len(chat.recipientList) - 1
-                text = c + ',' if i != len(chat.recipientList) - 1 else c
-                r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
-                w = r.winfo_reqwidth()
-                if self.bottomSize + w <= event.width:
-                    self.bottomSize += w
-                    self.bottomFrame.addLabel(r.cget('text'))
-                else:
+        bottomChildren = reversed(self.bottomFrame.labels)
+        if event.width < self.bottomSize:
+            for b in bottomChildren:
+                self.bottomSize -= b.winfo_reqwidth()
+                self.bottomFrame.removeLabel(b)
+                if event.width >= self.bottomSize:
                     break
 
-        if event.width < self.topFrame.winfo_width() and self.topFrame.labels:
-            topChildren = self.topFrame.labels
-            if event.width < self.topSize:
-                topChildren.reverse()
-                for t in topChildren:
-                    # If the top frame can no longer hold t, push it down.
-                    self.topSize -= t.winfo_reqwidth()
-                    self.bottomSize += t.winfo_reqwidth()
-                    self.bottomFrame.addLabel(t.cget('text'), lift=True)
-                    self.topFrame.removeLabel(t)
-                    if event.width >= self.topSize:
-                        break
-#        for i in range(len(chat.recipientList)):
-#            c = chat.recipientList[i]
-#            r = RecipientLabel(self)
-#            isLast = i == len(chat.recipientList) - 1
-#            text = c + ',' if i != len(chat.recipientList) - 1 else c
-#            r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
-#            w = r.winfo_reqwidth()
-#            totalWidth = self.winfo_width()
-#            if self.topSize + w <= totalWidth:
-#                self.topFrame.addLabel(text)
-#                self.topFrame.configure(height=r.winfo_reqheight())
-#                self.topSize += w
-#            elif self.topSize == 0:
-#                r.resizeLabel(c, isLast, self.winfo_width())
-#                self.topFrame.addLabel(text)
-#                self.topFrame.configure(height=r.winfo_reqheight())
-#                self.topSize += w
-#            elif self.bottomSize + w <= totalWidth:
-#                self.bottomFrame.addLabel(text)
-#                self.bottomFrame.configure(height=r.winfo_reqheight())
-#                self.bottomSize += w
-#            elif self.bottomSize == 0:
-#                r.resizeLabel(c, isLast, self.winfo_width())
-#                self.bottomFrame.addLabel(text)
-#                self.bottomFrame.configure(height=r.winfo_reqheight())
-#                self.bottomSize += w
-#            else:
-#                # This is going to mess up the previously calculated values, resulting in another run
-#                self.master.andMore.configure(text='and {} more...'.format(len(chat.recipientList)-i))
-#                break
         if self.bottomSize == 0:
             self.bottomFrame.configure(height=1)
 
