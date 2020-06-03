@@ -62,21 +62,21 @@ class RecipientLabelFrame(tk.Frame):
             c = chat.recipientList[i]
             isLast = i == len(chat.recipientList) - 1
             text = c + ',' if i != len(chat.recipientList) - 1 else c + ' '
-            r = RecipientLabel(self, text)
+            r = RecipientLabel(self, c)
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
             w = r.winfo_reqwidth()
             if self.topSize + w <= self.winfo_width():
                 self.topSize += w
                 recipLabels['top'].append(r)
             elif self.topSize == 0:
-                r.resizeLabel(c, isLast, self.winfo_width())
+                r.resizeLabel(isLast, self.winfo_width())
                 self.topSize += w
                 recipLabels['top'].append(r)
             elif self.bottomSize + w <= self.winfo_width():
                 self.bottomSize += w
                 recipLabels['bottom'].append(r)
             elif self.bottomSize == 0:
-                r.resizeLabel(c, isLast, self.winfo_width())
+                r.resizeLabel(isLast, self.winfo_width())
                 self.bottomSize += w
                 recipLabels['bottom'].append(r)
             else:
@@ -146,7 +146,10 @@ class RecipientLabelFrame(tk.Frame):
 
         # Try to remove labels from the top frame, then the bottom frame
         topChildren = reversed(self.topFrame.labels)
-        if event.width < self.topSize:
+        if len(self.topFrame.labels) == 1:
+            isLast = not (self.bottomFrame.labels or self.hiddenLabels)
+            self.topFrame.labels[0].resizeLabel(isLast, event.width)
+        elif event.width < self.topSize:
             for t in topChildren:
                 # If the top frame can no longer hold t, push it down.
                 self.topSize -= t.winfo_reqwidth()
@@ -156,7 +159,11 @@ class RecipientLabelFrame(tk.Frame):
                 if event.width >= self.topSize:
                     break
         bottomChildren = reversed(self.bottomFrame.labels)
-        if event.width < self.bottomSize:
+        
+        if len(self.bottomFrame.labels) == 1:
+            isLast = not self.hiddenLabels
+            self.bottomFrame.labels[0].resizeLabel(isLast, event.width)
+        elif event.width < self.bottomSize:
             for b in bottomChildren:
                 self.bottomSize -= b.winfo_reqwidth()
                 self.hiddenLabels = [b] + self.hiddenLabels
@@ -207,5 +214,18 @@ class RecipientLabel(tk.Label):
         tk.Label.__init__(self, parent, *args, **kw)
         self.fullText = text
 
-    def resizeLabel(self, text, isLast, maxSize):
-        self.configure(text=text[0:len(text)//2])
+    def resizeLabel(self, isLast, maxSize):
+        self.configure(text=self.fullText + (',' if isLast == False else ' '))
+        if self.winfo_reqwidth() <= maxSize:
+            return
+        div = 2
+        currentLen = len(self.fullText)//2
+        while len(self.fullText)//div != 0:
+            self.configure(text=self.fullText[0:currentLen] + '...' + (',' if isLast == False else ' '))
+            div *= 2
+            if self.winfo_reqwidth() > maxSize:
+                currentLen -= len(self.fullText)//div
+            elif self.winfo_reqwidth() < maxSize:
+                currentLen += len(self.fullText)//div
+            else:
+                break
