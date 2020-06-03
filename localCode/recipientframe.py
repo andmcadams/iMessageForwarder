@@ -37,11 +37,15 @@ class RecipientLabelFrame(tk.Frame):
         self.topSize = 0
         self.bottomSize = 0
         self.hiddenLabels = []
-        self.bind('<Configure>', lambda event, chat=chat: self.resizeRecipients(event, chat))
-        self.master.andMore.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
 
     def onClick(self, event, chat):
         menu = tk.Menu(self, tearoff=0)
+        # Apple's version adds one to the number of members to include yourself.
+        # This seems a bit counterintuitive honestly, so I don't do that here.
+        if chat.attr['style'] == 43:
+            menu.add_command(label='{} members'.format(len(chat.recipientList)))
+        elif chat.attr['style'] == 45:
+            menu.add_command(label='{} non-group members'.format(len(chat.recipientList)))
         for r in chat.recipientList:
             menu.add_command(label=r)
         menu.tk_popup(event.x_root, event.y_root)
@@ -50,6 +54,15 @@ class RecipientLabelFrame(tk.Frame):
         # Fix resizing of label,
         # limit number of lines. Not hard to do if I hardcode the font size (17) to adjust height.
         # Seems inelegant, will return later.
+        self.bind('<Configure>', lambda event, chat=chat: self.resizeRecipients(event, chat))
+        self.master.andMore.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
+        print(chat.attr)
+        if chat.attr['service_name'] == 'SMS':
+            self.master.details.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
+        # Let the iMessage chat details do the same as the SMS version for now.
+        # The features in the iMessage details are not yet implemented, so everything would be mock anyway.
+        elif chat.attr['service_name'] == 'iMessage':
+            self.master.details.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
 
         recipLabels = {
                 'top': [],
