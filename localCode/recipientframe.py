@@ -56,7 +56,6 @@ class RecipientLabelFrame(tk.Frame):
         # Seems inelegant, will return later.
         self.bind('<Configure>', lambda event, chat=chat: self.resizeRecipients(event, chat))
         self.master.andMore.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
-        print(chat.attr)
         if chat.attr['service_name'] == 'SMS':
             self.master.details.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
         # Let the iMessage chat details do the same as the SMS version for now.
@@ -71,6 +70,13 @@ class RecipientLabelFrame(tk.Frame):
 
         self.master.details.configure(text='Details')
         self.master.details.update()
+        if chat.attr['display_name']:
+            r = RecipientLabel(self, chat.attr['display_name'])
+            r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=r.fullText)
+            r.resizeLabel(True, self.winfo_width())
+            self.topFrame.addLabel(r)
+            self.topFrame.configure(height=r.winfo_reqheight())
+            return
         andMoreFlag = False
         for i in range(len(chat.recipientList)):
             c = chat.recipientList[i]
@@ -151,6 +157,12 @@ class RecipientLabelFrame(tk.Frame):
     # Move around recipient labels in order to meet sizing requirements.
     # Keep in mind that both the "and more" and "Details" labels should be updated at this point.
     def resizeRecipients(self, event, chat):
+
+        if chat.attr['display_name']:
+            if self.topFrame.labels:
+                self.topFrame.labels[0].resizeLabel(True, event.width)
+            return
+
         if self.topSize == 0 and self.bottomSize == 0:
             return
 
