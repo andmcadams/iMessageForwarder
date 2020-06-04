@@ -1,29 +1,41 @@
 import tkinter as tk
+import threading
 
 class RecipientFrame(tk.Frame):
     def __init__(self, parent, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
 
+        self.lock = threading.Lock()
+
         self.labelFrame = None
 
-        self.andMore = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
-        self.andMore.grid(row=0, column=1, padx=(5, 0), sticky='se')
+        self.andMore = None
 
-        self.details = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
-        self.details.grid(row=0, column=2, sticky='se')
+        self.details = None
 
         self.columnconfigure(0, weight=1)
 
 
     def addRecipients(self, chat):
-        if self.labelFrame:
-            self.labelFrame.destroy()
-        self.andMore.configure(text='')
-        self.details.configure(text='')
-        self.labelFrame = RecipientLabelFrame(self, chat)
-        self.labelFrame.grid(row=0, column=0, sticky='nsew')
-        self.labelFrame.update()
-        self.labelFrame.addRecipients(chat)
+        self.lock.acquire()
+        if self.master.isCurrentChat(chat):
+            if self.labelFrame:
+                self.labelFrame.destroy()
+            if self.andMore:
+                self.andMore.destroy()
+            if self.details:
+                self.details.destroy()
+
+            self.andMore = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
+            self.andMore.grid(row=0, column=1, padx=(5, 0), sticky='se')
+
+            self.details = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
+            self.details.grid(row=0, column=2, sticky='se')
+
+            self.labelFrame = RecipientLabelFrame(self, chat)
+            self.labelFrame.grid(row=0, column=0, sticky='nsew')
+            self.labelFrame.addRecipients(chat)
+        self.lock.release()
 
 class RecipientLabelFrame(tk.Frame):
 
@@ -76,11 +88,11 @@ class RecipientLabelFrame(tk.Frame):
         }
 
         self.master.details.configure(text='Details')
-        self.master.details.update()
+        # self.master.details.update()
         if chat.attr['display_name']:
             r = RecipientLabel(self, chat.attr['display_name'])
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=r.fullText)
-            r.resizeLabel(True, self.winfo_width())
+            r.resizeLabel(True, self.winfo_reqwidth())
             self.topFrame.addLabel(r)
             self.topFrame.configure(height=r.winfo_reqheight())
             return
@@ -92,18 +104,18 @@ class RecipientLabelFrame(tk.Frame):
             r = RecipientLabel(self, c)
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=text)
             w = r.winfo_reqwidth()
-            if self.topSize + w <= self.winfo_width():
+            if self.topSize + w <= self.winfo_reqwidth():
                 self.topSize += w
                 recipLabels['top'].append(r)
             elif self.topSize == 0:
-                r.resizeLabel(isLast, self.winfo_width())
+                r.resizeLabel(isLast, self.winfo_reqwidth())
                 self.topSize += w
                 recipLabels['top'].append(r)
-            elif self.bottomSize + w <= self.winfo_width():
+            elif self.bottomSize + w <= self.winfo_reqwidth():
                 self.bottomSize += w
                 recipLabels['bottom'].append(r)
             elif self.bottomSize == 0:
-                r.resizeLabel(isLast, self.winfo_width())
+                r.resizeLabel(isLast, self.winfo_reqwidth())
                 self.bottomSize += w
                 recipLabels['bottom'].append(r)
             else:
@@ -113,7 +125,7 @@ class RecipientLabelFrame(tk.Frame):
 
         if andMoreFlag:
             self.master.andMore.configure(text='and {} more...'.format(len(chat.recipientList)-i))
-            self.master.andMore.update()
+            # self.master.andMore.update()
 
         for r in recipLabels['top']:
             self.topFrame.addLabel(r)
@@ -164,25 +176,31 @@ class RecipientLabelFrame(tk.Frame):
     # Move around recipient labels in order to meet sizing requirements.
     # Keep in mind that both the "and more" and "Details" labels should be updated at this point.
     def resizeRecipients(self, event, chat):
+        self.master.lock.acquire()
 
         if chat.attr['display_name']:
             if self.topFrame.labels:
                 self.topFrame.labels[0].resizeLabel(True, event.width)
+            self.master.lock.release()
             return
 
         if self.topSize == 0 and self.bottomSize == 0:
+            self.master.lock.release()
             return
 
+        if len(self.topFrame.labels) == 1:
+            isLast = not (self.bottomFrame.labels or self.hiddenLabels)
+            self.topFrame.labels[0].resizeLabel(isLast, event.width)
+        if len(self.bottomFrame.labels) == 1:
+            isLast = not self.hiddenLabels
+            self.bottomFrame.labels[0].resizeLabel(isLast, event.width)
         # Try to add labels to the bottom frame, then the top frame
         self.moveFromBottomToTop(event.width)
         self.moveFromMissingToBottom(chat, event.width)
 
         # Try to remove labels from the top frame, then the bottom frame
         topChildren = reversed(self.topFrame.labels)
-        if len(self.topFrame.labels) == 1:
-            isLast = not (self.bottomFrame.labels or self.hiddenLabels)
-            self.topFrame.labels[0].resizeLabel(isLast, event.width)
-        elif event.width < self.topSize:
+        if len(self.topFrame.labels) != 1 and event.width < self.topSize:
             for t in topChildren:
                 # If the top frame can no longer hold t, push it down.
                 self.topSize -= t.winfo_reqwidth()
@@ -193,10 +211,7 @@ class RecipientLabelFrame(tk.Frame):
                     break
         bottomChildren = reversed(self.bottomFrame.labels)
         
-        if len(self.bottomFrame.labels) == 1:
-            isLast = not self.hiddenLabels
-            self.bottomFrame.labels[0].resizeLabel(isLast, event.width)
-        elif event.width < self.bottomSize:
+        if len(self.bottomFrame.labels) != 1 and event.width < self.bottomSize:
             for b in bottomChildren:
                 self.bottomSize -= b.winfo_reqwidth()
                 self.hiddenLabels = [b] + self.hiddenLabels
@@ -208,8 +223,8 @@ class RecipientLabelFrame(tk.Frame):
         # Might want to do this by creating all the labels initially, and just packing them as required.
         if not self.hiddenLabels or self.canAllFit(event.width + self.master.andMore.winfo_reqwidth()):
             self.master.andMore.configure(text='')
-            self.moveFromBottomToTop(event.width + self.master.andMore.winfo_width())
-            self.moveFromMissingToBottom(chat, event.width + self.master.andMore.winfo_width())
+            self.moveFromBottomToTop(event.width + self.master.andMore.winfo_reqwidth())
+            self.moveFromMissingToBottom(chat, event.width + self.master.andMore.winfo_reqwidth())
         else:
             self.master.andMore.configure(text='and {} more...'.format(len(self.hiddenLabels)))
 
@@ -217,6 +232,7 @@ class RecipientLabelFrame(tk.Frame):
             self.bottomFrame.configure(height=1)
         elif self.bottomFrame.labels:
             self.bottomFrame.configure(height=self.bottomFrame.labels[0].winfo_reqheight())
+        self.master.lock.release()
 
 class RecipientLabelSubframe(tk.Frame):
 
