@@ -65,11 +65,11 @@ class RecipientLabelFrame(tk.Frame):
             menu.add_command(label=r)
         if chat.isGroup()  and chat.isiMessage():
             menu.add_command(label='Add Member')
-        menu.add_command(label='Do Not Disturb')
+        menu.add_checkbutton(label='Do Not Disturb')
         if chat.isGroup() and chat.isiMessage():
             menu.add_command(label='Leave this Conversation')
         elif not chat.isGroup() and chat.isiMessage():
-            menu.add_command(label='Send Read Receipts')
+            menu.add_checkbutton(label='Send Read Receipts')
         menu.tk_popup(event.x_root, event.y_root)
 
     def addRecipients(self, chat):
