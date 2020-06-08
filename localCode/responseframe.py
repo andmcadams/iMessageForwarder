@@ -13,6 +13,7 @@ class ResponseFrame(tk.Frame):
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
+        self.rowconfigure(0, minsize=21)
 
         self.recipientFrame = RecipientFrame(self)
         self.recipientFrame.grid(row=0, column=0, sticky='ew')
