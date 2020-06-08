@@ -162,6 +162,16 @@ class Chat:
 		for key, value in kw.items():
 			self.attr[key] = value
 
+	def isiMessage(self):
+		if 'service_name' in self.attr and self.attr['service_name'] == 'iMessage':
+			return True
+		return False
+
+	def isGroup(self):
+		if 'style' in self.attr and self.attr['style'] == 43:
+			return True
+		return False
+
 	def _loadRecipients(self):
 		conn = sqlite3.connect(dbPath)
 		conn.row_factory = sqlite3.Row
@@ -251,7 +261,7 @@ class Chat:
 def _loadChat(chatId):
 	conn = sqlite3.connect(dbPath)
 	conn.row_factory = sqlite3.Row
-	cursor = conn.execute('select ROWID, chat_identifier, display_name, style from chat where ROWID = ?', (chatId, ))
+	cursor = conn.execute('select ROWID, chat_identifier, display_name, style, service_name from chat where ROWID = ?', (chatId, ))
 	row = cursor.fetchone()
 	if row == None:
 		raise ChatDeletedException
