@@ -13,7 +13,6 @@ class ResponseFrame(tk.Frame):
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
-        self.rowconfigure(0, minsize=21)
 
         self.recipientFrame = RecipientFrame(self)
         self.recipientFrame.grid(row=0, column=0, sticky='ew')
@@ -28,8 +27,8 @@ class ResponseFrame(tk.Frame):
         if chat.chatId != self.currentChat.chatId:
             self.currentChat = chat
             self.currentChat.lastAccess = 0
-            self.messageFrame.changeChat(chat)
             self.recipientFrame.addRecipients(chat)
+            self.messageFrame.changeChat(chat)
             self.sendFrame.updateSendButton(chat)
 
     def isCurrentChat(self, chatToCompare):
