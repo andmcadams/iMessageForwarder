@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 import threading
+import json
 from datetime import datetime, timedelta
 
 from PIL import Image, ImageTk
@@ -125,7 +126,8 @@ class MessageFrame(VerticalScrolledFrame):
                     # 2) There is no previous message
                     timeDiff = datetime.fromtimestamp(messageDict[messageId].attr['date'], tz=datetime.now().astimezone().tzinfo) - datetime.fromtimestamp(messageDict[subList[i-1]].attr['date'], tz=datetime.now().astimezone().tzinfo)
 
-                    if not (i-1) in range(len(subList)) or timeDiff > timedelta(minutes=15):
+                    # Do not add time labels to messages that are currently being sent (messageId < 0)
+                    if (not (i-1) in range(len(subList)) or timeDiff > timedelta(minutes=15)) and messageId >= 0:
                         timeLabel = tk.Label(self.interior, text=getTimeText(messageDict[messageId].attr['date']))
                         timeLabel.pack()
 
@@ -149,6 +151,12 @@ class MessageFrame(VerticalScrolledFrame):
                         msg.pack(anchor=tk.E, expand=tk.FALSE)
                     else:
                         msg.pack(anchor=tk.W, expand=tk.FALSE)
+                    # If this message is replacing a temporary message, get rid of that old message
+                    print(json.dumps(messageDict[messageId].attr))
+                    if 'removeTemp' in messageDict[messageId].attr:
+                        print('Destroying message bubble with id {}'.format(messageDict[messageId].attr['removeTemp']))
+                        self.messageBubbles[messageDict[messageId].attr['removeTemp']].destroy()
+                        del self.messageBubbles[messageDict[messageId].attr['removeTemp']]
                     self.messageBubbles[messageId] = msg
                 else:
                     self.messageBubbles[messageId].update()
@@ -257,7 +265,7 @@ class MessageBubble(tk.Frame):
             self.body.configure(text=message.attr['text'])
 
         if self.readReceipt:
-            if message.attr['date_read'] != 0:
+            if 'date_read' in message.attr and message.attr['date_read'] != 0:
                 self.readReceipt.configure(text='Read at {}'.format(getTimeText(message.attr['date_read'])))
             elif message.attr['is_delivered'] == 1:
                 self.readReceipt.configure(text='Delivered')
@@ -283,7 +291,8 @@ class MessageBubble(tk.Frame):
                         self.body.configure(bg='green')
 
     def removeReadReceipt(self):
-        if self.readReceipt != None:
+        # Don't delete read receipts off of temporary messages
+        if self.readReceipt != None and self.messageId >= 0:
             self.readReceipt.grid_forget()
             self.readReceipt = None
 
@@ -314,7 +323,10 @@ class TextMessageBubble(MessageBubble):
         # Could make color a gradient depending on index later but it will add a lot of
         # dumb code.
         self.messageInterior.configure(style="RoundedFrame")
-        self.body = tk.Message(self.messageInterior, padx=0, pady=3, bg='#01cdfe', width=maxWidth, font="Dosis")
+        if messageId >= 0:
+            self.body = tk.Message(self.messageInterior, padx=0, pady=3, bg='#01cdfe', width=maxWidth, font="Dosis")
+        else:
+            self.body = tk.Message(self.messageInterior, padx=0, pady=3, bg='#01ffff', width=maxWidth, font="Dosis")
         self.initBody()
 
     def resize(self, event):

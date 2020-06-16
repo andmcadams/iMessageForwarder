@@ -3,6 +3,7 @@ import os
 import json
 import time
 import subprocess
+import threading
 
 dirname = os.path.dirname(__file__)
 
@@ -25,18 +26,20 @@ class MessageList(dict):
 	def __init__(self):
 		self.messages = {}
 		self.mostRecentMessage = None
+		self.writeLock = threading.Lock()
 
 	# Is this going to be faster than just sorting the entire thing every append?
 	# Probably
 	# The assumption is that messages probably will not need to be inserted back very far
 	# requiring a much lower check than all n entries
 	def append(self, message):
+		self.writeLock.acquire()
 		updatedMessages = self.messages
 
 		# If the message is just being updated, no need to worry about ordering
 		# (assumption that date should never change)
 		if message.attr['ROWID'] in updatedMessages:
-			updatedMessages[message.attr['ROWID']] = message
+			updatedMessages[message.attr['ROWID']].update(message)
 		else:
 			keys = list(updatedMessages)
 			# Here we need to check the dates near the end of the dictionary
@@ -76,14 +79,17 @@ class MessageList(dict):
 
 		if self.mostRecentMessage == None or message.attr['date'] > self.mostRecentMessage.attr['date'] or (message.attr['date'] == self.mostRecentMessage.attr['date'] and message.attr['ROWID'] > self.mostRecentMessage.attr['ROWID']):
 			self.mostRecentMessage = message
+		self.writeLock.release()
 
 	def addReaction(self, reaction):
 
+		self.writeLock.acquire()
 		if reaction.associatedMessageId in self.messages.keys():
 			self.messages[reaction.associatedMessageId].addReaction(reaction)
 
 		if self.mostRecentMessage == None or reaction.attr['date'] > self.mostRecentMessage.attr['date']:
 			self.mostRecentMessage = reaction
+		self.writeLock.release()
 
 	def getMostRecentMessage(self):
 		return self.mostRecentMessage
@@ -124,6 +130,10 @@ class Message:
 		elif not reactionVal in self.reactions[reaction.attr['handle_id']]:
 			self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
 
+	def update(self, updatedMessage):
+		for key, value in updatedMessage.attr.items():
+			self.attr[key] = value
+
 class Reaction:
 
 	def __init__(self, associatedMessageId, handleName=None, **kw):
@@ -154,9 +164,12 @@ class Chat:
 		self.chatIdentifier = chatIdentifier
 		self.displayName = displayName
 		self.messageList = MessageList()
+		self.outgoingList = MessageList()
 		self.recipientList = self._loadRecipients()
 		self._loadMostRecentMessage()
 		self.lastAccessTime = 0
+		self.localUpdate = False
+		self.messagePreviewId = -1
 
 		self.attr = {}
 		for key, value in kw.items():
@@ -218,6 +231,8 @@ class Chat:
 					attachment = Attachment(**a)
 				message = Message(attachment, handleName, **row)
 				self.messageList.append(message)
+				if message.attr['is_from_me'] == 1:
+					self.isTemporary(self.messageList.messages[message.attr['ROWID']])
 			else:
 				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][-36:], )).fetchone()
 				if associatedMessageId:
@@ -229,9 +244,32 @@ class Chat:
 
 		self.lastAccessTime = max(self.lastAccessTime, tempLastAccess)
 
+	def isTemporary(self, message):
+		self.messageList.writeLock.acquire()
+		self.outgoingList.writeLock.acquire()
+		idToDelete = 0
+		print(self.outgoingList.messages)
+		for tempMsgId in self.outgoingList.messages:
+			tempMsg = self.outgoingList.messages[tempMsgId]
+			if tempMsg.attr['text'] == message.attr['text'] and not 'removeTemp' in message.attr:
+				message.attr['removeTemp'] = tempMsgId
+				print('Deleting {}'.format(tempMsgId))
+				del self.messageList.messages[tempMsgId]
+				idToDelete = tempMsgId
+				break
+		if idToDelete != 0:
+			del self.outgoingList.messages[idToDelete]
+		self.messageList.writeLock.release()
+		self.outgoingList.writeLock.release()
+
 	def sendMessage(self, messageText):
 		messageText = messageText.replace('\'', '\\\'')
 		subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} $\'{}\' {} {}".format(scriptPath, messageText, self.chatId, 0)])
+		msg = Message(None, None, **{'ROWID': self.messagePreviewId, 'text': messageText, 'date': int(time.time()), 'date_read': 0, 'is_delivered': 0, 'is_from_me': 1, 'service': 'iMessage', 'temporary': 1})
+		self.messagePreviewId -= 1
+		self.messageList.append(msg)
+		self.outgoingList.append(msg)
+		self.localUpdate = True
 
 	def sendReaction(self, messageId, assocType):
 		subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} \'{}\' {} {} \'{}\' {}".format(scriptPath, '', self.chatId, 1, messageId, assocType)])
@@ -243,7 +281,7 @@ class Chat:
 	def _loadMostRecentMessage(self):
 		conn = sqlite3.connect(dbPath)
 		conn.row_factory = sqlite3.Row		
-		cursor = conn.execute('select ROWID, handle_id, text, date, is_from_me, associated_message_guid, associated_message_type from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? order by date desc, ROWID desc', (self.chatId, ))
+		cursor = conn.execute('select ROWID, handle_id, text, date, is_from_me, associated_message_guid, associated_message_type, is_delivered, is_from_me from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? order by date desc, ROWID desc', (self.chatId, ))
 		for row in cursor.fetchall():
 			if not row['associated_message_guid']:
 				message = Message(**row)
@@ -287,7 +325,7 @@ def _loadChats():
 	chats = sorted(chats, key=lambda chat: chat.getMostRecentMessage().attr['date'], reverse=True)
 	return chats
 
-def _getChatsToUpdate(lastAccessTime):
+def _getChatsToUpdate(lastAccessTime, chats):
 	conn = sqlite3.connect(dbPath)
 	conn.row_factory = sqlite3.Row
 	sql = 'SELECT chat_id, max(message_update_date), text FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id inner join message_update_date_join on message.ROWID = message_update_date_join.message_id and message_update_date_join.message_update_date > ? group by chat_id'
@@ -298,6 +336,12 @@ def _getChatsToUpdate(lastAccessTime):
 		chatIds.append(row['chat_id'])
 		if row['max(message_update_date)'] > maxUpdate:
 			maxUpdate = row['max(message_update_date)']
+	for idx in chats:
+		chat = chats[idx]
+		if chat.localUpdate:
+			chat.localUpdate = False
+			if not chat.chatId in chatIds:
+				chatIds.append(chat.chatId)
 	conn.close()
 	return chatIds, maxUpdate
 

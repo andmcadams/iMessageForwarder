@@ -10,7 +10,7 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, curren
 		chatFrame.master.quit()
 		# chatFrame.master.destroy()
 		return
-	chatIds, newLastAccessTime = api._getChatsToUpdate(lastAccessTime)
+	chatIds, newLastAccessTime = api._getChatsToUpdate(lastAccessTime, chatFrame.chats)
 	chatFrame.lock.acquire()
 	newMessageFlag = False
 	for chatId in chatIds:

@@ -7,6 +7,7 @@ class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
         self.chatButtons = []
+        self.chats = {} 
         self.lock = threading.Lock()
 
     def addChat(self, chat, responseFrame):
@@ -14,6 +15,7 @@ class ChatFrame(VerticalScrolledFrame):
         if not self.isLoaded(chat):
             btn = ChatButton(self.interior, chat, responseFrame, bg='orange')
             self.chatButtons.append(btn)
+            self.chats[chat.chatId] = chat
             # self._configure_scrollbars()
 
     def isLoaded(self, chat):
