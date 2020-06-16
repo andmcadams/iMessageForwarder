@@ -248,12 +248,10 @@ class Chat:
 		self.messageList.writeLock.acquire()
 		self.outgoingList.writeLock.acquire()
 		idToDelete = 0
-		print(self.outgoingList.messages)
 		for tempMsgId in self.outgoingList.messages:
 			tempMsg = self.outgoingList.messages[tempMsgId]
 			if tempMsg.attr['text'] == message.attr['text'] and not 'removeTemp' in message.attr:
 				message.attr['removeTemp'] = tempMsgId
-				print('Deleting {}'.format(tempMsgId))
 				del self.messageList.messages[tempMsgId]
 				idToDelete = tempMsgId
 				break
