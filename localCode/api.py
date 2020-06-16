@@ -39,7 +39,7 @@ class MessageList(dict):
 		# If the message is just being updated, no need to worry about ordering
 		# (assumption that date should never change)
 		if message.attr['ROWID'] in updatedMessages:
-			updatedMessages[message.attr['ROWID']] = message
+			updatedMessages[message.attr['ROWID']].update(message)
 		else:
 			keys = list(updatedMessages)
 			# Here we need to check the dates near the end of the dictionary
@@ -129,6 +129,10 @@ class Message:
 			self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
 		elif not reactionVal in self.reactions[reaction.attr['handle_id']]:
 			self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
+
+	def update(self, updatedMessage):
+		for key, value in updatedMessage.attr.items():
+			self.attr[key] = value
 
 class Reaction:
 
@@ -226,9 +230,9 @@ class Chat:
 					a = conn.execute('SELECT filename, uti from attachment where ROWID = ?', (row['attachment_id'], )).fetchone()
 					attachment = Attachment(**a)
 				message = Message(attachment, handleName, **row)
-				if message.attr['is_from_me'] == 1:
-					self.isTemporary(message)
 				self.messageList.append(message)
+				if message.attr['is_from_me'] == 1:
+					self.isTemporary(self.messageList.messages[message.attr['ROWID']])
 			else:
 				associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][-36:], )).fetchone()
 				if associatedMessageId:
@@ -241,11 +245,13 @@ class Chat:
 		self.lastAccessTime = max(self.lastAccessTime, tempLastAccess)
 
 	def isTemporary(self, message):
+		self.messageList.writeLock.acquire()
+		self.outgoingList.writeLock.acquire()
 		idToDelete = 0
 		print(self.outgoingList.messages)
 		for tempMsgId in self.outgoingList.messages:
 			tempMsg = self.outgoingList.messages[tempMsgId]
-			if tempMsg.attr['text'] == message.attr['text']:
+			if tempMsg.attr['text'] == message.attr['text'] and not 'removeTemp' in message.attr:
 				message.attr['removeTemp'] = tempMsgId
 				print('Deleting {}'.format(tempMsgId))
 				del self.messageList.messages[tempMsgId]
@@ -253,6 +259,8 @@ class Chat:
 				break
 		if idToDelete != 0:
 			del self.outgoingList.messages[idToDelete]
+		self.messageList.writeLock.release()
+		self.outgoingList.writeLock.release()
 
 	def sendMessage(self, messageText):
 		messageText = messageText.replace('\'', '\\\'')
