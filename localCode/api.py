@@ -237,7 +237,10 @@ class Chat:
     def _loadRecipients(self):
         conn = sqlite3.connect(dbPath)
         conn.row_factory = sqlite3.Row
-        cursor = conn.execute('select id from handle inner join chat_handle_join on handle.ROWID = chat_handle_join.handle_id and chat_handle_join.chat_id = ?', (self.chatId, ))
+        cursor = conn.execute('select id from handle inner join '
+                              'chat_handle_join on handle.ROWID = '
+                              'chat_handle_join.handle_id and '
+                              'chat_handle_join.chat_id = ?', (self.chatId, ))
         recipients = []
         for recipient in cursor.fetchall():
             recipients.append(recipient[0])
@@ -246,7 +249,9 @@ class Chat:
 
     def getName(self):
         if self.displayName:
-            return ''.join([self.displayName[t] for t in range(len(self.displayName)) if ord(self.displayName[t]) in range(65536)])
+            return ''.join([self.displayName[t] for t in
+                            range(len(self.displayName)) if
+                            ord(self.displayName[t]) in range(65536)])
         else:
             return ', '.join(self.recipientList)
 
@@ -254,18 +259,35 @@ class Chat:
         return self.messageList.messages
 
     def _loadMessages(self):
-        # if self.messages is not none, we should just query for messages received after last message
+        # If self.messages is not none, we should just query for messages
+        # received after last message.
         conn = sqlite3.connect(dbPath)
         conn.row_factory = sqlite3.Row
         tempLastAccess = self.lastAccessTime
-        neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type', 'attachment_id']
+        neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id',
+                                'service', 'error', 'date', 'date_read',
+                                'date_delivered', 'is_delivered',
+                                'is_finished', 'is_from_me', 'is_read',
+                                'is_sent', 'cache_has_attachments',
+                                'cache_roomnames', 'item_type',
+                                'other_handle', 'group_title',
+                                'group_action_type', 'associated_message_guid',
+                                'associated_message_type', 'attachment_id']
         columns = ', '.join(neededColumnsMessage)
-        sql = 'SELECT {}, message_update_date FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? inner join message_update_date_join on message.ROWID = message_update_date_join.message_id and message_update_date_join.message_update_date > ? left join message_attachment_join on message.ROWID = message_attachment_join.message_id'.format(columns)
+        sql = ('SELECT {}, message_update_date FROM message '
+               'inner join chat_message_join on message.ROWID = '
+               'chat_message_join.message_id and chat_message_join.chat_id = '
+               '? inner join message_update_date_join on message.ROWID = '
+               'message_update_date_join.message_id and '
+               'message_update_date_join.message_update_date > ? left join '
+               'message_attachment_join on message.ROWID = '
+               'message_attachment_join.message_id').format(columns)
         cursor = conn.execute(sql, (self.chatId, tempLastAccess))
 
         for row in cursor:
             handleSql = 'SELECT id from handle where ROWID = ?'
-            handleName = conn.execute(handleSql, (row['handle_id'], )).fetchone()
+            handleName = conn.execute(handleSql,
+                                      (row['handle_id'], )).fetchone()
             if handleName:
                 handleName = handleName[0]
             else:
@@ -273,20 +295,29 @@ class Chat:
 
             if row['message_update_date'] > tempLastAccess:
                 tempLastAccess = row['message_update_date']
+
+            # If there are no associated messages
             if not row['associated_message_guid']:
                 attachment = None
                 if row['attachment_id'] is not None:
-                    a = conn.execute('SELECT filename, uti from attachment where ROWID = ?', (row['attachment_id'], )).fetchone()
+                    a = conn.execute('SELECT filename, uti from attachment'
+                                     'where ROWID = ?',
+                                     (row['attachment_id'], )).fetchone()
                     attachment = Attachment(**a)
                 message = Message(attachment, handleName, **row)
                 self.messageList.append(message)
+
                 if message.attr['is_from_me'] == 1:
-                    self.isTemporary(self.messageList.messages[message.attr['ROWID']])
+                    self.isTemporary(self.messageList.
+                                     messages[message.attr['ROWID']])
             else:
-                associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][-36:], )).fetchone()
-                if associatedMessageId:
-                    associatedMessageId = associatedMessageId[0]
-                    reaction = Reaction(associatedMessageId, handleName, **row)
+                assocMessageId = conn.execute('SELECT ROWID FROM message where'
+                                              'guid = ?',
+                                              (row['associated_message_guid']
+                                                  [-36:], )).fetchone()
+                if assocMessageId:
+                    assocMessageId = assocMessageId[0]
+                    reaction = Reaction(assocMessageId, handleName, **row)
                     self.messageList.addReaction(reaction)
 
         conn.close()
@@ -312,15 +343,26 @@ class Chat:
 
     def sendMessage(self, messageText):
         messageText = messageText.replace('\'', '\\\'')
-        subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} $\'{}\' {} {}".format(scriptPath, messageText, self.chatId, 0)])
-        msg = Message(None, None, **{'ROWID': self.messagePreviewId, 'text': messageText, 'date': int(time.time()), 'date_read': 0, 'is_delivered': 0, 'is_from_me': 1, 'service': 'iMessage', 'temporary': 1})
+        cmd = ["ssh", "{}@{}".format(user, ip),
+               "python {} $\'{}\' {} {}".format(scriptPath, messageText,
+                                                self.chatId, 0)]
+        subprocess.run(cmd)
+        msg = Message(None, None, **{'ROWID': self.messagePreviewId,
+                                     'text': messageText, 'date':
+                                     int(time.time()), 'date_read': 0,
+                                     'is_delivered': 0, 'is_from_me': 1,
+                                     'service': 'iMessage', 'temporary': 1})
         self.messagePreviewId -= 1
         self.messageList.append(msg)
         self.outgoingList.append(msg)
         self.localUpdate = True
 
     def sendReaction(self, messageId, assocType):
-        subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} \'{}\' {} {} \'{}\' {}".format(scriptPath, '', self.chatId, 1, messageId, assocType)])
+        cmd = ["ssh", "{}@{}".format(user, ip),
+               "python {} \'{}\' {} {} \'{}\' {}".format(scriptPath, '',
+                                                         self.chatId, 1,
+                                                         messageId, assocType)]
+        subprocess.run(cmd)
 
     def getMostRecentMessage(self):
         return self.messageList.getMostRecentMessage()
@@ -328,17 +370,27 @@ class Chat:
     def _loadMostRecentMessage(self):
         conn = sqlite3.connect(dbPath)
         conn.row_factory = sqlite3.Row
-        cursor = conn.execute('select ROWID, handle_id, text, date, is_from_me, associated_message_guid, associated_message_type, is_delivered, is_from_me from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? order by date desc, ROWID desc', (self.chatId, ))
+        cursor = conn.execute('select ROWID, handle_id, text, date, '
+                              'is_from_me, associated_message_guid, '
+                              'associated_message_type, is_delivered, '
+                              'is_from_me from message inner join '
+                              'chat_message_join on message.ROWID = '
+                              'chat_message_join.message_id and '
+                              'chat_message_join.chat_id = ? order by date '
+                              'desc, ROWID desc', (self.chatId, ))
         for row in cursor.fetchall():
             if not row['associated_message_guid']:
                 message = Message(**row)
                 self.messageList.append(message)
                 break
             else:
-                associatedMessageId = conn.execute('SELECT ROWID FROM message where guid = ?', (row['associated_message_guid'][-36:], )).fetchone()
-                if associatedMessageId:
-                    associatedMessageId = associatedMessageId[0]
-                    reaction = Reaction(associatedMessageId, **row)
+                assocMessageId = conn.execute('SELECT ROWID FROM message '
+                                              'where guid = ?',
+                                              (row['associated_message_guid']
+                                               [-36:], )).fetchone()
+                if assocMessageId:
+                    assocMessageId = assocMessageId[0]
+                    reaction = Reaction(assocMessageId, **row)
                     self.messageList.addReaction(reaction)
                     break
         conn.close()
@@ -347,7 +399,9 @@ class Chat:
 def _loadChat(chatId):
     conn = sqlite3.connect(dbPath)
     conn.row_factory = sqlite3.Row
-    cursor = conn.execute('select ROWID, chat_identifier, display_name, style, service_name from chat where ROWID = ?', (chatId, ))
+    cursor = conn.execute('select ROWID, chat_identifier, display_name, '
+                          'style, service_name from chat where ROWID = ?',
+                          (chatId, ))
     row = cursor.fetchone()
     if row is None:
         raise ChatDeletedException
@@ -364,21 +418,28 @@ def _loadChat(chatId):
 def _loadChats():
     conn = sqlite3.connect(dbPath)
     conn.row_factory = sqlite3.Row
-    cursor = conn.execute('select ROWID, chat_identifier, display_name, style from chat')
+    cursor = conn.execute('select ROWID, chat_identifier, '
+                          'display_name, style from chat')
     chats = []
     for row in cursor.fetchall():
         chat = Chat(row[0], row[1], row[2], **row)
         if chat.getMostRecentMessage().attr['ROWID'] is not None:
             chats.append(chat)
     conn.close()
-    chats = sorted(chats, key=lambda chat: chat.getMostRecentMessage().attr['date'], reverse=True)
+    chats = sorted(chats,
+                   key=lambda chat: chat.getMostRecentMessage().attr['date'],
+                   reverse=True)
     return chats
 
 
 def _getChatsToUpdate(lastAccessTime, chats):
     conn = sqlite3.connect(dbPath)
     conn.row_factory = sqlite3.Row
-    sql = 'SELECT chat_id, max(message_update_date), text FROM message inner join chat_message_join on message.ROWID = chat_message_join.message_id inner join message_update_date_join on message.ROWID = message_update_date_join.message_id and message_update_date_join.message_update_date > ? group by chat_id'
+    sql = ('SELECT chat_id, max(message_update_date), text FROM message inner '
+           'join chat_message_join on message.ROWID = '
+           'chat_message_join.message_id inner join message_update_date_join '
+           'on message.ROWID = message_update_date_join.message_id and '
+           'message_update_date_join.message_update_date > ? group by chat_id')
     cursor = conn.execute(sql, (lastAccessTime, ))
     chatIds = []
     maxUpdate = lastAccessTime
