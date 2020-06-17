@@ -123,21 +123,34 @@ class Message:
 
         if 'ROWID' not in self.attr:
             raise MessageNoIdException
-        # This has to be done since tkinter only supports some unicode characters
+
+        # tkinter only supports some unicode characters.
+        # This removes unsupported ones.
         self.attr['text'] = None
         if 'text' in kw and kw['text'] is not None:
-            self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
+            length = len(kw['text'])
+            self.attr['text'] = ''.join([kw['text'][t] for t in range(length)
+                                        if ord(kw['text'][t]) in range(65536)])
 
         self.attachment = attachment
         self.handleName = handleName
 
     def addReaction(self, reaction):
+        # If the handle sending the reaction has not reacted to this message,
+        # add it.
         if not reaction.attr['handle_id'] in self.reactions:
             self.reactions[reaction.attr['handle_id']] = {}
+
+        # Reactions and reaction removals have the same digit in the ones place
         reactionVal = int(reaction.attr['associated_message_type']) % 1000
-        if reactionVal in self.reactions[reaction.attr['handle_id']] and self.reactions[reaction.attr['handle_id']][reactionVal].attr['ROWID'] < reaction.attr['ROWID']:
+
+        # If the handle has already sent this reaction, but this one is newer,
+        # replace the old reaction with this one.
+        handleReactions = self.reactions[reaction.attr['handle_id']]
+        if (reactionVal in handleReactions and
+                reaction.isNewer(handleReactions[reactionVal])):
             self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
-        elif reactionVal not in self.reactions[reaction.attr['handle_id']]:
+        elif reactionVal not in handleReactions:
             self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
 
     def isNewer(self, otherMessage):
