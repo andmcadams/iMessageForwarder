@@ -177,10 +177,13 @@ class Reaction:
         for key, value in kw.items():
             self.attr[key] = value
 
-        # This has to be done since tkinter only supports some unicode characters
+        # tkinter only supports some unicode characters.
+        # This removes unsupported ones.
         self.attr['text'] = None
         if 'text' in kw and kw['text'] is not None:
-            self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
+            length = len(kw['text'])
+            self.attr['text'] = ''.join([kw['text'][t] for t in range(length)
+                                        if ord(kw['text'][t]) in range(65536)])
 
     def isNewer(self, otherMessage):
         if self.attr['date'] > otherMessage.attr['date']:
@@ -221,7 +224,8 @@ class Chat:
             self.attr[key] = value
 
     def isiMessage(self):
-        if 'service_name' in self.attr and self.attr['service_name'] == 'iMessage':
+        if ('service_name' in self.attr and
+                self.attr['service_name'] == 'iMessage'):
             return True
         return False
 
@@ -394,7 +398,8 @@ def _getChatsToUpdate(lastAccessTime, chats):
 
 def _ping():
     try:
-        output = subprocess.run(['nc', '-vz', '-w 1', ip, '22'], stderr=subprocess.DEVNULL, check=True)
+        output = subprocess.run(['nc', '-vz', '-w 1', ip, '22'],
+                                stderr=subprocess.DEVNULL, check=True)
         return True
     except subprocess.CalledProcessError as e:
         return False
