@@ -37,7 +37,7 @@ class MessageList(dict):
     # Sorting on insertion is likely faster than inserting all messages with
     # one sort.
     # The assumption is that messages will be inserted near the end,
-    # requiring fewer checks than looking at the entire list. 
+    # requiring fewer checks than looking at the entire list.
     def append(self, message):
         self.writeLock.acquire()
         updatedMessages = self.messages
@@ -49,7 +49,8 @@ class MessageList(dict):
         else:
             keys = list(updatedMessages)
             # Here we need to check the dates near the end of the dictionary
-            # We assume that the dictionary will be sorted at this point by induction
+            # We assume that the dictionary will be sorted at this point
+            # by induction.
             # Avoid using reverse here since it has complexity O(n)
             if keys:
                 i = 0
@@ -60,9 +61,7 @@ class MessageList(dict):
                     if i == -1:
                         break
                     key = keys[i]
-                    if message.attr['date'] > updatedMessages[key].attr['date']:
-                        break
-                    if message.attr['date'] == updatedMessages[key].attr['date'] and message.attr['ROWID'] > updatedMessages[key].attr['ROWID']:
+                    if message.isNewer(updatedMessages[key]):
                         break
 
                 # Find the keys that will need to come after this new message
