@@ -54,8 +54,8 @@ class MessageList(dict):
             # Avoid using reverse here since it has complexity O(n)
             if keys:
                 i = 0
-                # Setting the range to go down to -2 makes it so we can reach i = -1 (range not inclusive to 2nd param)
-                # If i == -1, we know that this message is older than all other messages in the list.
+                # If i == -1, we know that this message is older than all
+                # other messages in the list.
                 for i in range(len(keys)-1, -2, -1):
                     #
                     if i == -1:
@@ -84,7 +84,7 @@ class MessageList(dict):
 
         if (self.mostRecentMessage is None or
                 message.isNewer(self.mostRecentMessage)):
-           self.mostRecentMessage = message
+            self.mostRecentMessage = message
         self.writeLock.release()
 
     def addReaction(self, reaction):
@@ -93,12 +93,14 @@ class MessageList(dict):
         if reaction.associatedMessageId in self.messages.keys():
             self.messages[reaction.associatedMessageId].addReaction(reaction)
 
-        if self.mostRecentMessage == None or reaction.attr['date'] > self.mostRecentMessage.attr['date']:
+        if (self.mostRecentMessage is None or
+                reaction.isNewer(self.mostRecentMessage)):
             self.mostRecentMessage = reaction
         self.writeLock.release()
 
     def getMostRecentMessage(self):
         return self.mostRecentMessage
+
 
 class Attachment:
     def __init__(self, **kw):
@@ -106,8 +108,10 @@ class Attachment:
         for key, value in kw.items():
             self.attr[key] = value
 
+
 class MessageNoIdException(Exception):
     pass
+
 
 class Message:
 
@@ -117,11 +121,11 @@ class Message:
         for key, value in kw.items():
             self.attr[key] = value
 
-        if not 'ROWID' in self.attr:
+        if 'ROWID' not in self.attr:
             raise MessageNoIdException
         # This has to be done since tkinter only supports some unicode characters
         self.attr['text'] = None
-        if 'text' in kw and kw['text'] != None:
+        if 'text' in kw and kw['text'] is not None:
             self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
 
         self.attachment = attachment
@@ -130,10 +134,10 @@ class Message:
     def addReaction(self, reaction):
         if not reaction.attr['handle_id'] in self.reactions:
             self.reactions[reaction.attr['handle_id']] = {}
-        reactionVal = int(reaction.attr['associated_message_type'])%1000
+        reactionVal = int(reaction.attr['associated_message_type']) % 1000
         if reactionVal in self.reactions[reaction.attr['handle_id']] and self.reactions[reaction.attr['handle_id']][reactionVal].attr['ROWID'] < reaction.attr['ROWID']:
             self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
-        elif not reactionVal in self.reactions[reaction.attr['handle_id']]:
+        elif reactionVal not in self.reactions[reaction.attr['handle_id']]:
             self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
 
     def isNewer(self, otherMessage):
@@ -150,6 +154,7 @@ class Message:
         for key, value in updatedMessage.attr.items():
             self.attr[key] = value
 
+
 class Reaction:
 
     def __init__(self, associatedMessageId, handleName=None, **kw):
@@ -161,17 +166,28 @@ class Reaction:
 
         # This has to be done since tkinter only supports some unicode characters
         self.attr['text'] = None
-        if 'text' in kw and kw['text'] != None:
+        if 'text' in kw and kw['text'] is not None:
             self.attr['text'] = ''.join([kw['text'][t] for t in range(len(kw['text'])) if ord(kw['text'][t]) in range(65536)])
 
+    def isNewer(self, otherMessage):
+        if self.attr['date'] > otherMessage.attr['date']:
+            return True
+        elif self.attr['date'] < otherMessage.attr['date']:
+            return False
+        else:
+            if self.attr['ROWID'] > otherMessage.attr['ROWID']:
+                return True
+            return False
 
 
 class ChatDeletedException(Exception):
     pass
 
+
 class DummyChat:
     def __init__(self, chatId):
         self.chatId = chatId
+
 
 class Chat:
 
@@ -210,7 +226,7 @@ class Chat:
             recipients.append(recipient[0])
         conn.close()
         return recipients
-    
+
     def getName(self):
         if self.displayName:
             return ''.join([self.displayName[t] for t in range(len(self.displayName)) if ord(self.displayName[t]) in range(65536)])
@@ -242,7 +258,7 @@ class Chat:
                 tempLastAccess = row['message_update_date']
             if not row['associated_message_guid']:
                 attachment = None
-                if row['attachment_id'] != None:
+                if row['attachment_id'] is not None:
                     a = conn.execute('SELECT filename, uti from attachment where ROWID = ?', (row['attachment_id'], )).fetchone()
                     attachment = Attachment(**a)
                 message = Message(attachment, handleName, **row)
@@ -266,7 +282,8 @@ class Chat:
         idToDelete = 0
         for tempMsgId in self.outgoingList.messages:
             tempMsg = self.outgoingList.messages[tempMsgId]
-            if tempMsg.attr['text'] == message.attr['text'] and not 'removeTemp' in message.attr:
+            if (tempMsg.attr['text'] == message.attr['text'] and
+                    'removeTemp' not in message.attr):
                 message.attr['removeTemp'] = tempMsgId
                 del self.messageList.messages[tempMsgId]
                 idToDelete = tempMsgId
@@ -288,13 +305,12 @@ class Chat:
     def sendReaction(self, messageId, assocType):
         subprocess.run(["ssh", "{}@{}".format(user, ip), "python {} \'{}\' {} {} \'{}\' {}".format(scriptPath, '', self.chatId, 1, messageId, assocType)])
 
-
     def getMostRecentMessage(self):
         return self.messageList.getMostRecentMessage()
 
     def _loadMostRecentMessage(self):
         conn = sqlite3.connect(dbPath)
-        conn.row_factory = sqlite3.Row      
+        conn.row_factory = sqlite3.Row
         cursor = conn.execute('select ROWID, handle_id, text, date, is_from_me, associated_message_guid, associated_message_type, is_delivered, is_from_me from message inner join chat_message_join on message.ROWID = chat_message_join.message_id and chat_message_join.chat_id = ? order by date desc, ROWID desc', (self.chatId, ))
         for row in cursor.fetchall():
             if not row['associated_message_guid']:
@@ -310,21 +326,23 @@ class Chat:
                     break
         conn.close()
 
+
 def _loadChat(chatId):
     conn = sqlite3.connect(dbPath)
     conn.row_factory = sqlite3.Row
     cursor = conn.execute('select ROWID, chat_identifier, display_name, style, service_name from chat where ROWID = ?', (chatId, ))
     row = cursor.fetchone()
-    if row == None:
+    if row is None:
         raise ChatDeletedException
     chat = Chat(row[0], row[1], row[2], **row)
     conn.close()
-    if chat == None:
+    if chat is None:
         return None
-    if chat.getMostRecentMessage().attr['ROWID'] != None:
+    if chat.getMostRecentMessage().attr['ROWID'] is not None:
         return chat
 
     return None
+
 
 def _loadChats():
     conn = sqlite3.connect(dbPath)
@@ -333,11 +351,12 @@ def _loadChats():
     chats = []
     for row in cursor.fetchall():
         chat = Chat(row[0], row[1], row[2], **row)
-        if chat.getMostRecentMessage().attr['ROWID'] != None:
+        if chat.getMostRecentMessage().attr['ROWID'] is not None:
             chats.append(chat)
     conn.close()
     chats = sorted(chats, key=lambda chat: chat.getMostRecentMessage().attr['date'], reverse=True)
     return chats
+
 
 def _getChatsToUpdate(lastAccessTime, chats):
     conn = sqlite3.connect(dbPath)
@@ -354,17 +373,19 @@ def _getChatsToUpdate(lastAccessTime, chats):
         chat = chats[idx]
         if chat.localUpdate:
             chat.localUpdate = False
-            if not chat.chatId in chatIds:
+            if chat.chatId not in chatIds:
                 chatIds.append(chat.chatId)
     conn.close()
     return chatIds, maxUpdate
 
+
 def _ping():
     try:
-        output = subprocess.run(['nc', '-vz', '-w 1' , ip, '22'], stderr=subprocess.DEVNULL, check=True)
+        output = subprocess.run(['nc', '-vz', '-w 1', ip, '22'], stderr=subprocess.DEVNULL, check=True)
         return True
     except subprocess.CalledProcessError as e:
         return False
+
 
 def _useTestDatabase(dbName):
     global dbPath
