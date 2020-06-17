@@ -53,10 +53,7 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, curren
 	threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame, lastAccessTime=newLastAccessTime, lastSoundTime=lastSoundTime, currentThread=currentThread: updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, currentThread)).start()
 
 def runGui(DEBUG, currentThread):
-	if DEBUG == 1:
-		globals()["api"] = __import__('dummyApi')
-	else:
-		globals()["api"] = __import__('api')
+	globals()["api"] = __import__('api')
 	root = tk.Tk()
 	root.title("Messages")
 	root.configure(background="gray99")
