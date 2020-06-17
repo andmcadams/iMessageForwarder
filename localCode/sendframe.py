@@ -34,6 +34,10 @@ class SendFrame(tk.Frame):
 
     def setIsConnected(self, isConnected):
         self.isConnected = isConnected
+        if self.isConnected == True:
+            self.sendButton.configure(text='Send')
+        else:
+            self.sendButton.configure(text='No connection')
         self.updateButton()
 
     def activateButton(self, event):
