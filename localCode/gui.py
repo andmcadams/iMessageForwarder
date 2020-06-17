@@ -48,6 +48,7 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, curren
 
 	chatFrame.lock.release()
 	
+	threading.Thread(target=lambda sendFrame=responseFrame.sendFrame: sendFrame.setIsConnected(api._ping())).start()
 	lastSoundTime = 0 if lastSoundTime == 0 else lastSoundTime - 1
 	threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame, lastAccessTime=newLastAccessTime, lastSoundTime=lastSoundTime, currentThread=currentThread: updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, currentThread)).start()
 

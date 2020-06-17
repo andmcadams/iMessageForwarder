@@ -152,9 +152,7 @@ class MessageFrame(VerticalScrolledFrame):
                     else:
                         msg.pack(anchor=tk.W, expand=tk.FALSE)
                     # If this message is replacing a temporary message, get rid of that old message
-                    print(json.dumps(messageDict[messageId].attr))
                     if 'removeTemp' in messageDict[messageId].attr:
-                        print('Destroying message bubble with id {}'.format(messageDict[messageId].attr['removeTemp']))
                         self.messageBubbles[messageDict[messageId].attr['removeTemp']].destroy()
                         del self.messageBubbles[messageDict[messageId].attr['removeTemp']]
                     self.messageBubbles[messageId] = msg

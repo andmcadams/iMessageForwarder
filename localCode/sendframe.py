@@ -29,9 +29,26 @@ class SendFrame(tk.Frame):
             bg="gray99", fg="purple3",
             font="Dosis", text='Send', state='disabled')
         self.sendButton.grid(row=0, column=1)
+        self.isConnected = False
+        self.hasText = False
+
+    def setIsConnected(self, isConnected):
+        self.isConnected = isConnected
+        if self.isConnected == True:
+            self.sendButton.configure(text='Send')
+        else:
+            self.sendButton.configure(text='No connection')
+        self.updateButton()
 
     def activateButton(self, event):
         if not self.text.compare("end-1c", "==", "1.0"):
+            self.hasText = True
+        else:
+            self.hasText = False
+        self.updateButton()
+
+    def updateButton(self):
+        if self.isConnected and self.hasText:
             self.sendButton.configure(state='normal')
         else:
             self.sendButton.configure(state='disabled')

@@ -248,12 +248,10 @@ class Chat:
 		self.messageList.writeLock.acquire()
 		self.outgoingList.writeLock.acquire()
 		idToDelete = 0
-		print(self.outgoingList.messages)
 		for tempMsgId in self.outgoingList.messages:
 			tempMsg = self.outgoingList.messages[tempMsgId]
 			if tempMsg.attr['text'] == message.attr['text'] and not 'removeTemp' in message.attr:
 				message.attr['removeTemp'] = tempMsgId
-				print('Deleting {}'.format(tempMsgId))
 				del self.messageList.messages[tempMsgId]
 				idToDelete = tempMsgId
 				break
@@ -344,6 +342,13 @@ def _getChatsToUpdate(lastAccessTime, chats):
 				chatIds.append(chat.chatId)
 	conn.close()
 	return chatIds, maxUpdate
+
+def _ping():
+	try:
+		output = subprocess.run(['nc', '-vz', '-w 1' , ip, '22'], stderr=subprocess.DEVNULL, check=True)
+		return True
+	except subprocess.CalledProcessError as e:
+		return False
 
 def _useTestDatabase(dbName):
     global dbPath
