@@ -343,6 +343,13 @@ def _getChatsToUpdate(lastAccessTime, chats):
 	conn.close()
 	return chatIds, maxUpdate
 
+def _ping():
+	try:
+		output = subprocess.run(['nc', '-vz', '-w 1' , ip, '22'], stderr=subprocess.DEVNULL, check=True)
+		return True
+	except subprocess.CalledProcessError as e:
+		return False
+
 def _useTestDatabase(dbName):
     global dbPath
     dbPath = os.path.join(dirname, dbName)
