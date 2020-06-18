@@ -45,8 +45,8 @@ class MessageList(dict):
 
         # If the message is just being updated, no need to worry about ordering
         # (assumption that date should never change)
-        if message.attr['ROWID'] in updatedMessages:
-            updatedMessages[message.attr['ROWID']].update(message)
+        if message.rowid in updatedMessages:
+            updatedMessages[message.rowid].update(message)
         else:
             keys = list(updatedMessages)
             # Here we need to check the dates near the end of the dictionary
@@ -72,15 +72,15 @@ class MessageList(dict):
                 for key in keysToRemove:
                     poppedMessages.append(updatedMessages.pop(key))
                 # Add in the new message
-                updatedMessages[message.attr['ROWID']] = message
+                updatedMessages[message.rowid] = message
                 # Add back the messages we removed from the list
                 poppedMessages.reverse()
                 for _ in range(len(poppedMessages)):
                     p = poppedMessages.pop()
-                    updatedMessages[p.attr['ROWID']] = p
+                    updatedMessages[p.rowid] = p
             # If the list is empty we end up here
             else:
-                updatedMessages[message.attr['ROWID']] = message
+                updatedMessages[message.rowid] = message
         self.messages = updatedMessages
 
         if (self.mostRecentMessage is None or
@@ -136,6 +136,18 @@ class Message:
         self.attachment = attachment
         self.handleName = handleName
 
+    @property
+    def rowid(self):
+        return self.attr['ROWID']
+
+    @property
+    def date(self):
+        return self.attr['date']
+
+    @property
+    def text(self):
+        return self.attr['text']
+
     def addReaction(self, reaction):
         # If the handle sending the reaction has not reacted to this message,
         # add it.
@@ -155,12 +167,12 @@ class Message:
             self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
 
     def isNewer(self, otherMessage):
-        if self.attr['date'] > otherMessage.attr['date']:
+        if self.date > otherMessage.date:
             return True
-        elif self.attr['date'] < otherMessage.attr['date']:
+        elif self.date < otherMessage.date:
             return False
         else:
-            if self.attr['ROWID'] > otherMessage.attr['ROWID']:
+            if self.rowid > otherMessage.rowid:
                 return True
             return False
 
@@ -186,13 +198,25 @@ class Reaction:
             self.attr['text'] = ''.join([kw['text'][t] for t in range(length)
                                         if ord(kw['text'][t]) in range(65536)])
 
+    @property
+    def rowid(self):
+        return self.attr['ROWID']
+
+    @property
+    def date(self):
+        return self.attr['date']
+
+    @property
+    def text(self):
+        return self.attr['text']
+
     def isNewer(self, otherMessage):
-        if self.attr['date'] > otherMessage.attr['date']:
+        if self.date > otherMessage.date:
             return True
-        elif self.attr['date'] < otherMessage.attr['date']:
+        elif self.date < otherMessage.date:
             return False
         else:
-            if self.attr['ROWID'] > otherMessage.attr['ROWID']:
+            if self.rowid > otherMessage.rowid:
                 return True
             return False
 
@@ -299,7 +323,7 @@ class Chat:
 
                 if message.attr['is_from_me'] == 1:
                     self.isTemporary(self.messageList.
-                                     messages[message.attr['ROWID']])
+                                     messages[message.rowid])
             else:
                 assocMessageId = conn.execute(sqlcommands.ASSOC_MESSAGE_SQL,
                                               (row['associated_message_guid']
@@ -319,7 +343,7 @@ class Chat:
         idToDelete = 0
         for tempMsgId in self.outgoingList.messages:
             tempMsg = self.outgoingList.messages[tempMsgId]
-            if (tempMsg.attr['text'] == message.attr['text'] and
+            if (tempMsg.text == message.text and
                     'removeTemp' not in message.attr):
                 message.attr['removeTemp'] = tempMsgId
                 del self.messageList.messages[tempMsgId]
@@ -389,7 +413,7 @@ def _loadChat(chatId):
     conn.close()
     if chat is None:
         return None
-    if chat.getMostRecentMessage().attr['ROWID'] is not None:
+    if chat.getMostRecentMessage().rowid is not None:
         return chat
 
     return None
