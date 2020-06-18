@@ -9,6 +9,7 @@ from PIL import Image, ImageTk
 from verticalscrolledframe import VerticalScrolledFrame
 from constants import LINUX, MACOS
 
+
 def getTimeText(timeStamp):
     currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
     msgTime = datetime.fromtimestamp(timeStamp, tz=datetime.now().astimezone().tzinfo)
@@ -17,14 +18,15 @@ def getTimeText(timeStamp):
     elif currentTime.date() - timedelta(days=1) == msgTime.date():
         timeText = 'Yesterday, ' + msgTime.strftime('%-I:%M %p')
     else:
-        timeText = msgTime.strftime('%-m/%-d/%Y at %-I:%M %p')  
-    return timeText  
+        timeText = msgTime.strftime('%-m/%-d/%Y at %-I:%M %p')
+    return timeText
+
 
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
-        
+
         self.messageBubbles = {}
         self.canvas.bind('<Configure>', self._configure_messages_canvas)
         self.lock = threading.Lock()
@@ -37,13 +39,12 @@ class MessageFrame(VerticalScrolledFrame):
 
         self.readReceiptMessageId = None
 
-
     # This probably has some nasty race conditions.
     # This also has unfortunate recursion issues that should be fixed
     def checkScroll(self, x, y):
         self.vscrollbar.set(x, y)
         (top, bottom) = self.vscrollbar.get()
-        if top < 0.05 and self.addedMessages == True:
+        if top < 0.05 and self.addedMessages is True:
             self.addedMessages = False
             self.messageLimit += 20
             oldHeight = self.interior.winfo_height()
@@ -56,7 +57,6 @@ class MessageFrame(VerticalScrolledFrame):
             newHeight = self.interior.winfo_reqheight()
 
             self.canvas.yview_moveto((top*oldHeight+(newHeight-oldHeight))/newHeight)
-
 
     # To change chats (ie display messages of a new chat)
     # we need to delete all the MessageBubbles of the old chat
@@ -80,12 +80,10 @@ class MessageFrame(VerticalScrolledFrame):
         (top, bottom) = self.vscrollbar.get()
         self.checkScroll(top, bottom)
         self.canvas.yview_moveto(self.interior.winfo_reqheight())
-   
 
     # Add the chat's messages to the MessageFrame as MessageBubbles
     # A lock is required here since both changing the chat and the constant frame updates can add messages
     # This can result in two copies of certain messages appearing.
-
     def addMessages(self, chat):
         self.lock.acquire()
         if chat.chatId == self.master.currentChat.chatId:
@@ -106,7 +104,7 @@ class MessageFrame(VerticalScrolledFrame):
             (top, bottom) = self.vscrollbar.get()
             for i in range(len(subList)):
                 messageId = subList[i]
-                if not messageId in self.messageBubbles:
+                if messageId not in self.messageBubbles:
                     allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
                     # Need slightly more complex logic for when to use sender labels (label showing who the sender is)
                     # addLabel is True iff
@@ -125,14 +123,14 @@ class MessageFrame(VerticalScrolledFrame):
                     # 1) The previous message was from 15+ minutes ago
                     # 2) There is no previous message
                     timeDiff = (datetime.fromtimestamp(messageDict[messageId].date,
-                            tz=datetime.now().astimezone().tzinfo) -
-                            datetime.fromtimestamp(messageDict[subList[i-1]].date,
-                                tz=datetime.now().astimezone().tzinfo))
+                                tz=datetime.now().astimezone().tzinfo)
+                                - datetime.fromtimestamp(messageDict[subList[i-1]].date,
+                                                         tz=datetime.now().astimezone().tzinfo))
 
                     # Do not add time labels to messages that are currently being sent (messageId < 0)
                     if (not (i-1) in range(len(subList)) or timeDiff > timedelta(minutes=15)) and messageId >= 0:
                         timeLabel = tk.Label(self.interior,
-                                text=getTimeText(messageDict[messageId].date))
+                                             text=getTimeText(messageDict[messageId].date))
                         timeLabel.pack()
 
                     # Need to add a read receipt iff
@@ -146,11 +144,11 @@ class MessageFrame(VerticalScrolledFrame):
                             messageDict[messageId].attr['service'] ==
                             'iMessage' and messageId == lastFromMeId):
                         addReadReceipt = True
-                        if self.readReceiptMessageId != None and self.readReceiptMessageId in self.messageBubbles:
+                        if self.readReceiptMessageId is not None and self.readReceiptMessageId in self.messageBubbles:
                             self.messageBubbles[self.readReceiptMessageId].removeReadReceipt()
                         self.readReceiptMessageId = messageId
 
-                    if messageDict[messageId].attachment != None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
+                    if messageDict[messageId].attachment is not None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
                         msg = ImageMessageBubble(self.interior, messageId, chat, i, addLabel, addReadReceipt)
                     else:
                         msg = TextMessageBubble(self.interior, messageId, chat, i, addLabel, addReadReceipt)
@@ -176,7 +174,6 @@ class MessageFrame(VerticalScrolledFrame):
             self.lock.release()
             return None
 
-
     # This function fixes the scrollbar for the message frame
     # VSF _configure_scrollbars just adds or removes them based on how much stuff is displayed.
     # This function first moves the scrollbars to the top, so if changing to a chat with fewer
@@ -184,7 +181,7 @@ class MessageFrame(VerticalScrolledFrame):
     # The interior is updated to get the new winfo_reqheight set.
     # Scrollbars are then moved to the bottom of the canvas so that the most recent messages are showing.
     def _configure_message_scrollbars(self):
-        # self.canvas.yview_moveto(0)       
+        # self.canvas.yview_moveto(0)
         self._configure_scrollbars()
         self.interior.update()
         # self.canvas.yview_moveto(self.interior.winfo_reqheight())
@@ -201,6 +198,7 @@ class MessageFrame(VerticalScrolledFrame):
         else:
             self.vscrollbar.set(top, bottom)
 
+
 class MessageMenu(tk.Menu):
 
     def __init__(self, parent, *args, **kw):
@@ -210,20 +208,21 @@ class MessageMenu(tk.Menu):
         responseFrame = self.master.master.master.master.master
         responseFrame.currentChat.sendReaction(messageId, reactionValue)
 
+
 class MessageBubble(tk.Frame):
 
     def __init__(self, parent, messageId, chat, addLabel, addReadReceipt, *args, **kw):
         tk.Frame.__init__(self, parent, padx=4, pady=4, *args, **kw)
 
         self.senderLabel = None
-        if addLabel == True:
+        if addLabel is True:
             self.senderLabel = tk.Label(self, height=1, text=chat.getMessages()[messageId].handleName)
         self.messageInterior = ttk.Frame(self, padding=6)
         self.reactions = {}
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
         self.messageId = messageId
-        self.chat = chat 
+        self.chat = chat
 
         self.readReceipt = None
         if addReadReceipt:
@@ -266,7 +265,7 @@ class MessageBubble(tk.Frame):
     def update(self):
         # Text probably won't change but this is nice for initially populating.
         message = self.chat.getMessages()[self.messageId]
-        if message.text != None:
+        if message.text is not None:
             self.body.configure(text=message.text)
 
         if self.readReceipt:
@@ -278,11 +277,11 @@ class MessageBubble(tk.Frame):
                 self.readReceipt.configure(text='Sending...')
         # Handle reactions
         for handle in message.reactions:
-            if not handle in self.reactions:
+            if handle not in self.reactions:
                 self.reactions[handle] = {}
             for r in message.reactions[handle]:
                 if message.reactions[handle][r].attr['associated_message_type'] < 3000:
-                    if not r in self.reactions[handle]:
+                    if r not in self.reactions[handle]:
                         self.reactions[handle][r] = ReactionBubble(self, message.reactions[handle][r].attr['associated_message_type'])
                         if message.attr['is_from_me'] == 1:
                             self.reactions[handle][r].grid(row=1, sticky='w')
@@ -297,13 +296,13 @@ class MessageBubble(tk.Frame):
 
     def removeReadReceipt(self):
         # Don't delete read receipts off of temporary messages
-        if self.readReceipt != None and self.messageId >= 0:
+        if self.readReceipt is not None and self.messageId >= 0:
             self.readReceipt.grid_forget()
             self.readReceipt = None
 
     def resize(self, event):
         pass
-        #print("resizing text message bubble")
+
 
 class ReactionBubble(tk.Label):
     def __init__(self, parent, associatedMessageType, *args, **kw):
@@ -321,34 +320,50 @@ class ReactionBubble(tk.Label):
         self.original.image = ImageTk.PhotoImage(self.original)
         self.configure(image=self.original.image)
 
+
 class TextMessageBubble(MessageBubble):
-    def __init__(self, parent, messageId, chat, index, addLabel, addReadReceipt, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, chat, addLabel, addReadReceipt, *args, **kw)
+    def __init__(self, parent, messageId, chat, index, addLabel,
+                 addReadReceipt, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, chat, addLabel,
+                               addReadReceipt, *args, **kw)
         maxWidth = 3*self.master.master.winfo_width()//5
-        # Could make color a gradient depending on index later but it will add a lot of
-        # dumb code.
+        # Could make color a gradient depending on index later but it will
+        # add a lot of dumb code.
         self.messageInterior.configure(style="RoundedFrame")
         if messageId >= 0:
-            self.body = tk.Message(self.messageInterior, padx=0, pady=3, bg='#01cdfe', width=maxWidth, font="Dosis")
+            self.body = tk.Message(self.messageInterior, padx=0, pady=3,
+                                   bg='#01cdfe', width=maxWidth, font="Dosis")
         else:
-            self.body = tk.Message(self.messageInterior, padx=0, pady=3, bg='#01ffff', width=maxWidth, font="Dosis")
+            self.body = tk.Message(self.messageInterior, padx=0, pady=3,
+                                   bg='#01ffff', width=maxWidth, font="Dosis")
         self.initBody()
 
     def resize(self, event):
         self.body.configure(width=3*event.width//5)
 
+
 class ImageMessageBubble(MessageBubble):
-    def __init__(self, parent, messageId, chat, index, addLabel, addReadReceipt, *args, **kw):
-        MessageBubble.__init__(self, parent, messageId, chat, addLabel, addReadReceipt, *args, **kw)
-        self.messageInterior.columnconfigure(0,weight=1)
-        self.messageInterior.rowconfigure(0,weight=1)
-        self.display = tk.Canvas(self.messageInterior, bd=0, highlightthickness=0)
+    def __init__(self, parent, messageId, chat, index, addLabel,
+                 addReadReceipt, *args, **kw):
+        MessageBubble.__init__(self, parent, messageId, chat,
+                               addLabel, addReadReceipt, *args, **kw)
+        self.messageInterior.columnconfigure(0, weight=1)
+        self.messageInterior.rowconfigure(0, weight=1)
+        self.display = tk.Canvas(self.messageInterior, bd=0,
+                                 highlightthickness=0)
         self.display.grid(row=0, sticky='nsew')
         self.body = tk.Label(self.display)
         try:
-            self.body.original = Image.open(os.path.expanduser(chat.getMessages()[messageId].attachment.attr['filename']))
-            newSize = self.getNewSize(self.body.original, self.master.master.winfo_width(), self.master.master.winfo_height())
-            self.body.image = ImageTk.PhotoImage(self.body.original.resize(newSize, Image.ANTIALIAS))
+            self.body.original = Image.open(os.path
+                                            .expanduser(chat.getMessages()
+                                                        [messageId].attachment
+                                                        .attr['filename']))
+            newSize = self.getNewSize(self.body.original,
+                                      self.master.master.winfo_width(),
+                                      self.master.master.winfo_height())
+            self.body.image = ImageTk.PhotoImage(self.body.original
+                                                 .resize(newSize,
+                                                         Image.ANTIALIAS))
             self.body.configure(image=self.body.image)
             self.display.configure(width=newSize[0], height=newSize[1])
 
@@ -358,7 +373,6 @@ class ImageMessageBubble(MessageBubble):
             self.body.configure(text='Image not found')
         self.body.grid(row=0, sticky='nsew')
         self.initBody()
-
 
     def getNewSize(self, im, winWidth, winHeight):
         maxWidth = 3*winWidth//4
@@ -376,10 +390,10 @@ class ImageMessageBubble(MessageBubble):
                 size = (maxWidth, h)
         return size
 
-
     def resize(self, event):
         if self.body.original:
-            newSize = self.getNewSize(self.body.original, event.width, event.height)
+            newSize = self.getNewSize(self.body.original,
+                                      event.width, event.height)
             resized = self.body.original.resize(newSize, Image.ANTIALIAS)
 
             self.body.image = ImageTk.PhotoImage(resized)
