@@ -114,16 +114,12 @@ class MessageNoIdException(Exception):
     pass
 
 
-class Message:
+class Received:
 
-    def __init__(self, attachment=None, handleName=None, **kw):
+    def __init__(self, **kw):
         self.attr = {}
-        self.reactions = {}
         for key, value in kw.items():
             self.attr[key] = value
-
-        if 'ROWID' not in self.attr:
-            raise MessageNoIdException
 
         # tkinter only supports some unicode characters.
         # This removes unsupported ones.
@@ -132,9 +128,6 @@ class Message:
             length = len(kw['text'])
             self.attr['text'] = ''.join([kw['text'][t] for t in range(length)
                                         if ord(kw['text'][t]) in range(65536)])
-
-        self.attachment = attachment
-        self.handleName = handleName
 
     @property
     def rowid(self):
@@ -147,6 +140,29 @@ class Message:
     @property
     def text(self):
         return self.attr['text']
+
+    def isNewer(self, otherMessage):
+        if self.date > otherMessage.date:
+            return True
+        elif self.date < otherMessage.date:
+            return False
+        else:
+            if self.rowid > otherMessage.rowid:
+                return True
+            return False
+
+
+class Message(Received):
+
+    def __init__(self, attachment=None, handleName=None, **kw):
+        super().__init__(**kw)
+        self.reactions = {}
+
+        if 'ROWID' not in self.attr:
+            raise MessageNoIdException
+
+        self.attachment = attachment
+        self.handleName = handleName
 
     def addReaction(self, reaction):
         # If the handle sending the reaction has not reacted to this message,
@@ -166,59 +182,17 @@ class Message:
         elif reactionVal not in handleReactions:
             self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
 
-    def isNewer(self, otherMessage):
-        if self.date > otherMessage.date:
-            return True
-        elif self.date < otherMessage.date:
-            return False
-        else:
-            if self.rowid > otherMessage.rowid:
-                return True
-            return False
-
     def update(self, updatedMessage):
         for key, value in updatedMessage.attr.items():
             self.attr[key] = value
 
 
-class Reaction:
+class Reaction(Received):
 
     def __init__(self, associatedMessageId, handleName=None, **kw):
-        self.attr = {}
+        super().__init__(**kw)
         self.associatedMessageId = associatedMessageId
         self.handleName = handleName
-        for key, value in kw.items():
-            self.attr[key] = value
-
-        # tkinter only supports some unicode characters.
-        # This removes unsupported ones.
-        self.attr['text'] = None
-        if 'text' in kw and kw['text'] is not None:
-            length = len(kw['text'])
-            self.attr['text'] = ''.join([kw['text'][t] for t in range(length)
-                                        if ord(kw['text'][t]) in range(65536)])
-
-    @property
-    def rowid(self):
-        return self.attr['ROWID']
-
-    @property
-    def date(self):
-        return self.attr['date']
-
-    @property
-    def text(self):
-        return self.attr['text']
-
-    def isNewer(self, otherMessage):
-        if self.date > otherMessage.date:
-            return True
-        elif self.date < otherMessage.date:
-            return False
-        else:
-            if self.rowid > otherMessage.rowid:
-                return True
-            return False
 
 
 class ChatDeletedException(Exception):
