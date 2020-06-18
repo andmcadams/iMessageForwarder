@@ -184,7 +184,12 @@ class Message(Received):
 
     def update(self, updatedMessage):
         for key, value in updatedMessage.attr.items():
-            self.attr[key] = value
+            if value:
+                self.attr[key] = value
+        if updatedMessage.handleName:
+            self.handleName = updatedMessage.handleName
+        if updatedMessage.attachment:
+            self.attachment = updatedMessage.attachment
 
 
 class Reaction(Received):
