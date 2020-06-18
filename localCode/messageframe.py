@@ -100,7 +100,7 @@ class MessageFrame(VerticalScrolledFrame):
             lastFromMeId = -1
             for i in reversed(subList):
                 if messageDict[i].attr['is_from_me']:
-                    lastFromMeId = messageDict[i].attr['ROWID']
+                    lastFromMeId = messageDict[i].rowid
                     break
 
             (top, bottom) = self.vscrollbar.get()
@@ -116,7 +116,7 @@ class MessageFrame(VerticalScrolledFrame):
 
                     addLabel = False
 
-                    if chat.attr['style'] == 43:
+                    if chat.isGroup():
                         if not (i-1) in range(len(subList)) or messageDict[subList[i-1]].attr['handle_id'] != messageDict[messageId].attr['handle_id']:
                             if messageDict[messageId].attr['is_from_me'] == 0:
                                 addLabel = True
@@ -124,11 +124,15 @@ class MessageFrame(VerticalScrolledFrame):
                     # A time label should be added iff
                     # 1) The previous message was from 15+ minutes ago
                     # 2) There is no previous message
-                    timeDiff = datetime.fromtimestamp(messageDict[messageId].attr['date'], tz=datetime.now().astimezone().tzinfo) - datetime.fromtimestamp(messageDict[subList[i-1]].attr['date'], tz=datetime.now().astimezone().tzinfo)
+                    timeDiff = (datetime.fromtimestamp(messageDict[messageId].date,
+                            tz=datetime.now().astimezone().tzinfo) -
+                            datetime.fromtimestamp(messageDict[subList[i-1]].date,
+                                tz=datetime.now().astimezone().tzinfo))
 
                     # Do not add time labels to messages that are currently being sent (messageId < 0)
                     if (not (i-1) in range(len(subList)) or timeDiff > timedelta(minutes=15)) and messageId >= 0:
-                        timeLabel = tk.Label(self.interior, text=getTimeText(messageDict[messageId].attr['date']))
+                        timeLabel = tk.Label(self.interior,
+                                text=getTimeText(messageDict[messageId].date))
                         timeLabel.pack()
 
                     # Need to add a read receipt iff
@@ -137,7 +141,10 @@ class MessageFrame(VerticalScrolledFrame):
                     # 3) The message is an iMessage
                     # 4) There is no later message than this one sent by me
                     addReadReceipt = False
-                    if chat.attr['style'] == 45 and messageDict[messageId].attr['is_from_me'] == 1 and messageDict[messageId].attr['service'] == 'iMessage' and messageId == lastFromMeId:
+                    if (not chat.isGroup() and
+                            messageDict[messageId].attr['is_from_me'] == 1 and
+                            messageDict[messageId].attr['service'] ==
+                            'iMessage' and messageId == lastFromMeId):
                         addReadReceipt = True
                         if self.readReceiptMessageId != None and self.readReceiptMessageId in self.messageBubbles:
                             self.messageBubbles[self.readReceiptMessageId].removeReadReceipt()
@@ -247,7 +254,7 @@ class MessageBubble(tk.Frame):
         react = lambda reactionValue: lambda messageMenu=messageMenu, messageId=self.messageId: messageMenu.sendReaction(messageId, reactionValue)
         messageMenu.add_command(label=self.messageId)
         messageMenu.add_command(label=self.chat.getMessages()[self.messageId].reactions)
-        messageMenu.add_command(label=getTimeText(self.chat.getMessages()[self.messageId].attr['date']))
+        messageMenu.add_command(label=getTimeText(self.chat.getMessages()[self.messageId].date))
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
         messageMenu.add_command(label="Dislike", command=react(2002))
@@ -259,8 +266,8 @@ class MessageBubble(tk.Frame):
     def update(self):
         # Text probably won't change but this is nice for initially populating.
         message = self.chat.getMessages()[self.messageId]
-        if message.attr['text'] != None:
-            self.body.configure(text=message.attr['text'])
+        if message.text != None:
+            self.body.configure(text=message.text)
 
         if self.readReceipt:
             if 'date_read' in message.attr and message.attr['date_read'] != 0:
