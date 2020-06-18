@@ -32,7 +32,7 @@ class MessageFrame(VerticalScrolledFrame):
         self.lock = threading.Lock()
         self.canvas.configure(yscrollcommand=self.checkScroll)
         # Arbitrary initial limit
-        self.messageLimit = 20
+        self.messageLimit = 15
         # This almost certainly introduces more race conditions
         self.addedMessages = False
         self.scrollLock = threading.Lock()
@@ -97,7 +97,7 @@ class MessageFrame(VerticalScrolledFrame):
 
             lastFromMeId = -1
             for i in reversed(subList):
-                if messageDict[i].attr['is_from_me']:
+                if messageDict[i].isFromMe:
                     lastFromMeId = messageDict[i].rowid
                     break
 
@@ -106,6 +106,9 @@ class MessageFrame(VerticalScrolledFrame):
                 messageId = subList[i]
                 if messageId not in self.messageBubbles:
                     allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
+                    prevMessage = (messageDict[subList[i-1]] if (i-1) in
+                                   range(len(subList)) else None)
+
                     # Need slightly more complex logic for when to use sender labels (label showing who the sender is)
                     # addLabel is True iff
                     # 1) This is a group message
@@ -115,20 +118,12 @@ class MessageFrame(VerticalScrolledFrame):
                     addLabel = False
 
                     if chat.isGroup():
-                        if not (i-1) in range(len(subList)) or messageDict[subList[i-1]].attr['handle_id'] != messageDict[messageId].attr['handle_id']:
-                            if messageDict[messageId].attr['is_from_me'] == 0:
+                        if prevMessage is None or prevMessage.handleId != messageDict[messageId].handleId:
+                            if not messageDict[messageId].isFromMe:
                                 addLabel = True
 
-                    # A time label should be added iff
-                    # 1) The previous message was from 15+ minutes ago
-                    # 2) There is no previous message
-                    timeDiff = (datetime.fromtimestamp(messageDict[messageId].date,
-                                tz=datetime.now().astimezone().tzinfo)
-                                - datetime.fromtimestamp(messageDict[subList[i-1]].date,
-                                                         tz=datetime.now().astimezone().tzinfo))
-
-                    # Do not add time labels to messages that are currently being sent (messageId < 0)
-                    if (not (i-1) in range(len(subList)) or timeDiff > timedelta(minutes=15)) and messageId >= 0:
+                    if (self.needTimeLabel(messageDict[messageId],
+                                           prevMessage)):
                         timeLabel = tk.Label(self.interior,
                                              text=getTimeText(messageDict[messageId].date))
                         timeLabel.pack()
@@ -140,9 +135,9 @@ class MessageFrame(VerticalScrolledFrame):
                     # 4) There is no later message than this one sent by me
                     addReadReceipt = False
                     if (not chat.isGroup() and
-                            messageDict[messageId].attr['is_from_me'] == 1 and
-                            messageDict[messageId].attr['service'] ==
-                            'iMessage' and messageId == lastFromMeId):
+                            messageDict[messageId].isFromMe and
+                            messageDict[messageId].isiMessage and
+                            messageId == lastFromMeId):
                         addReadReceipt = True
                         if self.readReceiptMessageId is not None and self.readReceiptMessageId in self.messageBubbles:
                             self.messageBubbles[self.readReceiptMessageId].removeReadReceipt()
@@ -152,7 +147,7 @@ class MessageFrame(VerticalScrolledFrame):
                         msg = ImageMessageBubble(self.interior, messageId, chat, i, addLabel, addReadReceipt)
                     else:
                         msg = TextMessageBubble(self.interior, messageId, chat, i, addLabel, addReadReceipt)
-                    if messageDict[messageId].attr['is_from_me']:
+                    if messageDict[messageId].isFromMe:
                         msg.pack(anchor=tk.E, expand=tk.FALSE)
                     else:
                         msg.pack(anchor=tk.W, expand=tk.FALSE)
@@ -173,6 +168,25 @@ class MessageFrame(VerticalScrolledFrame):
         else:
             self.lock.release()
             return None
+
+    def needTimeLabel(self, message, previousMessage):
+        # A time label should be added iff
+        # 1) The message is not a message currently being sent
+        # 2) There is no previous message
+        # 3) It has been 15 minutes since the previous message was received
+        if message.rowid < 0:
+            return False
+        if previousMessage is None:
+            return True
+
+        timeDiff = (datetime.fromtimestamp(message.date,
+                    tz=datetime.now().astimezone().tzinfo)
+                    - datetime.fromtimestamp(previousMessage.date,
+                                             tz=datetime.now().astimezone().tzinfo))
+        if timeDiff > timedelta(minutes=15):
+            return True
+
+        return False
 
     # This function fixes the scrollbar for the message frame
     # VSF _configure_scrollbars just adds or removes them based on how much stuff is displayed.
@@ -239,7 +253,7 @@ class MessageBubble(tk.Frame):
             self.body.bind("<Button-2>", lambda event: self.onRightClick(event))
         self.body.grid(row=1)
 
-        stickyValue = 'e' if self.chat.getMessages()[self.messageId].attr['is_from_me'] == 1 else 'w'
+        stickyValue = 'e' if self.chat.getMessages()[self.messageId].isFromMe else 'w'
         self.messageInterior.grid(row=2, sticky=stickyValue)
         if self.senderLabel:
             self.senderLabel.grid(row=0, sticky='w')
@@ -271,7 +285,7 @@ class MessageBubble(tk.Frame):
         if self.readReceipt:
             if 'date_read' in message.attr and message.attr['date_read'] != 0:
                 self.readReceipt.configure(text='Read at {}'.format(getTimeText(message.attr['date_read'])))
-            elif message.attr['is_delivered'] == 1:
+            elif message.isDelivered:
                 self.readReceipt.configure(text='Delivered')
             else:
                 self.readReceipt.configure(text='Sending...')
@@ -283,7 +297,7 @@ class MessageBubble(tk.Frame):
                 if message.reactions[handle][r].attr['associated_message_type'] < 3000:
                     if r not in self.reactions[handle]:
                         self.reactions[handle][r] = ReactionBubble(self, message.reactions[handle][r].attr['associated_message_type'])
-                        if message.attr['is_from_me'] == 1:
+                        if message.isFromMe:
                             self.reactions[handle][r].grid(row=1, sticky='w')
                         else:
                             self.reactions[handle][r].grid(row=1, sticky='e')
