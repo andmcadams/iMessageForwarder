@@ -141,6 +141,22 @@ class Received:
     def text(self):
         return self.attr['text']
 
+    @property
+    def handleId(self):
+        return self.attr['handle_id']
+
+    @property
+    def isFromMe(self):
+        return self.attr['is_from_me'] == 1
+
+    @property
+    def isDelivered(self):
+        return self.attr['is_delivered'] == 1
+
+    @property
+    def isiMessage(self):
+        return self.attr['service'] == 'iMessage'
+
     def isNewer(self, otherMessage):
         if self.date > otherMessage.date:
             return True
