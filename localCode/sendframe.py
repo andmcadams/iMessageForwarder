@@ -1,6 +1,8 @@
 import tkinter as tk
 
+
 class ResponsiveText(tk.Text):
+
     def __init__(self, parent, *args, **kw):
         tk.Text.__init__(self, parent, *args, **kw)
 
@@ -17,6 +19,7 @@ class ResponsiveText(tk.Text):
 
         return result
 
+
 class SendFrame(tk.Frame):
     def __init__(self, parent, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
@@ -25,16 +28,16 @@ class SendFrame(tk.Frame):
         self.text.bind("<<TextModified>>", self.activateButton)
         self.columnconfigure(0, weight=1)
 
-        self.sendButton = tk.Button(self, relief=tk.FLAT, 
-            bg="gray99", fg="purple3",
-            font="Dosis", text='Send', state='disabled')
+        self.sendButton = tk.Button(self, relief=tk.FLAT,
+                                    bg="gray99", fg="purple3", font="Dosis",
+                                    text='Send', state='disabled')
         self.sendButton.grid(row=0, column=1)
         self.isConnected = False
         self.hasText = False
 
     def setIsConnected(self, isConnected):
         self.isConnected = isConnected
-        if self.isConnected == True:
+        if self.isConnected:
             self.sendButton.configure(text='Send')
         else:
             self.sendButton.configure(text='No connection')
@@ -58,4 +61,5 @@ class SendFrame(tk.Frame):
         self.text.delete('1.0', 'end')
 
     def updateSendButton(self, chat):
-        self.sendButton.configure(command= lambda chat=chat: self.sendMessage(chat))
+        self.sendButton.configure(command=(lambda chat=chat:
+                                           self.sendMessage(chat)))
