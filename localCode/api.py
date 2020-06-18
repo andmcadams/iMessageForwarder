@@ -395,22 +395,6 @@ def _loadChat(chatId):
     return None
 
 
-def _loadChats():
-    conn = sqlite3.connect(dbPath)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.execute(sqlcommands.LOAD_CHATS_SQL)
-    chats = []
-    for row in cursor.fetchall():
-        chat = Chat(row[0], row[1], row[2], **row)
-        if chat.getMostRecentMessage().attr['ROWID'] is not None:
-            chats.append(chat)
-    conn.close()
-    chats = sorted(chats,
-                   key=lambda chat: chat.getMostRecentMessage().attr['date'],
-                   reverse=True)
-    return chats
-
-
 def _getChatsToUpdate(lastAccessTime, chats):
     conn = sqlite3.connect(dbPath)
     conn.row_factory = sqlite3.Row
