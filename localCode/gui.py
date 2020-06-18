@@ -5,12 +5,15 @@ from playsound import playsound
 from responseframe import ResponseFrame
 from chatframe import ChatFrame
 
-def updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, currentThread):
+
+def updateFrames(chatFrame, responseFrame, lastAccessTime,
+                 lastSoundTime, currentThread):
     if currentThread._stopevent.isSet():
         chatFrame.master.quit()
         # chatFrame.master.destroy()
         return
-    chatIds, newLastAccessTime = api._getChatsToUpdate(lastAccessTime, chatFrame.chats)
+    chatIds, newLastAccessTime = api._getChatsToUpdate(lastAccessTime,
+                                                       chatFrame.chats)
     chatFrame.lock.acquire()
     newMessageFlag = False
     for chatId in chatIds:
@@ -22,22 +25,23 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, curren
                         newMessageFlag = True
 
             if chatId == responseFrame.currentChat.chatId:
-                responseFrame.messageFrame.addMessages(responseFrame.currentChat)
+                (responseFrame.messageFrame
+                 .addMessages(responseFrame.currentChat))
 
-            if not chatId in chatFrame.chatButtons:
+            if chatId not in chatFrame.chatButtons:
                 chat = api._loadChat(chatId)
                 chatFrame.addChat(chat, responseFrame)
                 if lastAccessTime == 0:
                     newMessageFlag = False
 
         except api.ChatDeletedException as e:
-            # Probably want to delete the messages to avoid unnecessary computation.
-            # But should deleting the chat on another device delete it from here?
             continue
 
-    sortedChats = sorted(chatFrame.chatButtons, key=lambda chatButton: chatButton.lastMessageTimeValue, reverse=True)
+    sortedChats = sorted(chatFrame.chatButtons, key=lambda chatButton:
+                         chatButton.lastMessageTimeValue, reverse=True)
     for i in range(len(sortedChats)):
-        if sortedChats[i].chat.chatId != chatFrame.chatButtons[i].chat.chatId or sortedChats[i].isVisible == False:
+        if (sortedChats[i].chat.chatId != chatFrame.chatButtons[i].chat.chatId
+                or sortedChats[i].isVisible is False):
             chatFrame.chatButtons = sortedChats
             chatFrame.packChatButtons()
             break
@@ -47,10 +51,16 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, curren
         threading.Thread(target=lambda: playsound('bing.wav')).start()
 
     chatFrame.lock.release()
-    
-    threading.Thread(target=lambda sendFrame=responseFrame.sendFrame: sendFrame.setIsConnected(api._ping())).start()
+
+    threading.Thread(target=lambda sendFrame=responseFrame.sendFrame:
+                     sendFrame.setIsConnected(api._ping())).start()
     lastSoundTime = 0 if lastSoundTime == 0 else lastSoundTime - 1
-    threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame, lastAccessTime=newLastAccessTime, lastSoundTime=lastSoundTime, currentThread=currentThread: updateFrames(chatFrame, responseFrame, lastAccessTime, lastSoundTime, currentThread)).start()
+    threading.Timer(1, lambda chatFrame=chatFrame, responseFrame=responseFrame,
+                    lastAccessTime=newLastAccessTime,
+                    lastSoundTime=lastSoundTime, currentThread=currentThread:
+                        updateFrames(chatFrame, responseFrame, lastAccessTime,
+                                     lastSoundTime, currentThread)).start()
+
 
 def runGui(DEBUG, currentThread):
     globals()["api"] = __import__('api')
@@ -60,18 +70,17 @@ def runGui(DEBUG, currentThread):
 
     style = ttk.Style()
 
-
     borderImage = tk.PhotoImage("borderImage", file='messageBox.png')
     style.element_create("RoundedFrame",
-                 "image", borderImage,
-                ("focus", borderImage),
-                 border=16, sticky="nsew")
-    style.layout("RoundedFrame",
-         [("RoundedFrame", {"sticky": "nsew"})])
+                         "image", borderImage,
+                         ("focus", borderImage),
+                         border=16, sticky="nsew")
+    style.layout("RoundedFrame", [("RoundedFrame", {"sticky": "nsew"})])
 
     minWidthChatFrame = 270
     minWidthResponseFrame = int(4*minWidthChatFrame/3)
-    root.minsize(minWidthChatFrame+minWidthResponseFrame, (minWidthChatFrame+minWidthResponseFrame)//2)
+    root.minsize(minWidthChatFrame+minWidthResponseFrame,
+                 (minWidthChatFrame+minWidthResponseFrame)//2)
     chatFrame = ChatFrame(root, 0, minWidthChatFrame)
     chatFrame.grid(row=0, column=0, sticky='nsew')
     responseFrame = ResponseFrame(root, minWidthResponseFrame, api)
@@ -88,6 +97,7 @@ def runGui(DEBUG, currentThread):
         except UnicodeDecodeError:
             pass
 
+
 class GuiThread(threading.Thread):
 
     def __init__(self, name='GuiThread'):
@@ -99,6 +109,7 @@ class GuiThread(threading.Thread):
 
     def stopThread(self):
         self._stopevent.set()
+
 
 if __name__ == '__main__':
     runGui(1)
