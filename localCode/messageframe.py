@@ -81,93 +81,19 @@ class MessageFrame(VerticalScrolledFrame):
         self.checkScroll(top, bottom)
         self.canvas.yview_moveto(self.interior.winfo_reqheight())
 
-    # Add the chat's messages to the MessageFrame as MessageBubbles
-    # A lock is required here since both changing the chat and the constant frame updates can add messages
-    # This can result in two copies of certain messages appearing.
-    def addMessages(self, chat):
-        self.lock.acquire()
-        if chat.chatId == self.master.currentChat.chatId:
-            chat._loadMessages()
-            messageDict = chat.getMessages()
+    def needSenderLabel(self, chat, message, prevMessage):
+        # Need slightly more complex logic for when to use sender labels
+        # (label showing who the sender is)
+        # addLabel is True iff
+        # 1) This is a group message
+        # 2) The sender of this message is not the same as the last sender
+        # 3) The sender of the message is not me
 
-            # For each message in messageDict
-            # Update the message bubble if it exists
-            # Add a new one if it does not exist
-            subList = list(messageDict.keys())[-self.messageLimit:]
-
-            lastFromMeId = -1
-            for i in reversed(subList):
-                if messageDict[i].isFromMe:
-                    lastFromMeId = messageDict[i].rowid
-                    break
-
-            (top, bottom) = self.vscrollbar.get()
-            for i in range(len(subList)):
-                messageId = subList[i]
-                if messageId not in self.messageBubbles:
-                    allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
-                    prevMessage = (messageDict[subList[i-1]] if (i-1) in
-                                   range(len(subList)) else None)
-
-                    # Need slightly more complex logic for when to use sender labels (label showing who the sender is)
-                    # addLabel is True iff
-                    # 1) This is a group message
-                    # 2) The sender of this message is not the same as the last sender
-                    # 3) The sender of the message is not me
-
-                    addLabel = False
-
-                    if chat.isGroup():
-                        if prevMessage is None or prevMessage.handleId != messageDict[messageId].handleId:
-                            if not messageDict[messageId].isFromMe:
-                                addLabel = True
-
-                    if (self.needTimeLabel(messageDict[messageId],
-                                           prevMessage)):
-                        timeLabel = tk.Label(self.interior,
-                                             text=getTimeText(messageDict[messageId].date))
-                        timeLabel.pack()
-
-                    # Need to add a read receipt iff
-                    # 1) The chat is not a group chat
-                    # 2) The message was sent by me
-                    # 3) The message is an iMessage
-                    # 4) There is no later message than this one sent by me
-                    addReadReceipt = False
-                    if (not chat.isGroup() and
-                            messageDict[messageId].isFromMe and
-                            messageDict[messageId].isiMessage and
-                            messageId == lastFromMeId):
-                        addReadReceipt = True
-                        if self.readReceiptMessageId is not None and self.readReceiptMessageId in self.messageBubbles:
-                            self.messageBubbles[self.readReceiptMessageId].removeReadReceipt()
-                        self.readReceiptMessageId = messageId
-
-                    if messageDict[messageId].attachment is not None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
-                        msg = ImageMessageBubble(self.interior, messageId, chat, i, addLabel, addReadReceipt)
-                    else:
-                        msg = TextMessageBubble(self.interior, messageId, chat, i, addLabel, addReadReceipt)
-                    if messageDict[messageId].isFromMe:
-                        msg.pack(anchor=tk.E, expand=tk.FALSE)
-                    else:
-                        msg.pack(anchor=tk.W, expand=tk.FALSE)
-                    # If this message is replacing a temporary message, get rid of that old message
-                    if 'removeTemp' in messageDict[messageId].attr:
-                        self.messageBubbles[messageDict[messageId].attr['removeTemp']].destroy()
-                        del self.messageBubbles[messageDict[messageId].attr['removeTemp']]
-                    self.messageBubbles[messageId] = msg
-                else:
-                    self.messageBubbles[messageId].update()
-            self.lock.release()
-            if bottom >= 0.99:
-                self.canvas.update()
-                self.canvas.yview_moveto(self.interior.winfo_reqheight())
-            if self.messageLimit > len(list(messageDict.keys())):
-                return True
-            return False
-        else:
-            self.lock.release()
-            return None
+        if chat.isGroup():
+            if prevMessage is None or prevMessage.handleId != message.handleId:
+                if not message.isFromMe:
+                    addLabel = True
+        return False
 
     def needTimeLabel(self, message, previousMessage):
         # A time label should be added iff
@@ -186,6 +112,93 @@ class MessageFrame(VerticalScrolledFrame):
         if timeDiff > timedelta(minutes=15):
             return True
 
+        return False
+
+    def createTimeLabel(self, messageDate):
+        timeLabel = tk.Label(self.interior,
+                             text=getTimeText(messageDate))
+        timeLabel.pack()
+
+    def needReadReceipt(self, chat, message, lastFromMeId):
+        # Need to add a read receipt iff
+        # 1) The chat is not a group chat
+        # 2) The message was sent by me
+        # 3) The message is an iMessage
+        # 4) There is no later message than this one sent by me
+        if (not chat.isGroup() and message.isFromMe and message.isiMessage and
+                message.rowid == lastFromMeId):
+            return True
+        return False
+
+    def removeOldReadReceipt(self):
+        if (self.readReceiptMessageId is not None and
+                self.readReceiptMessageId in self.messageBubbles):
+            self.messageBubbles[self.readReceiptMessageId].removeReadReceipt()
+
+    # Add the chat's messages to the MessageFrame as MessageBubbles
+    # A lock is required here since both changing the chat and the constant frame updates can add messages
+    # This can result in two copies of certain messages appearing.
+    def addMessages(self, chat):
+        self.lock.acquire()
+        if chat.chatId != self.master.currentChat.chatId:
+            self.lock.release()
+            return None
+
+        chat._loadMessages()
+        messageDict = chat.getMessages()
+
+        # For each message in messageDict
+        # Update the message bubble if it exists
+        # Add a new one if it does not exist
+        subList = list(messageDict.keys())[-self.messageLimit:]
+
+        lastFromMeId = -1
+        for i in reversed(subList):
+            if messageDict[i].isFromMe:
+                lastFromMeId = messageDict[i].rowid
+                break
+
+        (top, bottom) = self.vscrollbar.get()
+        for i in range(len(subList)):
+            messageId = subList[i]
+            if messageId not in self.messageBubbles:
+                allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
+                prevMessage = (messageDict[subList[i-1]] if (i-1) in
+                               range(len(subList)) else None)
+
+                addLabel = self.needSenderLabel(chat, messageDict[messageId],
+                                           prevMessage)
+
+                if (self.needTimeLabel(messageDict[messageId], prevMessage)):
+                    self.createTimeLabel(messageDict[messageId].date)
+
+                addReceipt = self.needReadReceipt(chat, messageDict[messageId],
+                                                  lastFromMeId)
+                if addReceipt:
+                    self.removeOldReadReceipt()
+                    self.readReceiptMessageId = messageId
+
+                if messageDict[messageId].attachment is not None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
+                    msg = ImageMessageBubble(self.interior, messageId, chat, i, addLabel, addReceipt)
+                else:
+                    msg = TextMessageBubble(self.interior, messageId, chat, i, addLabel, addReceipt)
+                if messageDict[messageId].isFromMe:
+                    msg.pack(anchor=tk.E, expand=tk.FALSE)
+                else:
+                    msg.pack(anchor=tk.W, expand=tk.FALSE)
+                # If this message is replacing a temporary message, get rid of that old message
+                if 'removeTemp' in messageDict[messageId].attr:
+                    self.messageBubbles[messageDict[messageId].attr['removeTemp']].destroy()
+                    del self.messageBubbles[messageDict[messageId].attr['removeTemp']]
+                self.messageBubbles[messageId] = msg
+            else:
+                self.messageBubbles[messageId].update()
+        self.lock.release()
+        if bottom >= 0.99:
+            self.canvas.update()
+            self.canvas.yview_moveto(self.interior.winfo_reqheight())
+        if self.messageLimit > len(list(messageDict.keys())):
+            return True
         return False
 
     # This function fixes the scrollbar for the message frame
