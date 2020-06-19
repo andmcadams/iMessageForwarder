@@ -223,6 +223,7 @@ class Reaction(Received):
     def reactionType(self):
         return self.attr['associated_message_type']
 
+
 class ChatDeletedException(Exception):
     pass
 
