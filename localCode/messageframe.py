@@ -272,11 +272,11 @@ class MessageBubble(tk.Frame):
     def initBody(self):
         # On right click, open the menu at the location of the mouse
         if LINUX:
-            self.messageInterior.bind("<Button-3>", lambda event: self.onRightClick(event))
-            self.body.bind("<Button-3>", lambda event: self.onRightClick(event))
+            self.messageInterior.bind("<Button-3>", self.onRightClick)
+            self.body.bind("<Button-3>", self.onRightClick)
         elif MACOS:
-            self.messageInterior.bind("<Button-2>", lambda event: self.onRightClick(event))
-            self.body.bind("<Button-2>", lambda event: self.onRightClick(event))
+            self.messageInterior.bind("<Button-2>", self.onRightClick)
+            self.body.bind("<Button-2>", self.onRightClick)
         self.body.grid(row=1)
 
         stickyValue = 'e' if self.chat.getMessages()[self.messageId].isFromMe else 'w'
