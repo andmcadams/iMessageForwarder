@@ -128,8 +128,9 @@ class MessageFrame(VerticalScrolledFrame):
         #       2) The message is an iMessage
         #       3) There is no later message than this one sent by me
 
-        if (message.isFromMe and ((not chat.isGroup() and  message.isiMessage
-                and message.rowid == lastFromMeId) or message.rowid < 0)):
+        if (message.isFromMe and ((not chat.isGroup() and message.isiMessage
+                                   and message.rowid == lastFromMeId)
+                                  or message.rowid < 0)):
             return True
         return False
 
@@ -140,7 +141,8 @@ class MessageFrame(VerticalScrolledFrame):
 
     def addMessage(self, chat, i, message, prevMessage, lastFromMeId):
 
-        allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
+        allowedTypes = ['public.jpeg', 'public.png', 'public.gif',
+                        'com.compuserve.gif']
 
         addLabel = self.needSenderLabel(chat, message, prevMessage)
 
@@ -152,10 +154,13 @@ class MessageFrame(VerticalScrolledFrame):
             self.removeOldReadReceipt()
             self.readReceiptMessageId = message.rowid
 
-        if message.attachment is not None and message.attachment.attr['uti'] in allowedTypes:
-            msg = ImageMessageBubble(self.interior, message.rowid, chat, i, addLabel, addReceipt)
+        if (message.attachment is not None and
+                message.attachment.attr['uti'] in allowedTypes):
+            msg = ImageMessageBubble(self.interior, message.rowid, chat,
+                                     i, addLabel, addReceipt)
         else:
-            msg = TextMessageBubble(self.interior, message.rowid, chat, i, addLabel, addReceipt)
+            msg = TextMessageBubble(self.interior, message.rowid, chat, i,
+                                    addLabel, addReceipt)
         if message.isFromMe:
             msg.pack(anchor=tk.E, expand=tk.FALSE)
         else:
@@ -297,22 +302,20 @@ class MessageBubble(tk.Frame):
         messageMenu.add_command(label="Question", command=react(2005))
         messageMenu.tk_popup(event.x_root, event.y_root)
 
-    def updateReaction(self, message, handle, reactionId):
-        if message.reactions[handle][reactionId].attr['associated_message_type'] < 3000:
-            if reactionId not in self.reactions[handle]:
-                self.reactions[handle][reactionId] = ReactionBubble(self,
-                        message.reactions[handle][reactionId].attr['associated_message_type'])
+    def updateReaction(self, message, reaction, reactionBubble):
+        if reaction.isAddition:
+            if reactionBubble is None:
+                reactionBubble = ReactionBubble(self, reaction.reactionType)
                 if message.isFromMe:
-                    self.reactions[handle][reactionId].grid(row=1, sticky='w')
+                    reactionBubble.grid(row=1, sticky='w')
                 else:
-                    self.reactions[handle][reactionId].grid(row=1, sticky='e')
+                    reactionBubble.grid(row=1, sticky='e')
                 self.body.configure(bg='red')
-        elif message.reactions[handle][reactionId].attr['associated_message_type'] >= 3000:
-            if reactionId in self.reactions[handle]:
-                self.reactions[handle][reactionId].destroy()
-                del self.reactions[handle][reactionId]
+        elif not reaction.isAddition:
+            if reactionBubble is not None:
+                reactionBubble.destroy()
+                del reactionBubble
                 self.body.configure(bg='green')
-
 
     def update(self):
         # Text probably won't change but this is nice for initially populating.
@@ -322,7 +325,8 @@ class MessageBubble(tk.Frame):
 
         if self.readReceipt:
             if 'date_read' in message.attr and message.attr['date_read'] != 0:
-                self.readReceipt.configure(text='Read at {}'.format(getTimeText(message.attr['date_read'])))
+                timeText = getTimeText(message.attr['date_read'])
+                self.readReceipt.configure(text='Read at {}'.format(timeText))
             elif message.isDelivered:
                 self.readReceipt.configure(text='Delivered')
             else:
@@ -331,8 +335,12 @@ class MessageBubble(tk.Frame):
         for handle in message.reactions:
             if handle not in self.reactions:
                 self.reactions[handle] = {}
-            for r in message.reactions[handle]:
-                self.updateReaction(message, handle, r)
+            for reactionId in message.reactions[handle]:
+                reaction = message.reactions[handle][reactionId]
+                reactionBubble = (self.reactions[handle][reactionId] if
+                                  reactionId in self.reactions[handle] else
+                                  None)
+                self.updateReaction(message, reaction, reactionBubble)
 
     def removeReadReceipt(self):
         # Don't delete read receipts off of temporary messages
