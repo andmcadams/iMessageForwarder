@@ -294,6 +294,23 @@ class MessageBubble(tk.Frame):
         messageMenu.add_command(label="Question", command=react(2005))
         messageMenu.tk_popup(event.x_root, event.y_root)
 
+    def updateReaction(self, message, handle, reactionId):
+        if message.reactions[handle][reactionId].attr['associated_message_type'] < 3000:
+            if reactionId not in self.reactions[handle]:
+                self.reactions[handle][reactionId] = ReactionBubble(self,
+                        message.reactions[handle][reactionId].attr['associated_message_type'])
+                if message.isFromMe:
+                    self.reactions[handle][reactionId].grid(row=1, sticky='w')
+                else:
+                    self.reactions[handle][reactionId].grid(row=1, sticky='e')
+                self.body.configure(bg='red')
+        elif message.reactions[handle][reactionId].attr['associated_message_type'] >= 3000:
+            if reactionId in self.reactions[handle]:
+                self.reactions[handle][reactionId].destroy()
+                del self.reactions[handle][reactionId]
+                self.body.configure(bg='green')
+
+
     def update(self):
         # Text probably won't change but this is nice for initially populating.
         message = self.chat.getMessages()[self.messageId]
@@ -312,19 +329,7 @@ class MessageBubble(tk.Frame):
             if handle not in self.reactions:
                 self.reactions[handle] = {}
             for r in message.reactions[handle]:
-                if message.reactions[handle][r].attr['associated_message_type'] < 3000:
-                    if r not in self.reactions[handle]:
-                        self.reactions[handle][r] = ReactionBubble(self, message.reactions[handle][r].attr['associated_message_type'])
-                        if message.isFromMe:
-                            self.reactions[handle][r].grid(row=1, sticky='w')
-                        else:
-                            self.reactions[handle][r].grid(row=1, sticky='e')
-                        self.body.configure(bg='red')
-                elif message.reactions[handle][r].attr['associated_message_type'] >= 3000:
-                    if r in self.reactions[handle]:
-                        self.reactions[handle][r].destroy()
-                        del self.reactions[handle][r]
-                        self.body.configure(bg='green')
+                self.updateReaction(message, handle, r)
 
     def removeReadReceipt(self):
         # Don't delete read receipts off of temporary messages
