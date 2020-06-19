@@ -215,6 +215,13 @@ class Reaction(Received):
         self.associatedMessageId = associatedMessageId
         self.handleName = handleName
 
+    @property
+    def isAddition(self):
+        return self.attr['associated_message_type'] < 3000
+
+    @property
+    def reactionType(self):
+        return self.attr['associated_message_type']
 
 class ChatDeletedException(Exception):
     pass
