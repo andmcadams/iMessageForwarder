@@ -135,8 +135,38 @@ class MessageFrame(VerticalScrolledFrame):
                 self.readReceiptMessageId in self.messageBubbles):
             self.messageBubbles[self.readReceiptMessageId].removeReadReceipt()
 
+    def addMessage(self, chat, i, message, prevMessage, lastFromMeId):
+
+        allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
+
+        addLabel = self.needSenderLabel(chat, message, prevMessage)
+
+        if (self.needTimeLabel(message, prevMessage)):
+            self.createTimeLabel(message.date)
+
+        addReceipt = self.needReadReceipt(chat, message, lastFromMeId)
+        if addReceipt:
+            self.removeOldReadReceipt()
+            self.readReceiptMessageId = message.rowid
+
+        if message.attachment is not None and message.attachment.attr['uti'] in allowedTypes:
+            msg = ImageMessageBubble(self.interior, message.rowid, chat, i, addLabel, addReceipt)
+        else:
+            msg = TextMessageBubble(self.interior, message.rowid, chat, i, addLabel, addReceipt)
+        if message.isFromMe:
+            msg.pack(anchor=tk.E, expand=tk.FALSE)
+        else:
+            msg.pack(anchor=tk.W, expand=tk.FALSE)
+        # If this message is replacing a temporary message,
+        # get rid of that old message.
+        if 'removeTemp' in message.attr:
+            self.messageBubbles[message.attr['removeTemp']].destroy()
+            del self.messageBubbles[message.attr['removeTemp']]
+        self.messageBubbles[message.rowid] = msg
+
     # Add the chat's messages to the MessageFrame as MessageBubbles
-    # A lock is required here since both changing the chat and the constant frame updates can add messages
+    # A lock is required here since both changing the chat and the constant
+    # frame updates can add messages.
     # This can result in two copies of certain messages appearing.
     def addMessages(self, chat):
         self.lock.acquire()
@@ -162,35 +192,10 @@ class MessageFrame(VerticalScrolledFrame):
         for i in range(len(subList)):
             messageId = subList[i]
             if messageId not in self.messageBubbles:
-                allowedTypes = ['public.jpeg', 'public.png', 'public.gif', 'com.compuserve.gif']
                 prevMessage = (messageDict[subList[i-1]] if (i-1) in
                                range(len(subList)) else None)
-
-                addLabel = self.needSenderLabel(chat, messageDict[messageId],
-                                           prevMessage)
-
-                if (self.needTimeLabel(messageDict[messageId], prevMessage)):
-                    self.createTimeLabel(messageDict[messageId].date)
-
-                addReceipt = self.needReadReceipt(chat, messageDict[messageId],
-                                                  lastFromMeId)
-                if addReceipt:
-                    self.removeOldReadReceipt()
-                    self.readReceiptMessageId = messageId
-
-                if messageDict[messageId].attachment is not None and messageDict[messageId].attachment.attr['uti'] in allowedTypes:
-                    msg = ImageMessageBubble(self.interior, messageId, chat, i, addLabel, addReceipt)
-                else:
-                    msg = TextMessageBubble(self.interior, messageId, chat, i, addLabel, addReceipt)
-                if messageDict[messageId].isFromMe:
-                    msg.pack(anchor=tk.E, expand=tk.FALSE)
-                else:
-                    msg.pack(anchor=tk.W, expand=tk.FALSE)
-                # If this message is replacing a temporary message, get rid of that old message
-                if 'removeTemp' in messageDict[messageId].attr:
-                    self.messageBubbles[messageDict[messageId].attr['removeTemp']].destroy()
-                    del self.messageBubbles[messageDict[messageId].attr['removeTemp']]
-                self.messageBubbles[messageId] = msg
+                self.addMessage(chat, i, messageDict[messageId], prevMessage,
+                                lastFromMeId)
             else:
                 self.messageBubbles[messageId].update()
         self.lock.release()
