@@ -90,8 +90,8 @@ class MessageFrame(VerticalScrolledFrame):
         # 3) The sender of the message is not me
 
         if chat.isGroup():
-            if prevMessage is None or prevMessage.handleId != message.handleId:
-                if not message.isFromMe:
+            if not message.isFromMe:
+                if prevMessage is None or prevMessage.handleId != message.handleId:
                     return True
         return False
 
@@ -105,10 +105,9 @@ class MessageFrame(VerticalScrolledFrame):
         if previousMessage is None:
             return True
 
-        timeDiff = (datetime.fromtimestamp(message.date,
-                    tz=datetime.now().astimezone().tzinfo)
-                    - datetime.fromtimestamp(previousMessage.date,
-                                             tz=datetime.now().astimezone().tzinfo))
+        tz = datetime.now().astimezone().tzinfo
+        timeDiff = (datetime.fromtimestamp(message.date, tz=tz)
+                    - datetime.fromtimestamp(previousMessage.date, tz=tz))
         if timeDiff > timedelta(minutes=15):
             return True
 
@@ -121,12 +120,16 @@ class MessageFrame(VerticalScrolledFrame):
 
     def needReadReceipt(self, chat, message, lastFromMeId):
         # Need to add a read receipt iff
-        # 1) The chat is not a group chat
-        # 2) The message was sent by me
-        # 3) The message is an iMessage
-        # 4) There is no later message than this one sent by me
-        if (not chat.isGroup() and message.isFromMe and message.isiMessage and
-                message.rowid == lastFromMeId):
+        # 1) The message is from me.
+        # AND one of the two following:
+        #   a) The message is currently being sent (rowid < 0)
+        #   b) All of the following:
+        #       1) The chat is not a group chat
+        #       2) The message is an iMessage
+        #       3) There is no later message than this one sent by me
+
+        if (message.isFromMe and ((not chat.isGroup() and  message.isiMessage
+                and message.rowid == lastFromMeId) or message.rowid < 0)):
             return True
         return False
 
