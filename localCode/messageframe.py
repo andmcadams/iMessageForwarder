@@ -92,7 +92,7 @@ class MessageFrame(VerticalScrolledFrame):
         if chat.isGroup():
             if prevMessage is None or prevMessage.handleId != message.handleId:
                 if not message.isFromMe:
-                    addLabel = True
+                    return True
         return False
 
     def needTimeLabel(self, message, previousMessage):
