@@ -4,10 +4,11 @@ from messageframe import MessageFrame
 from recipientframe import RecipientFrame
 from sendframe import SendFrame
 
+
 class ResponseFrame(tk.Frame):
     def __init__(self, parent, minWidth, api, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
-        # This will eventually contain a RecipientFrame, MessageFrame, and a SendFrame
+
         self.messageFrame = MessageFrame(self, 0, minWidth)
         self.messageFrame.grid(row=1, column=0, sticky='nsew')
 
@@ -35,4 +36,3 @@ class ResponseFrame(tk.Frame):
         if chatToCompare.chatId == self.currentChat.chatId:
             return True
         return False
-

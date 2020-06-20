@@ -3,11 +3,13 @@ import threading
 from datetime import datetime, timedelta
 from verticalscrolledframe import VerticalScrolledFrame
 
+
 class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
-        VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
+        VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth,
+                                       *args, **kw)
         self.chatButtons = []
-        self.chats = {} 
+        self.chats = {}
         self.lock = threading.Lock()
 
     def addChat(self, chat, responseFrame):
@@ -33,20 +35,26 @@ class ChatFrame(VerticalScrolledFrame):
             chatButton.isVisible = True
         self._configure_scrollbars()
 
+
 class ChatButton(tk.Frame):
     def __init__(self, parent, chat, responseFrame, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
 
         self.chat = chat
         self.responseFrame = responseFrame
-        self.lastMessageId = chat.getMostRecentMessage().attr['ROWID']
-        self.lastMessageTimeValue = self.chat.getMostRecentMessage().attr['date']
+        self.lastMessageId = chat.getMostRecentMessage().rowid
+        self.lastMessageTimeValue = self.chat.getMostRecentMessage().date
         self.isVisible = False
 
         self.picture = tk.Label(self, height=1, width=1, text='picture')
-        self.number = tk.Label(self, height=1, width=1, anchor='nw', justify='left', font=("helvetica", 10), wraplength=0)
-        self.lastMessage = tk.Label(self, height=2, width=1, anchor='nw', justify='left', font=("helvetica", 10), wraplength=200)
-        self.lastMessageTime = tk.Label(self, height=1, width=1, anchor='se', justify='right', font=("helvetica", 8))
+        self.number = tk.Label(self, height=1, width=1, anchor='nw',
+                               justify='left', font=("helvetica", 10),
+                               wraplength=0)
+        self.lastMessage = tk.Label(self, height=2, width=1, anchor='nw',
+                                    justify='left', font=("helvetica", 10),
+                                    wraplength=200)
+        self.lastMessageTime = tk.Label(self, height=1, width=1, anchor='se',
+                                        justify='right', font=("helvetica", 8))
         # Populate the above Label widgets
         self.update()
 
@@ -62,57 +70,63 @@ class ChatButton(tk.Frame):
         self.lastMessage.grid(row=1, column=1, columnspan=2, sticky='nsew')
         self.lastMessageTime.grid(row=0, column=2, sticky='nsew')
 
-
         self.columnconfigure(0, weight=2)
         self.columnconfigure(1, weight=5)
         self.columnconfigure(2, weight=2)
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
 
-        # Set up bindings so that clicking on any part of the chat button will open up the chat.
-        onClick = lambda event, chat=chat: responseFrame.changeChat(chat)
-        self.bind('<Button-1>', onClick)
-        self.picture.bind('<Button-1>', onClick)
-        self.number.bind('<Button-1>', onClick)
-        self.lastMessage.bind('<Button-1>', onClick)
-        self.lastMessageTime.bind('<Button-1>', onClick)
+        # Clicking on any part of the chat button will open up the chat.
+        def onClickLambda(chat):
+            return lambda event, chat=chat: responseFrame.changeChat(chat)
+        self.bind('<Button-1>', onClickLambda(chat))
+        self.picture.bind('<Button-1>', onClickLambda(chat))
+        self.number.bind('<Button-1>', onClickLambda(chat))
+        self.lastMessage.bind('<Button-1>', onClickLambda(chat))
+        self.lastMessageTime.bind('<Button-1>', onClickLambda(chat))
 
+    # Use lstrip to remove any leading newlines, which could cause some issues.
+    # Use rstrip to remove awkward space between text and ellipsis
     def truncate(self, string, length):
-        # Use lstrip to remove any leading newlines, which could cause some issues.
-        # Note that using lstrip here ONLY affects what the text looks like in the chat button.
-        # Use rstrip to remove awkward space between text and ellipsis in case last char is a space
         if string:
             string = string.lstrip()
-            return (string[:length-3].rstrip() + '...') if len(string) > length else string
+            if len(string) > length:
+                return (string[:length-3].rstrip() + '...')
+            else:
+                return string
         return ''
 
     def getTimeText(self, timeStamp):
         currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
-        msgTime = datetime.fromtimestamp(timeStamp, tz=datetime.now().astimezone().tzinfo)
+        msgTime = datetime.fromtimestamp(timeStamp,
+                                         tz=datetime.now().astimezone().tzinfo)
         if currentTime.date() == msgTime.date():
             timeText = msgTime.strftime('%I:%M %p')
         elif currentTime.date() - timedelta(days=1) == msgTime.date():
             timeText = 'Yesterday'
         else:
-            timeText = msgTime.strftime('%m/%d/%Y')  
-        return timeText  
+            timeText = msgTime.strftime('%m/%d/%Y')
+        return timeText
 
     def update(self):
-        self.lastMessageId = self.chat.getMostRecentMessage().attr['ROWID']
+        self.lastMessageId = self.chat.getMostRecentMessage().rowid
 
         name = self.truncate(self.chat.getName(), 20)
-        text = self.truncate(self.chat.getMostRecentMessage().attr['text'], 50)
-        # TODO 4: Need to grab the type of message and set the text to that. Perhaps this should be implemented on message load.
+        text = self.truncate(self.chat.getMostRecentMessage().text, 50)
+        # TODO 4: Need to grab the type of message and set the text to that.
+        # Perhaps this should be implemented on message load.
         if text == '￼':
             text = 'Attachment: 1 Image'
-        timeText = self.getTimeText(self.chat.getMostRecentMessage().attr['date'])
+        timeText = self.getTimeText(self.chat.getMostRecentMessage().date)
 
         self.number.configure(text=name)
         self.lastMessage.configure(text=text)
         self.lastMessageTime.configure(text=timeText)
         tempLastMessageTimeValue = self.lastMessageTimeValue
         lastMsg = self.chat.getMostRecentMessage()
-        self.lastMessageTimeValue = lastMsg.attr['date']
-        if tempLastMessageTimeValue != self.lastMessageTimeValue and lastMsg.attr['is_from_me'] == 0 and self.responseFrame.isCurrentChat(self.chat) == False:
+        self.lastMessageTimeValue = lastMsg.date
+        if (tempLastMessageTimeValue != self.lastMessageTimeValue and
+                lastMsg.attr['is_from_me'] == 0 and
+                self.responseFrame.isCurrentChat(self.chat) is False):
             return True
         return False

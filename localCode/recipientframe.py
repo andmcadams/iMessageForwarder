@@ -1,6 +1,7 @@
 import tkinter as tk
 import threading
 
+
 class RecipientFrame(tk.Frame):
     def __init__(self, parent, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
@@ -14,7 +15,6 @@ class RecipientFrame(tk.Frame):
         self.details = None
 
         self.columnconfigure(0, weight=1)
-
 
     def addRecipients(self, chat):
         self.lock.acquire()
@@ -37,6 +37,7 @@ class RecipientFrame(tk.Frame):
             self.labelFrame.addRecipients(chat)
         self.lock.release()
 
+
 class RecipientLabelFrame(tk.Frame):
 
     def __init__(self, parent, chat, *args, **kw):
@@ -52,18 +53,22 @@ class RecipientLabelFrame(tk.Frame):
 
     def onClick(self, event, chat):
         menu = tk.Menu(self, tearoff=0)
-        # Apple's version adds one to the number of members to include yourself.
+        # Apple's version adds one to the number of members to
+        # include yourself.
         # This seems a bit counterintuitive honestly, so I don't do that here.
         if chat.isGroup():
             if chat.isiMessage():
-                menu.add_command(label='Name: {}'.format(chat.attr['display_name'] if chat.attr['display_name'] else 'Add group name...'))
-            menu.add_command(label='{} members'.format(len(chat.recipientList)))
+                displayName = chat.attr['display_name']
+                menu.add_command(label='Name: {}'.format(displayName if
+                                 displayName else 'Add group name...'))
+            menu.add_command(label='{} members'
+                             .format(len(chat.recipientList)))
         # Single chats lack the message about the number of members.
         else:
-            pass 
+            pass
         for r in chat.recipientList:
             menu.add_command(label=r)
-        if chat.isGroup()  and chat.isiMessage():
+        if chat.isGroup() and chat.isiMessage():
             menu.add_command(label='Add Member')
         menu.add_checkbutton(label='Do Not Disturb')
         if chat.isGroup() and chat.isiMessage():
@@ -73,14 +78,15 @@ class RecipientLabelFrame(tk.Frame):
         menu.tk_popup(event.x_root, event.y_root)
 
     def addRecipients(self, chat):
-        # Fix resizing of label,
-        # limit number of lines. Not hard to do if I hardcode the font size (17) to adjust height.
-        # Seems inelegant, will return later.
-        self.bind('<Configure>', lambda event, chat=chat: self.resizeRecipients(event, chat))
+        self.bind('<Configure>',
+                  lambda event: self.resizeRecipients(event, chat))
 
-        # These should do different things, but just let them do the same thing for now.
-        self.master.andMore.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
-        self.master.details.bind("<Button-1>", lambda event, chat=chat: self.onClick(event, chat))
+        # These should do different things, but just let them do
+        # the same thing for now.
+        self.master.andMore.bind("<Button-1>",
+                                 lambda event: self.onClick(event, chat))
+        self.master.details.bind("<Button-1>",
+                                 lambda event: self.onClick(event, chat))
 
         recipLabels = {
                 'top': [],
@@ -119,12 +125,14 @@ class RecipientLabelFrame(tk.Frame):
                 self.bottomSize += w
                 recipLabels['bottom'].append(r)
             else:
-                # This is going to mess up the previously calculated values, resulting in another run
+                # This is going to mess up the previously calculated values,
+                # resulting in another run.
                 self.hiddenLabels.append(r)
                 andMoreFlag = True
 
         if andMoreFlag:
-            self.master.andMore.configure(text='and {} more...'.format(len(chat.recipientList)-i))
+            andMoreText = 'and {} more...'.format(len(chat.recipientList)-i)
+            self.master.andMore.configure(text=andMoreText)
             # self.master.andMore.update()
 
         for r in recipLabels['top']:
@@ -143,7 +151,8 @@ class RecipientLabelFrame(tk.Frame):
                 self.bottomSize -= b.winfo_reqwidth()
                 self.bottomFrame.removeLabel(b)
                 self.topFrame.addLabel(b)
-            # If we can't move the next one up, don't move any following ones up.
+            # If we can't move the next one up, don't move any
+            # following ones up.
             else:
                 break
 
@@ -162,19 +171,20 @@ class RecipientLabelFrame(tk.Frame):
     def canAllFit(self, width):
         topSize = self.topSize
         bottomSize = self.bottomSize
-        for l in self.bottomFrame.labels:
-            if topSize + l.winfo_reqwidth() <= width:
-                topSize += l.winfo_reqwidth()
-                bottomSize -= l.winfo_reqwidth()
-        for l in self.hiddenLabels:
-            if bottomSize + l.winfo_reqwidth() <= width:
-                bottomSize += l.winfo_reqwidth()
+        for label in self.bottomFrame.labels:
+            if topSize + label.winfo_reqwidth() <= width:
+                topSize += label.winfo_reqwidth()
+                bottomSize -= label.winfo_reqwidth()
+        for label in self.hiddenLabels:
+            if bottomSize + label.winfo_reqwidth() <= width:
+                bottomSize += label.winfo_reqwidth()
             else:
                 return False
         return True
 
     # Move around recipient labels in order to meet sizing requirements.
-    # Keep in mind that both the "and more" and "Details" labels should be updated at this point.
+    # Keep in mind that both the "and more" and "Details" labels should be
+    # updated at this point.
     def resizeRecipients(self, event, chat):
         self.master.lock.acquire()
 
@@ -210,7 +220,7 @@ class RecipientLabelFrame(tk.Frame):
                 if event.width >= self.topSize:
                     break
         bottomChildren = reversed(self.bottomFrame.labels)
-        
+
         if len(self.bottomFrame.labels) != 1 and event.width < self.bottomSize:
             for b in bottomChildren:
                 self.bottomSize -= b.winfo_reqwidth()
@@ -219,20 +229,26 @@ class RecipientLabelFrame(tk.Frame):
                 if event.width >= self.bottomSize:
                     break
 
-        # Should not be "Are all children displayed", but rather, "can all children be displayed without the tag?"
-        # Might want to do this by creating all the labels initially, and just packing them as required.
-        if not self.hiddenLabels or self.canAllFit(event.width + self.master.andMore.winfo_reqwidth()):
+        # Should not be "Are all children displayed", but rather, "can all
+        # children be displayed without the tag?"
+        # Might want to do this by creating all the labels initially,
+        # and just packing them as required.
+        reqwidth = self.master.andMore.winfo_reqwidth()
+        if not self.hiddenLabels or self.canAllFit(event.width + reqwidth):
             self.master.andMore.configure(text='')
-            self.moveFromBottomToTop(event.width + self.master.andMore.winfo_reqwidth())
-            self.moveFromMissingToBottom(chat, event.width + self.master.andMore.winfo_reqwidth())
+            self.moveFromBottomToTop(event.width + reqwidth)
+            self.moveFromMissingToBottom(chat, event.width + reqwidth)
         else:
-            self.master.andMore.configure(text='and {} more...'.format(len(self.hiddenLabels)))
+            self.master.andMore.configure(text='and {} more...'
+                                          .format(len(self.hiddenLabels)))
 
         if self.bottomSize == 0:
             self.bottomFrame.configure(height=1)
         elif self.bottomFrame.labels:
-            self.bottomFrame.configure(height=self.bottomFrame.labels[0].winfo_reqheight())
+            self.bottomFrame.configure(height=self.bottomFrame
+                                       .labels[0].winfo_reqheight())
         self.master.lock.release()
+
 
 class RecipientLabelSubframe(tk.Frame):
 
@@ -257,19 +273,21 @@ class RecipientLabelSubframe(tk.Frame):
         label.pack_forget()
         self.labels.remove(label)
 
+
 class RecipientLabel(tk.Label):
     def __init__(self, parent, text, *args, **kw):
         tk.Label.__init__(self, parent, *args, **kw)
         self.fullText = text
 
     def resizeLabel(self, isLast, maxSize):
-        self.configure(text=self.fullText + (',' if isLast == False else ' '))
+        self.configure(text=self.fullText + (',' if isLast is False else ' '))
         if self.winfo_reqwidth() <= maxSize:
             return
         div = 2
         currentLen = len(self.fullText)//2
         while len(self.fullText)//div != 0:
-            self.configure(text=self.fullText[0:currentLen] + '...' + (',' if isLast == False else ' '))
+            self.configure(text=self.fullText[0:currentLen] + '...'
+                           + (',' if isLast is False else ' '))
             div *= 2
             if self.winfo_reqwidth() > maxSize:
                 currentLen -= len(self.fullText)//div
