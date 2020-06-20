@@ -132,9 +132,10 @@ class MessageFrame(VerticalScrolledFrame):
         #       2) The message is an iMessage
         #       3) There is no later message than this one sent by me
 
-        if (message.isFromMe and ((not chat.isGroup() and message.isiMessage
-                                   and message.rowid == lastFromMeId)
-                                  or message.rowid < 0)):
+        if message.isFromMe and message.rowid < 0:
+            return True
+        if (message.isFromMe and not chat.isGroup() and message.isiMessage
+                and message.rowid == lastFromMeId):
             return True
         return False
 
