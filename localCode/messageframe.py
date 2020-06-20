@@ -12,7 +12,8 @@ from constants import LINUX, MACOS
 
 def getTimeText(timeStamp):
     currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
-    msgTime = datetime.fromtimestamp(timeStamp, tz=datetime.now().astimezone().tzinfo)
+    msgTime = datetime.fromtimestamp(timeStamp,
+                                     tz=datetime.now().astimezone().tzinfo)
     if currentTime.date() == msgTime.date():
         timeText = msgTime.strftime('%-I:%M %p')
     elif currentTime.date() - timedelta(days=1) == msgTime.date():
@@ -24,9 +25,10 @@ def getTimeText(timeStamp):
 
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
-    def __init__(self, parent, minHeight, minWidth, *args, **kw):
-        VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth, *args, **kw)
 
+    def __init__(self, parent, minHeight, minWidth, *args, **kw):
+        VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth,
+                                       *args, **kw)
         self.messageBubbles = {}
         self.canvas.bind('<Configure>', self._configure_messages_canvas)
         self.lock = threading.Lock()
@@ -56,7 +58,8 @@ class MessageFrame(VerticalScrolledFrame):
             self.addedMessages = not hitLimit
             newHeight = self.interior.winfo_reqheight()
 
-            self.canvas.yview_moveto((top*oldHeight+(newHeight-oldHeight))/newHeight)
+            newY = (top*oldHeight+(newHeight-oldHeight))/newHeight
+            self.canvas.yview_moveto(newY)
 
     # To change chats (ie display messages of a new chat)
     # we need to delete all the MessageBubbles of the old chat
@@ -65,8 +68,8 @@ class MessageFrame(VerticalScrolledFrame):
     # This could probably be changed so that there are frames for each chat
     # and when a chat is opened, that frame is lifted. That should help
     # avoid stutter by buffering.
-    # However, this probably needs to follow restricting chats to their first x messages
-    # without scrolling up to avoid consuming too much memory.
+    # However, this probably needs to follow restricting chats to their first x
+    # messages without scrolling up to avoid consuming too much memory.
     def changeChat(self, chat):
         self.addedMessages = False
         for widget in self.interior.winfo_children():
@@ -91,7 +94,8 @@ class MessageFrame(VerticalScrolledFrame):
 
         if chat.isGroup():
             if not message.isFromMe:
-                if prevMessage is None or prevMessage.handleId != message.handleId:
+                if (prevMessage is None or
+                        prevMessage.handleId != message.handleId):
                     return True
         return False
 
@@ -215,11 +219,14 @@ class MessageFrame(VerticalScrolledFrame):
         return False
 
     # This function fixes the scrollbar for the message frame
-    # VSF _configure_scrollbars just adds or removes them based on how much stuff is displayed.
-    # This function first moves the scrollbars to the top, so if changing to a chat with fewer
-    # messages, the messages are in view (winfo_reqheight() won't decrease without this change).
+    # VSF _configure_scrollbars just adds or removes them based on how
+    # much stuff is displayed.
+    # This function first moves the scrollbars to the top, so if changing to a
+    # chat with fewer messages, the messages are in view (winfo_reqheight()
+    # won't decrease without this change).
     # The interior is updated to get the new winfo_reqheight set.
-    # Scrollbars are then moved to the bottom of the canvas so that the most recent messages are showing.
+    # Scrollbars are then moved to the bottom of the canvas so that the
+    # most recent messages are showing.
     def _configure_message_scrollbars(self):
         # self.canvas.yview_moveto(0)
         self._configure_scrollbars()
@@ -251,12 +258,14 @@ class MessageMenu(tk.Menu):
 
 class MessageBubble(tk.Frame):
 
-    def __init__(self, parent, messageId, chat, addLabel, addReadReceipt, *args, **kw):
+    def __init__(self, parent, messageId, chat, addLabel, addReadReceipt,
+                 *args, **kw):
         tk.Frame.__init__(self, parent, padx=4, pady=4, *args, **kw)
 
         self.senderLabel = None
         if addLabel is True:
-            self.senderLabel = tk.Label(self, height=1, text=chat.getMessages()[messageId].handleName)
+            senderName = chat.getMessages()[messageId].handleName
+            self.senderLabel = tk.Label(self, height=1, text=senderName)
         self.messageInterior = ttk.Frame(self, padding=6)
         self.reactions = {}
         # Store a pointer to message object, so when this object is updated
@@ -279,7 +288,8 @@ class MessageBubble(tk.Frame):
             self.body.bind("<Button-2>", self.onRightClick)
         self.body.grid(row=1)
 
-        stickyValue = 'e' if self.chat.getMessages()[self.messageId].isFromMe else 'w'
+        stickyValue = ('e' if self.chat.getMessages()[self.messageId].isFromMe
+                       else 'w')
         self.messageInterior.grid(row=2, sticky=stickyValue)
         if self.senderLabel:
             self.senderLabel.grid(row=0, sticky='w')
@@ -289,11 +299,18 @@ class MessageBubble(tk.Frame):
         self.update()
 
     def onRightClick(self, event):
+
+        def sendReaction(mesMenu, mesId):
+            return lambda rValue: lambda: messageMenu.sendReaction(mesId,
+                                                                   rValue)
         messageMenu = MessageMenu(self)
-        react = lambda reactionValue: lambda messageMenu=messageMenu, messageId=self.messageId: messageMenu.sendReaction(messageId, reactionValue)
+        message = self.chat.getMessages()[self.messageId]
+
+        react = sendReaction(messageMenu, self.messageId)
+
         messageMenu.add_command(label=self.messageId)
-        messageMenu.add_command(label=self.chat.getMessages()[self.messageId].reactions)
-        messageMenu.add_command(label=getTimeText(self.chat.getMessages()[self.messageId].date))
+        messageMenu.add_command(label=message.reactions)
+        messageMenu.add_command(label=getTimeText(message.date))
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
         messageMenu.add_command(label="Dislike", command=react(2002))
