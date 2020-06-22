@@ -246,10 +246,13 @@ class Chat:
         self.lastAccessTime = 0
         self.localUpdate = False
         self.messagePreviewId = -1
+        self.isTemporaryChat = False
 
         self.attr = {}
         for key, value in kw.items():
             self.attr[key] = value
+        if 'display_name' not in self.attr:
+            self.attr['display_name'] = ''
 
     def isiMessage(self):
         if ('service_name' in self.attr and
@@ -259,6 +262,13 @@ class Chat:
 
     def isGroup(self):
         if 'style' in self.attr and self.attr['style'] == 43:
+            return True
+        return False
+
+    def addRecipient(self, recipient):
+        if recipient:
+            self.recipientList.append(recipient)
+            print('added {}'.format(recipient))
             return True
         return False
 
@@ -403,6 +413,9 @@ class Chat:
                     break
         conn.close()
 
+def createNewChat(chatId):
+    chat = Chat(chatId, '', None)
+    return chat
 
 def _loadChat(chatId):
     conn = sqlite3.connect(dbPath)
