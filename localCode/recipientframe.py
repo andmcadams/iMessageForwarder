@@ -32,25 +32,22 @@ class RecipientFrame(tk.Frame):
             if self.addRecipientButton:
                 self.addRecipientButton.destroy()
 
-            if chat.isTemporaryChat is False:
-                self.andMore = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
-                self.andMore.grid(row=0, column=1, padx=(5, 0), sticky='se')
-                self.details = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
-                self.details.grid(row=0, column=2, sticky='se')
+            self.andMore = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
+            self.andMore.grid(row=0, column=1, padx=(5, 0), sticky='se')
+            self.details = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
+            self.details.grid(row=0, column=2, sticky='se')
 
+            if chat.isTemporaryChat is False:
                 self.labelFrame = RecipientLabelFrame(self, chat)
                 self.labelFrame.grid(row=0, column=0, sticky='nsew')
                 self.labelFrame.addRecipients(chat)
             else:
                 self.labelFrame = RecipientLabelFrame(self, chat)
                 self.labelFrame.grid(row=0, column=0, sticky='nsew')
-                self.addRecipientButton = tk.Button(self, text='Add recipient',
-                        command=lambda: self.addNewRecipient(chat))
+                self.addRecipientButton = tk.Button(self, text='Add recipient')
+                self.addRecipientButton.configure(command=lambda:
+                                                  self.addNewRecipient(chat))
                 self.addRecipientButton.grid(row=0, column=3)
-                self.andMore = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
-                self.andMore.grid(row=0, column=1, padx=(5, 0), sticky='se')
-                self.details = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
-                self.details.grid(row=0, column=2, sticky='se')
         self.lock.release()
 
     def addNewRecipient(self, chat):
@@ -63,9 +60,9 @@ class RecipientFrame(tk.Frame):
             b.grid(row=1, column=0, sticky='nsew')
             self.newWindow.columnconfigure(0, weight=1)
             self.newWindow.rowconfigure(1, weight=1)
-            # On submit, add value to recipient list 
+            # On submit, add value to recipient list
             b.configure(command=lambda: self.onSubmit(chat,
-                t.get("1.0",'end-1c').lstrip().rstrip()))
+                        t.get("1.0", 'end-1c').lstrip().rstrip()))
         else:
             self.newWindow.lift()
             self.newWindow.focus_force()
@@ -77,6 +74,7 @@ class RecipientFrame(tk.Frame):
     def clearWindow(self):
         if self.newWindow:
             self.newWindow.destroy()
+
 
 class RecipientLabelFrame(tk.Frame):
 
