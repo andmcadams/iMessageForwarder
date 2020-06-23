@@ -57,7 +57,7 @@ class MessageList(dict):
                 i = 0
                 # If i == -1, we know that this message is older than all
                 # other messages in the list.
-                for i in range(len(keys)-1, -2, -1):
+                for i in range(len(keys) - 1, -2, -1):
                     #
                     if i == -1:
                         break
@@ -66,7 +66,7 @@ class MessageList(dict):
                         break
 
                 # Find the keys that will need to come after this new message
-                keysToRemove = [k for k in keys[i+1:]]
+                keysToRemove = [k for k in keys[i + 1:]]
                 # Remove the keys, but save messages
                 poppedMessages = []
                 for key in keysToRemove:
@@ -126,8 +126,8 @@ class Received:
         self.attr['text'] = None
         if 'text' in kw and kw['text'] is not None:
             length = len(kw['text'])
-            self.attr['text'] = ''.join([kw['text'][t] for t in range(length)
-                                        if ord(kw['text'][t]) in range(65536)])
+            self.attr['text'] = ''.join([kw['text'][t] for t in range(
+                length) if ord(kw['text'][t]) in range(65536)])
 
     @property
     def rowid(self):
@@ -246,10 +246,13 @@ class Chat:
         self.lastAccessTime = 0
         self.localUpdate = False
         self.messagePreviewId = -1
+        self.isTemporaryChat = False
 
         self.attr = {}
         for key, value in kw.items():
             self.attr[key] = value
+        if 'display_name' not in self.attr:
+            self.attr['display_name'] = ''
 
     def isiMessage(self):
         if ('service_name' in self.attr and
@@ -259,6 +262,13 @@ class Chat:
 
     def isGroup(self):
         if 'style' in self.attr and self.attr['style'] == 43:
+            return True
+        return False
+
+    def addRecipient(self, recipient):
+        if recipient:
+            self.recipientList.append(recipient)
+            print('added {}'.format(recipient))
             return True
         return False
 
@@ -357,12 +367,11 @@ class Chat:
         self.messageList.writeLock.release()
         self.outgoingList.writeLock.release()
 
-    def sendMessage(self, messageText):
-        messageText = messageText.replace('\'', '\\\'')
-        cmd = ["ssh", "{}@{}".format(user, ip),
-               "python {} $\'{}\' {} {}".format(scriptPath, messageText,
-                                                self.chatId, 0)]
-        subprocess.run(cmd)
+    def sendMessage(self, messageText, recipientString):
+        messageTextC = messageText.replace("'", "\\'")
+        recipientString = recipientString.replace('\'', '\\\'')
+        self.sendData(messageTextC, messageId=None, assocType=None,
+                      messageCode=0, recipientString=recipientString)
         msg = Message(None, None, **{'ROWID': self.messagePreviewId,
                                      'text': messageText, 'date':
                                      int(time.time()), 'date_read': 0,
@@ -374,10 +383,24 @@ class Chat:
         self.localUpdate = True
 
     def sendReaction(self, messageId, assocType):
-        cmd = ["ssh", "{}@{}".format(user, ip),
-               "python {} \'{}\' {} {} \'{}\' {}".format(scriptPath, '',
-                                                         self.chatId, 1,
-                                                         messageId, assocType)]
+        self.sendData(messageText='', messageId=messageId, assocType=assocType,
+                      messageCode=1, recipientString='')
+
+    def sendData(self, messageText='', messageId=None, assocType=None,
+                 messageCode=None, recipientString=''):
+        cmd = [
+            "ssh",
+            "{}@{}".format(
+                user,
+                ip),
+            "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(
+                scriptPath,
+                messageText,
+                self.chatId,
+                messageCode,
+                messageId,
+                assocType,
+                recipientString)]
         subprocess.run(cmd)
 
     def getMostRecentMessage(self):
@@ -402,6 +425,11 @@ class Chat:
                     self.messageList.addReaction(reaction)
                     break
         conn.close()
+
+
+def createNewChat(chatId):
+    chat = Chat(chatId, '', None)
+    return chat
 
 
 def _loadChat(chatId):

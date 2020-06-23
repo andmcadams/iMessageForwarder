@@ -28,6 +28,7 @@ class ResponseFrame(tk.Frame):
         if chat.chatId != self.currentChat.chatId:
             self.currentChat = chat
             self.currentChat.lastAccess = 0
+            self.recipientFrame.clearWindow()
             self.recipientFrame.addRecipients(chat)
             self.messageFrame.changeChat(chat)
             self.sendFrame.updateSendButton(chat)

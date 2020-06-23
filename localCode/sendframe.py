@@ -73,7 +73,9 @@ class SendFrame(tk.Frame):
             self.sendButton.configure(state='disabled')
 
     def sendMessage(self, chat):
-        chat.sendMessage(self.text.get('1.0', 'end-1c'))
+        recipientString = (str(chat.recipientList) if chat.isTemporaryChat is
+                           True else '')
+        chat.sendMessage(self.text.get('1.0', 'end-1c'), recipientString)
         self.text.delete('1.0', 'end')
 
     # Changes the function called when clicking the send button so it is

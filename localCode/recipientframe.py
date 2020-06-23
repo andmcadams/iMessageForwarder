@@ -14,6 +14,10 @@ class RecipientFrame(tk.Frame):
 
         self.details = None
 
+        self.addRecipientButton = None
+
+        self.newWindow = None
+
         self.columnconfigure(0, weight=1)
 
     def addRecipients(self, chat):
@@ -25,17 +29,51 @@ class RecipientFrame(tk.Frame):
                 self.andMore.destroy()
             if self.details:
                 self.details.destroy()
+            if self.addRecipientButton:
+                self.addRecipientButton.destroy()
 
             self.andMore = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
             self.andMore.grid(row=0, column=1, padx=(5, 0), sticky='se')
-
             self.details = tk.Label(self, text='', anchor='e', justify=tk.LEFT)
             self.details.grid(row=0, column=2, sticky='se')
 
-            self.labelFrame = RecipientLabelFrame(self, chat)
-            self.labelFrame.grid(row=0, column=0, sticky='nsew')
-            self.labelFrame.addRecipients(chat)
+            if chat.isTemporaryChat is False:
+                self.labelFrame = RecipientLabelFrame(self, chat)
+                self.labelFrame.grid(row=0, column=0, sticky='nsew')
+                self.labelFrame.addRecipients(chat)
+            else:
+                self.labelFrame = RecipientLabelFrame(self, chat)
+                self.labelFrame.grid(row=0, column=0, sticky='nsew')
+                self.addRecipientButton = tk.Button(self, text='Add recipient')
+                self.addRecipientButton.configure(command=lambda:
+                                                  self.addNewRecipient(chat))
+                self.addRecipientButton.grid(row=0, column=3)
         self.lock.release()
+
+    def addNewRecipient(self, chat):
+        # Create a new window with a text box and submit button
+        if not self.newWindow or not self.newWindow.winfo_exists():
+            self.newWindow = tk.Toplevel(self)
+            t = tk.Text(self.newWindow, height=1, width=15)
+            t.grid(row=0, column=0, sticky='ew')
+            b = tk.Button(self.newWindow, text='Submit')
+            b.grid(row=1, column=0, sticky='nsew')
+            self.newWindow.columnconfigure(0, weight=1)
+            self.newWindow.rowconfigure(1, weight=1)
+            # On submit, add value to recipient list
+            b.configure(command=lambda: self.onSubmit(chat,
+                        t.get("1.0", 'end-1c').lstrip().rstrip()))
+        else:
+            self.newWindow.lift()
+            self.newWindow.focus_force()
+
+    def onSubmit(self, chat, recipient):
+        if chat.addRecipient(recipient):
+            self.labelFrame.addRecipients(chat)
+
+    def clearWindow(self):
+        if self.newWindow:
+            self.newWindow.destroy()
 
 
 class RecipientLabelFrame(tk.Frame):
@@ -78,6 +116,19 @@ class RecipientLabelFrame(tk.Frame):
         menu.tk_popup(event.x_root, event.y_root)
 
     def addRecipients(self, chat):
+        if self.topFrame:
+            self.topFrame.destroy()
+        if self.bottomFrame:
+            self.bottomFrame.destroy()
+        self.topFrame = RecipientLabelSubframe(self)
+        self.topFrame.pack(expand=True, fill=tk.BOTH)
+        self.topFrame.columnconfigure(0, weight=1)
+        self.bottomFrame = RecipientLabelSubframe(self)
+        self.bottomFrame.pack(expand=True, fill=tk.BOTH, side=tk.BOTTOM)
+        self.topSize = 0
+        self.bottomSize = 0
+        self.hiddenLabels = []
+
         self.bind('<Configure>',
                   lambda event: self.resizeRecipients(event, chat))
 

@@ -78,6 +78,13 @@ class MessageFrame(VerticalScrolledFrame):
         # Reset the message limit before opening a new chat
         self.messageLimit = 15
         hitLimit = self.addMessages(chat)
+
+        # Pack a temp frame if there are no children.
+        # Otherwise, the scrollbars will not disappear as there is no
+        # geometry manager in control.
+        if not self.interior.winfo_children():
+            tempFrame = tk.Frame(self.interior)
+            tempFrame.pack()
         self._configure_message_scrollbars()
         self.addedMessages = not hitLimit
         (top, bottom) = self.vscrollbar.get()
@@ -172,7 +179,8 @@ class MessageFrame(VerticalScrolledFrame):
             msg.pack(anchor=tk.W, expand=tk.FALSE)
         # If this message is replacing a temporary message,
         # get rid of that old message.
-        if 'removeTemp' in message.attr:
+        if ('removeTemp' in message.attr and message.attr['removeTemp'] in
+                self.messageBubbles):
             self.messageBubbles[message.attr['removeTemp']].destroy()
             del self.messageBubbles[message.attr['removeTemp']]
         self.messageBubbles[message.rowid] = msg
