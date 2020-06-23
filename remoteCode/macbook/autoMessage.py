@@ -5,6 +5,7 @@ import time
 import subprocess
 import json
 import os
+import ast
 
 dirname = os.path.dirname(__file__)
 configFile = os.path.join(dirname, 'config.json')
@@ -70,8 +71,14 @@ def getToChat(chatId):
 		for row in cursor.fetchall():
 			groupMembers.append(row[0])
 		groupName = ', '.join(groupMembers)
+	newRecipients(groupName)
 
-	# Create a new message
+def makeNewChat(recipientString):
+	groupName = ', '.join(ast.literal_eval(recipientString))
+	newRecipients(groupName)
+
+def newRecipients(groupName):
+		# Create a new message
 	loc = pyautogui.locateCenterOnScreen('darkmode/composeButton.png', confidence=0.98)
 	if not loc:
 		print('I couldn\'t find the compose button!')
@@ -105,7 +112,6 @@ def getToChat(chatId):
 	pyautogui.press('enter')
 	time.sleep(0.1)
 	pyautogui.press('enter')
-
 
 def getLocationsToCheck(isFromMe):
 	im = pyautogui.screenshot('longStrip.png', region=(isFromMeDict[isFromMe],100, 1, 1600-185))
@@ -178,8 +184,11 @@ while True:
 	cursor = conn.execute('select * from outgoing')
 	rows = cursor.fetchall()
 	for row in rows:
-		rowId, text, chatId, assocGUID, assocType, messageCode = row
-		getToChat(chatId)
+		rowId, text, chatId, assocGUID, assocType, messageCode, recipientString = row
+		if recipientString == '':
+			getToChat(chatId)
+		else:
+			makeNewChat(recipientString)
 		time.sleep(1.5)
 
 		# Simple Text
@@ -209,7 +218,7 @@ while True:
 
 		if messageCode == 1:
 			chatConn = sqlite3.connect(CHAT_DB_PATH)
-			chatCursor = chatConn.execute('select text, is_from_me from message where guid = ?', (assocGUID, ))
+			chatCursor = chatConn.execute('select text, is_from_me from message where ROWID = ?', (assocGUID, ))
 			r = chatCursor.fetchone()
 			textToMatch = r[0]
 			isFromMe = r[1]
