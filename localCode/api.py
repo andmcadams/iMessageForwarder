@@ -57,7 +57,7 @@ class MessageList(dict):
                 i = 0
                 # If i == -1, we know that this message is older than all
                 # other messages in the list.
-                for i in range(len(keys)-1, -2, -1):
+                for i in range(len(keys) - 1, -2, -1):
                     #
                     if i == -1:
                         break
@@ -66,7 +66,7 @@ class MessageList(dict):
                         break
 
                 # Find the keys that will need to come after this new message
-                keysToRemove = [k for k in keys[i+1:]]
+                keysToRemove = [k for k in keys[i + 1:]]
                 # Remove the keys, but save messages
                 poppedMessages = []
                 for key in keysToRemove:
@@ -126,8 +126,8 @@ class Received:
         self.attr['text'] = None
         if 'text' in kw and kw['text'] is not None:
             length = len(kw['text'])
-            self.attr['text'] = ''.join([kw['text'][t] for t in range(length)
-                                        if ord(kw['text'][t]) in range(65536)])
+            self.attr['text'] = ''.join([kw['text'][t] for t in range(
+                length) if ord(kw['text'][t]) in range(65536)])
 
     @property
     def rowid(self):
@@ -371,7 +371,7 @@ class Chat:
         messageTextC = messageText.replace("'", "\\'")
         recipientString = recipientString.replace('\'', '\\\'')
         self.sendData(messageTextC, messageId=None, assocType=None,
-                messageCode=0, recipientString=recipientString)
+                      messageCode=0, recipientString=recipientString)
         msg = Message(None, None, **{'ROWID': self.messagePreviewId,
                                      'text': messageText, 'date':
                                      int(time.time()), 'date_read': 0,
@@ -384,17 +384,23 @@ class Chat:
 
     def sendReaction(self, messageId, assocType):
         self.sendData(messageText='', messageId=messageId, assocType=assocType,
-                 messageCode=1, recipientString='')
+                      messageCode=1, recipientString='')
 
     def sendData(self, messageText='', messageId=None, assocType=None,
                  messageCode=None, recipientString=''):
-        cmd = ["ssh", "{}@{}".format(user, ip),
-               "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(scriptPath,
-                                                         messageText,
-                                                         self.chatId,
-                                                         messageCode,
-                                                         messageId, assocType,
-                                                         recipientString)]
+        cmd = [
+            "ssh",
+            "{}@{}".format(
+                user,
+                ip),
+            "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(
+                scriptPath,
+                messageText,
+                self.chatId,
+                messageCode,
+                messageId,
+                assocType,
+                recipientString)]
         subprocess.run(cmd)
 
     def getMostRecentMessage(self):
@@ -420,9 +426,11 @@ class Chat:
                     break
         conn.close()
 
+
 def createNewChat(chatId):
     chat = Chat(chatId, '', None)
     return chat
+
 
 def _loadChat(chatId):
     conn = sqlite3.connect(dbPath)

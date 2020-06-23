@@ -5,8 +5,16 @@ from verticalscrolledframe import VerticalScrolledFrame
 
 
 class LeftFrame(tk.Frame):
-    def __init__(self, parent, minHeight, minWidth, responseFrame, api, *args, **kw):
-        
+    def __init__(
+            self,
+            parent,
+            minHeight,
+            minWidth,
+            responseFrame,
+            api,
+            *args,
+            **kw):
+
         tk.Frame.__init__(self, parent, *args, **kw)
         self.composeButton = tk.Button(self, relief=tk.FLAT, bg="gray99",
                                        font="Dosis", text="Compose new",
@@ -114,7 +122,7 @@ class ChatButton(tk.Frame):
         if string:
             string = string.lstrip()
             if len(string) > length:
-                return (string[:length-3].rstrip() + '...')
+                return (string[:length - 3].rstrip() + '...')
             else:
                 return string
         return ''
