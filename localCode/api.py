@@ -49,44 +49,46 @@ class MessageList(dict):
             updatedMessages[message.rowid].update(message)
         else:
             keys = list(updatedMessages)
-            # Here we need to check the dates near the end of the dictionary
-            # We assume that the dictionary will be sorted at this point
-            # by induction.
-            # Avoid using reverse here since it has complexity O(n)
             if keys:
-                i = 0
-                # If i == -1, we know that this message is older than all
-                # other messages in the list.
-                for i in range(len(keys) - 1, -2, -1):
-                    #
-                    if i == -1:
-                        break
-                    key = keys[i]
-                    if message.isNewer(updatedMessages[key]):
-                        break
-
-                # Find the keys that will need to come after this new message
-                keysToRemove = [k for k in keys[i + 1:]]
-                # Remove the keys, but save messages
-                poppedMessages = []
-                for key in keysToRemove:
-                    poppedMessages.append(updatedMessages.pop(key))
-                # Add in the new message
-                updatedMessages[message.rowid] = message
-                # Add back the messages we removed from the list
-                poppedMessages.reverse()
-                for _ in range(len(poppedMessages)):
-                    p = poppedMessages.pop()
-                    updatedMessages[p.rowid] = p
+                self._insert(message, updatedMessages, keys)
             # If the list is empty we end up here
             else:
                 updatedMessages[message.rowid] = message
         self.messages = updatedMessages
 
-        if (self.mostRecentMessage is None or
-                message.isNewer(self.mostRecentMessage)):
-            self.mostRecentMessage = message
+        self._updateMostRecentMessage(message)
+
         self.writeLock.release()
+
+    def _insert(self, message, messageList, keys):
+        # Here we need to check the dates near the end of the dictionary
+        # We assume that the dictionary will be sorted at this point
+        # by induction.
+        # Avoid using reverse here since it has complexity O(n)
+        i = 0
+        # If i == -1, we know that this message is older than all
+        # other messages in the list.
+        for i in range(len(keys) - 1, -2, -1):
+            #
+            if i == -1:
+                break
+            key = keys[i]
+            if message.isNewer(messageList[key]):
+                break
+
+        # Find the keys that will need to come after this new message
+        keysToRemove = [k for k in keys[i + 1:]]
+        # Remove the keys, but save messages
+        poppedMessages = []
+        for key in keysToRemove:
+            poppedMessages.append(messageList.pop(key))
+        # Add in the new message
+        messageList[message.rowid] = message
+        # Add back the messages we removed from the list
+        poppedMessages.reverse()
+        for _ in range(len(poppedMessages)):
+            p = poppedMessages.pop()
+            messageList[p.rowid] = p
 
     def addReaction(self, reaction):
 
@@ -94,10 +96,14 @@ class MessageList(dict):
         if reaction.associatedMessageId in self.messages.keys():
             self.messages[reaction.associatedMessageId].addReaction(reaction)
 
-        if (self.mostRecentMessage is None or
-                reaction.isNewer(self.mostRecentMessage)):
-            self.mostRecentMessage = reaction
+        self._updateMostRecentMessage(reaction)
+
         self.writeLock.release()
+
+    def _updateMostRecentMessage(self, message):
+        if (self.mostRecentMessage is None or
+                message.isNewer(self.mostRecentMessage)):
+            self.mostRecentMessage = message
 
     def getMostRecentMessage(self):
         return self.mostRecentMessage
@@ -268,7 +274,6 @@ class Chat:
     def addRecipient(self, recipient):
         if recipient:
             self.recipientList.append(recipient)
-            print('added {}'.format(recipient))
             return True
         return False
 
@@ -335,7 +340,7 @@ class Chat:
                 self.messageList.append(message)
 
                 if message.attr['is_from_me'] == 1:
-                    self.isTemporary(self.messageList.
+                    self.removeTemporaryMessage(self.messageList.
                                      messages[message.rowid])
             else:
                 assocMessageId = conn.execute(sqlcommands.ASSOC_MESSAGE_SQL,
@@ -350,7 +355,7 @@ class Chat:
 
         self.lastAccessTime = max(self.lastAccessTime, tempLastAccess)
 
-    def isTemporary(self, message):
+    def removeTemporaryMessage(self, message):
         self.messageList.writeLock.acquire()
         self.outgoingList.writeLock.acquire()
         idToDelete = 0
