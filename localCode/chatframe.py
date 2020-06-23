@@ -4,6 +4,29 @@ from datetime import datetime, timedelta
 from verticalscrolledframe import VerticalScrolledFrame
 
 
+class LeftFrame(tk.Frame):
+    def __init__(self, parent, minHeight, minWidth, responseFrame, api, *args, **kw):
+        
+        tk.Frame.__init__(self, parent, *args, **kw)
+        self.composeButton = tk.Button(self, relief=tk.FLAT, bg="gray99",
+                                       font="Dosis", text="Compose new",
+                                       command=self.openNewChat)
+        self.chatFrame = ChatFrame(self, minHeight, minWidth, *args, **kw)
+
+        self.rowconfigure(1, weight=1)
+        self.composeButton.grid(row=0, column=0, sticky='se')
+        self.chatFrame.grid(row=1, column=0, sticky='nsew')
+        self.createNewChat = api.createNewChat
+        self.newChatId = -2
+        self.responseFrame = responseFrame
+
+    def openNewChat(self):
+        chat = self.createNewChat(self.newChatId)
+        chat.isTemporaryChat = True
+        self.responseFrame.changeChat(chat)
+        self.newChatId -= 1
+
+
 class ChatFrame(VerticalScrolledFrame):
     def __init__(self, parent, minHeight, minWidth, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth,
