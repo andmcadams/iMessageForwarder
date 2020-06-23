@@ -74,6 +74,9 @@ class RecipientFrame(tk.Frame):
         if chat.addRecipient(recipient):
             self.labelFrame.addRecipients(chat)
 
+    def clearWindow(self):
+        if self.newWindow:
+            self.newWindow.destroy()
 
 class RecipientLabelFrame(tk.Frame):
 
