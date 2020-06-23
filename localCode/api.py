@@ -367,12 +367,11 @@ class Chat:
         self.messageList.writeLock.release()
         self.outgoingList.writeLock.release()
 
-    def sendMessage(self, messageText):
-        messageText = messageText.replace('\'', '\\\'')
-        cmd = ["ssh", "{}@{}".format(user, ip),
-               "python {} $\'{}\' {} {}".format(scriptPath, messageText,
-                                                self.chatId, 0)]
-        subprocess.run(cmd)
+    def sendMessage(self, messageText, recipientString):
+        messageText = messageText.replace("'", "\\'")
+        recipientString = recipientString.replace('\'', '\\\'')
+        self.sendData(messageText, messageId=None, assocType=None,
+                messageCode=0, recipientString=recipientString)
         msg = Message(None, None, **{'ROWID': self.messagePreviewId,
                                      'text': messageText, 'date':
                                      int(time.time()), 'date_read': 0,
@@ -384,10 +383,18 @@ class Chat:
         self.localUpdate = True
 
     def sendReaction(self, messageId, assocType):
+        self.sendData(messageText='', messageId=messageId, assocType=assocType,
+                 messageCode=1, recipientString='')
+
+    def sendData(self, messageText='', messageId=None, assocType=None,
+                 messageCode=None, recipientString=''):
         cmd = ["ssh", "{}@{}".format(user, ip),
-               "python {} \'{}\' {} {} \'{}\' {}".format(scriptPath, '',
-                                                         self.chatId, 1,
-                                                         messageId, assocType)]
+               "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(scriptPath,
+                                                         messageText,
+                                                         self.chatId,
+                                                         messageCode,
+                                                         messageId, assocType,
+                                                         recipientString)]
         subprocess.run(cmd)
 
     def getMostRecentMessage(self):
