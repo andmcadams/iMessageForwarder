@@ -179,7 +179,8 @@ class MessageFrame(VerticalScrolledFrame):
             msg.pack(anchor=tk.W, expand=tk.FALSE)
         # If this message is replacing a temporary message,
         # get rid of that old message.
-        if 'removeTemp' in message.attr:
+        if ('removeTemp' in message.attr and message.attr['removeTemp'] in
+                self.messageBubbles):
             self.messageBubbles[message.attr['removeTemp']].destroy()
             del self.messageBubbles[message.attr['removeTemp']]
         self.messageBubbles[message.rowid] = msg

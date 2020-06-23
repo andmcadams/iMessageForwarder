@@ -3,7 +3,7 @@ from tkinter import ttk
 import threading
 from playsound import playsound
 from responseframe import ResponseFrame
-from chatframe import ChatFrame
+from chatframe import LeftFrame
 
 
 def updateFrames(chatFrame, responseFrame, lastAccessTime,
@@ -81,10 +81,11 @@ def runGui(DEBUG, currentThread):
     minWidthResponseFrame = int(4*minWidthChatFrame/3)
     root.minsize(minWidthChatFrame+minWidthResponseFrame,
                  (minWidthChatFrame+minWidthResponseFrame)//2)
-    chatFrame = ChatFrame(root, 0, minWidthChatFrame)
-    chatFrame.grid(row=0, column=0, sticky='nsew')
     responseFrame = ResponseFrame(root, minWidthResponseFrame, api)
     responseFrame.grid(row=0, column=1, sticky='nsew')
+    leftFrame = LeftFrame(root, 0, minWidthChatFrame, responseFrame, api)
+    chatFrame = leftFrame.chatFrame
+    leftFrame.grid(row=0, column=0, sticky='nsew')
     root.columnconfigure(1, weight=1)
     root.rowconfigure(0, weight=1)
 
