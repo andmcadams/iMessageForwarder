@@ -368,9 +368,9 @@ class Chat:
         self.outgoingList.writeLock.release()
 
     def sendMessage(self, messageText, recipientString):
-        messageText = messageText.replace("'", "\\'")
+        messageTextC = messageText.replace("'", "\\'")
         recipientString = recipientString.replace('\'', '\\\'')
-        self.sendData(messageText, messageId=None, assocType=None,
+        self.sendData(messageTextC, messageId=None, assocType=None,
                 messageCode=0, recipientString=recipientString)
         msg = Message(None, None, **{'ROWID': self.messagePreviewId,
                                      'text': messageText, 'date':
