@@ -16,6 +16,8 @@ class RecipientFrame(tk.Frame):
 
         self.addRecipientButton = None
 
+        self.newWindow = None
+
         self.columnconfigure(0, weight=1)
 
     def addRecipients(self, chat):
@@ -53,16 +55,20 @@ class RecipientFrame(tk.Frame):
 
     def addNewRecipient(self, chat):
         # Create a new window with a text box and submit button
-        newWindow = tk.Toplevel(self)
-        t = tk.Text(newWindow, height=1, width=15)
-        t.grid(row=0, column=0, sticky='ew')
-        b = tk.Button(newWindow, text='Submit')
-        b.grid(row=1, column=0, sticky='nsew')
-        newWindow.columnconfigure(0, weight=1)
-        newWindow.rowconfigure(1, weight=1)
-        # On submit, add value to recipient list 
-        b.configure(command=lambda: self.onSubmit(chat,
-            t.get("1.0",'end-1c').lstrip().rstrip()))
+        if not self.newWindow or not self.newWindow.winfo_exists():
+            self.newWindow = tk.Toplevel(self)
+            t = tk.Text(self.newWindow, height=1, width=15)
+            t.grid(row=0, column=0, sticky='ew')
+            b = tk.Button(self.newWindow, text='Submit')
+            b.grid(row=1, column=0, sticky='nsew')
+            self.newWindow.columnconfigure(0, weight=1)
+            self.newWindow.rowconfigure(1, weight=1)
+            # On submit, add value to recipient list 
+            b.configure(command=lambda: self.onSubmit(chat,
+                t.get("1.0",'end-1c').lstrip().rstrip()))
+        else:
+            self.newWindow.lift()
+            self.newWindow.focus_force()
 
     def onSubmit(self, chat, recipient):
         if chat.addRecipient(recipient):
