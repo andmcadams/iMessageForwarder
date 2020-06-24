@@ -30,7 +30,7 @@ FROM message
 
 RECENT_MESSAGE_SQL = """SELECT ROWID, handle_id, text, date, is_from_me,
                         associated_message_guid, associated_message_type,
-                        is_delivered, is_from_me
+                        is_delivered
 FROM message
     INNER JOIN chat_message_join AS CMJ
         ON message.ROWID = CMJ.message_id
