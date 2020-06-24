@@ -92,12 +92,20 @@ class MessageFrame(VerticalScrolledFrame):
         self.canvas.yview_moveto(self.interior.winfo_reqheight())
 
     def needSenderLabel(self, chat, message, prevMessage):
-        # Need slightly more complex logic for when to use sender labels
-        # (label showing who the sender is)
-        # addLabel is True iff
-        # 1) This is a group message
-        # 2) The sender of this message is not the same as the last sender
-        # 3) The sender of the message is not me
+        """Return whether or not a sender label needs to be added.
+
+        Parameters:
+        chat : Chat
+            The open chat.
+        message : Message
+            The message that the sender label would appear before.
+        prevMessage : Message
+            The message that the sender label would appear after.
+
+        Returns:
+            True if a sender label needs to be appended.
+            False if a sender label does not need to be appended.
+        """
 
         if chat.isGroup():
             if not message.isFromMe:
@@ -107,11 +115,19 @@ class MessageFrame(VerticalScrolledFrame):
         return False
 
     def needTimeLabel(self, message, previousMessage):
-        # A time label should be added iff
-        # 1) The message is not a message currently being sent
-        # 2) There is no previous message
-        # 3) It has been 15 minutes since the previous message was received
-        if message.rowid < 0:
+        """Return whether or not a time label needs to be added.
+
+        Parameters:
+        message : Message
+            The message that the time label would appear before.
+        prevMessage : Message
+            The message that the time label would appear after.
+
+        Returns:
+            True if a time label needs to be appended.
+            False if a sender label does not need to be appended.
+        """
+        if message.isTemporary:
             return False
         if previousMessage is None:
             return True
@@ -130,6 +146,21 @@ class MessageFrame(VerticalScrolledFrame):
         timeLabel.pack()
 
     def needReadReceipt(self, chat, message, lastFromMeId):
+        """Return whether or not a read receipt needs to be added to the
+        message.
+
+        Parameters:
+        chat : Chat
+            The open chat.
+        message : Message
+            The message that the read receipt would be added to.
+        lastFromMeId : int
+            The rowid of the last message sent from the user in the chat.
+
+        Returns:
+            True if a read receipt needs to be added to the message.
+            False if a read receipt does not need to be added to the message.
+        """
         # Need to add a read receipt iff
         # 1) The message is from me.
         # AND one of the two following:
@@ -191,7 +222,7 @@ class MessageFrame(VerticalScrolledFrame):
     # This can result in two copies of certain messages appearing.
     def addMessages(self, chat):
         self.lock.acquire()
-        if chat.chatId != self.master.currentChat.chatId:
+        if chat.rowid != self.master.currentChat.rowid:
             self.lock.release()
             return None
 

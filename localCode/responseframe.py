@@ -25,7 +25,7 @@ class ResponseFrame(tk.Frame):
         self.currentChat = api.DummyChat(-1)
 
     def changeChat(self, chat):
-        if chat.chatId != self.currentChat.chatId:
+        if chat.rowid != self.currentChat.rowid:
             self.currentChat = chat
             self.currentChat.lastAccess = 0
             self.recipientFrame.clearWindow()
@@ -34,6 +34,6 @@ class ResponseFrame(tk.Frame):
             self.sendFrame.updateSendButton(chat)
 
     def isCurrentChat(self, chatToCompare):
-        if chatToCompare.chatId == self.currentChat.chatId:
+        if chatToCompare.rowid == self.currentChat.rowid:
             return True
         return False

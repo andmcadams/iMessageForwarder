@@ -19,12 +19,12 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
     for chatId in chatIds:
         try:
             for chatButton in chatFrame.chatButtons:
-                if chatId == chatButton.chat.chatId:
+                if chatId == chatButton.chat.rowid:
                     chatButton.chat._loadMostRecentMessage()
                     if chatButton.update():
                         newMessageFlag = True
 
-            if chatId == responseFrame.currentChat.chatId:
+            if chatId == responseFrame.currentChat.rowid:
                 (responseFrame.messageFrame
                  .addMessages(responseFrame.currentChat))
 
@@ -40,7 +40,7 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
     sortedChats = sorted(chatFrame.chatButtons, key=lambda chatButton:
                          chatButton.lastMessageTimeValue, reverse=True)
     for i in range(len(sortedChats)):
-        if (sortedChats[i].chat.chatId != chatFrame.chatButtons[i].chat.chatId
+        if (sortedChats[i].chat.rowid != chatFrame.chatButtons[i].chat.rowid
                 or sortedChats[i].isVisible is False):
             chatFrame.chatButtons = sortedChats
             chatFrame.packChatButtons()

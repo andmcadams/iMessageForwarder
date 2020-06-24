@@ -116,7 +116,7 @@ class TestDummyChatMethods(unittest.TestCase):
 
     def test_basic_creation(self):
         dummyChat = api.DummyChat(1)
-        self.assertEqual(dummyChat.chatId, 1)
+        self.assertEqual(dummyChat.rowid, 1)
 
 class TestChatMethods(unittest.TestCase):
 
@@ -124,23 +124,23 @@ class TestChatMethods(unittest.TestCase):
         api._useTestDatabase('testing/databases/testDb.db')
 
     def test_real_chat_creation(self):
-        chat = api.Chat(82, 'testEmail@test.com', None)
-        self.assertEqual(chat.chatId, 82)
+        chat = api.Chat(82, 'testEmail@test.com', None, **{'ROWID': 82})
+        self.assertEqual(chat.rowid, 82)
         self.assertEqual(chat.chatIdentifier, 'testEmail@test.com')
         self.assertEqual(chat.displayName, None)
 
     def test_chat_recipient_list(self):
-        chat = api.Chat(82, 'testEmail@test.com', None)
+        chat = api.Chat(82, 'testEmail@test.com', None, **{'ROWID': 82})
         self.assertEqual(chat.recipientList, ['testEmail@test.com'])
 
     def test_chat_most_recent_message(self):
-        chat = api.Chat(82, 'testEmail@test.com', None)
+        chat = api.Chat(82, 'testEmail@test.com', None, **{'ROWID': 82})
         self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 12732)
 
     # This chat has all messages that were received at seemingly the same time (due to rounding during conversion).
     # When there are multiple messages with the same date, they should be ordered by ROWID, with larger ROWID meaning more recent.
     def test_chat_most_recent_same_date(self):
-        chat = api.Chat(85, "+15555555555", "")
+        chat = api.Chat(85, "+15555555555", "", **{'ROWID': 85})
         self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 13062)
         chat._loadMessages()
         self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 13062)
@@ -152,7 +152,7 @@ class TestChatMethods(unittest.TestCase):
     # The most recent one should be the one with the largest datetime, and among those the one with the largest ROWID.
     # In this case, the message belonging to this chat with the largest ROWID is *not* the most recent message.
     def test_chat_most_recent_swapped_rowid(self):
-        chat = api.Chat(86, "+15555555556", "")
+        chat = api.Chat(86, "+15555555556", "", **{'ROWID': 86})
         self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 13066)
         chat._loadMessages()
         self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 13066)
@@ -162,12 +162,12 @@ class TestChatMethods(unittest.TestCase):
 
 
     def test_chat_initial_message_list(self):
-        chat = api.Chat(82, 'testEmail@test.com', None)
+        chat = api.Chat(82, 'testEmail@test.com', None, **{'ROWID': 82})
         self.assertEqual(len(chat.getMessages()), 1)
         self.assertEqual(list(chat.getMessages().keys()), [12732])
 
     def test_chat_after_message_load(self):
-        chat = api.Chat(82, 'testEmail@test.com', None)
+        chat = api.Chat(82, 'testEmail@test.com', None, **{'ROWID': 82})
         self.assertEqual(len(chat.getMessages()), 1)
         self.assertEqual(list(chat.getMessages().keys()), [12732])
         chat._loadMessages()
@@ -176,15 +176,15 @@ class TestChatMethods(unittest.TestCase):
         self.assertEqual(chat.getMostRecentMessage().attr['ROWID'], 12732)
 
     def test_chat_name(self):
-        chat = api.Chat(82, 'testEmail@test.com', None)
+        chat = api.Chat(82, 'testEmail@test.com', None, **{'ROWID': 82})
         self.assertEqual(chat.getName(), 'testEmail@test.com')
 
     def test_chat_name_with_display_name(self):
-        chat = api.Chat(82, 'testEmail@test.com', 'Group Message Name')
+        chat = api.Chat(82, 'testEmail@test.com', 'Group Message Name', **{'ROWID': 82})
         self.assertEqual(chat.getName(), 'Group Message Name')
         
     def test_chat_name_with_emoji(self):
-        chat = api.Chat(82, 'testEmail@test.com', 'Group Message 🍄 Name')
+        chat = api.Chat(82, 'testEmail@test.com', 'Group Message 🍄 Name', **{'ROWID': 82})
         self.assertEqual(chat.getName(), 'Group Message  Name')
         
 class TestMessageListMethods(unittest.TestCase):

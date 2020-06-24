@@ -163,6 +163,11 @@ class Received:
     def isiMessage(self):
         return self.attr['service'] == 'iMessage'
 
+    
+    @property
+    def isTemporary(self):
+        return self.rowid < 0
+
     def isNewer(self, otherMessage):
         if self.date > otherMessage.date:
             return True
@@ -236,12 +241,18 @@ class ChatDeletedException(Exception):
 
 class DummyChat:
     def __init__(self, chatId):
-        self.chatId = chatId
+        self.rowid = chatId
 
 
 class Chat:
 
     def __init__(self, chatId, chatIdentifier, displayName, **kw):
+
+        self.attr = {}
+        for key, value in kw.items():
+            self.attr[key] = value
+        if 'display_name' not in self.attr:
+            self.attr['display_name'] = ''
         self.chatId = chatId
         self.chatIdentifier = chatIdentifier
         self.displayName = displayName
@@ -254,11 +265,9 @@ class Chat:
         self.messagePreviewId = -1
         self.isTemporaryChat = False
 
-        self.attr = {}
-        for key, value in kw.items():
-            self.attr[key] = value
-        if 'display_name' not in self.attr:
-            self.attr['display_name'] = ''
+    @property
+    def rowid(self):
+        return self.attr['ROWID']
 
     def isiMessage(self):
         if ('service_name' in self.attr and
@@ -280,7 +289,7 @@ class Chat:
     def _loadRecipients(self):
         conn = sqlite3.connect(dbPath)
         conn.row_factory = sqlite3.Row
-        cursor = conn.execute(sqlcommands.LOAD_RECIPIENTS_SQL, (self.chatId, ))
+        cursor = conn.execute(sqlcommands.LOAD_RECIPIENTS_SQL, (self.rowid, ))
         recipients = []
         for recipient in cursor.fetchall():
             recipients.append(recipient[0])
@@ -316,7 +325,7 @@ class Chat:
                                 'message_update_date']
         columns = ', '.join(neededColumnsMessage)
         sql = sqlcommands.LOAD_MESSAGES_SQL.format(columns)
-        cursor = conn.execute(sql, (self.chatId, tempLastAccess))
+        cursor = conn.execute(sql, (self.rowid, tempLastAccess))
 
         for row in cursor:
             handleName = conn.execute(sqlcommands.HANDLE_SQL,
@@ -339,9 +348,9 @@ class Chat:
                 message = Message(attachment, handleName, **row)
                 self.messageList.append(message)
 
-                if message.attr['is_from_me'] == 1:
+                if message.isFromMe == 1:
                     self.removeTemporaryMessage(self.messageList.
-                                     messages[message.rowid])
+                                                messages[message.rowid])
             else:
                 assocMessageId = conn.execute(sqlcommands.ASSOC_MESSAGE_SQL,
                                               (row['associated_message_guid']
@@ -401,7 +410,7 @@ class Chat:
             "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(
                 scriptPath,
                 messageText,
-                self.chatId,
+                self.rowid,
                 messageCode,
                 messageId,
                 assocType,
@@ -414,7 +423,7 @@ class Chat:
     def _loadMostRecentMessage(self):
         conn = sqlite3.connect(dbPath)
         conn.row_factory = sqlite3.Row
-        cursor = conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (self.chatId, ))
+        cursor = conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (self.rowid, ))
         for row in cursor.fetchall():
             if not row['associated_message_guid']:
                 message = Message(**row)
@@ -433,7 +442,7 @@ class Chat:
 
 
 def createNewChat(chatId):
-    chat = Chat(chatId, '', None)
+    chat = Chat(chatId, '', None, **{'ROWID': chatId})
     return chat
 
 
@@ -470,7 +479,7 @@ def _getChatsToUpdate(lastAccessTime, chats):
         if chat.localUpdate:
             chat.localUpdate = False
             if chat.chatId not in chatIds:
-                chatIds.append(chat.chatId)
+                chatIds.append(chat.rowid)
     conn.close()
     return chatIds, maxUpdate
 
