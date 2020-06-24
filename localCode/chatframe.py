@@ -157,7 +157,7 @@ class ChatButton(tk.Frame):
         lastMsg = self.chat.getMostRecentMessage()
         self.lastMessageTimeValue = lastMsg.date
         if (tempLastMessageTimeValue != self.lastMessageTimeValue and
-                lastMsg.attr['is_from_me'] == 0 and
+                lastMsg.isFromMe == 0 and
                 self.responseFrame.isCurrentChat(self.chat) is False):
             return True
         return False

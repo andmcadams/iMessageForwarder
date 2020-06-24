@@ -5,6 +5,7 @@ import time
 import subprocess
 import threading
 import sqlcommands
+from dataclasses import dataclass
 
 dirname = os.path.dirname(__file__)
 
@@ -116,57 +117,99 @@ class Attachment:
             self.attr[key] = value
 
 
-class MessageNoIdException(Exception):
+class ReceivedNoIdException(Exception):
     pass
 
 
+class ReactionNoAssociatedIdException(Exception):
+    pass
+
+
+@dataclass
 class Received:
 
-    def __init__(self, **kw):
-        self.attr = {}
-        for key, value in kw.items():
-            self.attr[key] = value
+    ROWID: int = None
+    guid: str = ''
+    text: str = ''
+    handle_id: int = 1
+    service: str = None
+    date: int = 0
+    date_read: int = 0
+    date_delivered: int = 0
+    is_delivered: int = 0
+    is_finished: int = 0
+    is_from_me: int = 0
+    is_read: int = 0
+    is_sent: int = 0
+    cache_has_attachments: int = 0
+    cache_roomnames: str = None
+    item_type: int = 0
+    other_handle: int = 0
+    group_title: str = None
+    group_action_type: int = 0
+    associated_message_guid: str = None
+    associated_message_type: int = 0
+    attachment_id: str = None
+    message_update_date: int = 0
+    error: int = 0
+
+    def __post_init__(self):
+
+        if self.ROWID is None:
+            raise ReceivedNoIdException
 
         # tkinter only supports some unicode characters.
         # This removes unsupported ones.
-        self.attr['text'] = None
-        if 'text' in kw and kw['text'] is not None:
-            length = len(kw['text'])
-            self.attr['text'] = ''.join([kw['text'][t] for t in range(
-                length) if ord(kw['text'][t]) in range(65536)])
+        text = self.text
+        if self.text is not None:
+            self.text = ''.join([text[t] for t in range(
+                len(text)) if ord(text[t]) in range(65536)])
+        self._isTemporary = False
+        self._handleName = ''
 
     @property
     def rowid(self):
-        return self.attr['ROWID']
-
-    @property
-    def date(self):
-        return self.attr['date']
-
-    @property
-    def text(self):
-        return self.attr['text']
+        return self.ROWID
 
     @property
     def handleId(self):
-        return self.attr['handle_id']
+        return self.handle_id
+
+    @property
+    def dateRead(self):
+        return self.date_read
 
     @property
     def isFromMe(self):
-        return self.attr['is_from_me'] == 1
+        return self.is_from_me == 1
 
     @property
     def isDelivered(self):
-        return self.attr['is_delivered'] == 1
+        return self.is_delivered == 1
 
     @property
     def isiMessage(self):
-        return self.attr['service'] == 'iMessage'
+        return self.service == 'iMessage'
 
-    
     @property
     def isTemporary(self):
         return self.rowid < 0
+
+    @property
+    def isTemporary(self):
+        return self._isTemporary
+
+    @isTemporary.setter
+    def isTemporary(self, val):
+        self._isTemporary = val
+
+    @property
+    def handleName(self):
+        return self._handleName
+
+    @handleName.setter
+    def handleName(self, handleName):
+        self._handleName = handleName
 
     def isNewer(self, otherMessage):
         if self.date > otherMessage.date:
@@ -181,58 +224,65 @@ class Received:
 
 class Message(Received):
 
-    def __init__(self, attachment=None, handleName=None, **kw):
-        super().__init__(**kw)
+    def __post_init__(self):
+        super().__post_init__()
         self.reactions = {}
-
-        if 'ROWID' not in self.attr:
-            raise MessageNoIdException
-
-        self.attachment = attachment
-        self.handleName = handleName
+        self.attachment = None
+        self.removeTemp = 0
 
     def addReaction(self, reaction):
         # If the handle sending the reaction has not reacted to this message,
         # add it.
-        if not reaction.attr['handle_id'] in self.reactions:
-            self.reactions[reaction.attr['handle_id']] = {}
+        if not reaction.handleId in self.reactions:
+            self.reactions[reaction.handleId] = {}
 
         # Reactions and reaction removals have the same digit in the ones place
-        reactionVal = int(reaction.attr['associated_message_type']) % 1000
+        reactionVal = reaction.associated_message_type % 1000
 
         # If the handle has already sent this reaction, but this one is newer,
         # replace the old reaction with this one.
-        handleReactions = self.reactions[reaction.attr['handle_id']]
+        handleReactions = self.reactions[reaction.handleId]
         if (reactionVal in handleReactions and
                 reaction.isNewer(handleReactions[reactionVal])):
-            self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
+            self.reactions[reaction.handleId][reactionVal] = reaction
         elif reactionVal not in handleReactions:
-            self.reactions[reaction.attr['handle_id']][reactionVal] = reaction
+            self.reactions[reaction.handleId][reactionVal] = reaction
 
     def update(self, updatedMessage):
-        for key, value in updatedMessage.attr.items():
-            if value:
-                self.attr[key] = value
-        if updatedMessage.handleName:
-            self.handleName = updatedMessage.handleName
+        self.date = updatedMessage.date
+        self.date_read = updatedMessage.date_read
+        self.date_delivered = updatedMessage.date_delivered
+        self.is_delivered = updatedMessage.is_delivered
+        self.is_finished = updatedMessage.is_finished
+        self.is_read = updatedMessage.is_read
+        self.is_sent = updatedMessage.is_sent
+        self.message_update_date = updatedMessage.message_update_date
+        self.service = updatedMessage.service
+
         if updatedMessage.attachment:
             self.attachment = updatedMessage.attachment
 
 
+@dataclass
 class Reaction(Received):
+    associated_message_id: int = None
 
-    def __init__(self, associatedMessageId, handleName=None, **kw):
-        super().__init__(**kw)
-        self.associatedMessageId = associatedMessageId
-        self.handleName = handleName
+    def __post_init__(self):
+        super().__post_init__()
+        if self.associated_message_id is None:
+            raise ReactionNoAssociatedIdException
 
     @property
     def isAddition(self):
-        return self.attr['associated_message_type'] < 3000
+        return self.associated_message_type < 3000
 
     @property
     def reactionType(self):
-        return self.attr['associated_message_type']
+        return self.associated_message_type
+
+    @property
+    def associatedMessageId(self):
+        return self.associated_message_id
 
 
 class ChatDeletedException(Exception):
@@ -345,7 +395,8 @@ class Chat:
                     a = conn.execute(sqlcommands.ATTACHMENT_SQL,
                                      (row['attachment_id'], )).fetchone()
                     attachment = Attachment(**a)
-                message = Message(attachment, handleName, **row)
+                message = Message(**row)
+                message.handleName = handleName
                 self.messageList.append(message)
 
                 if message.isFromMe == 1:
@@ -357,7 +408,8 @@ class Chat:
                                                   [-36:], )).fetchone()
                 if assocMessageId:
                     assocMessageId = assocMessageId[0]
-                    reaction = Reaction(assocMessageId, handleName, **row)
+                    reaction = Reaction(associated_message_id=assocMessageId, **row)
+                    reaction.handleName = handleName
                     self.messageList.addReaction(reaction)
 
         conn.close()
@@ -371,8 +423,8 @@ class Chat:
         for tempMsgId in self.outgoingList.messages:
             tempMsg = self.outgoingList.messages[tempMsgId]
             if (tempMsg.text == message.text and
-                    'removeTemp' not in message.attr):
-                message.attr['removeTemp'] = tempMsgId
+                    message.removeTemp is 0):
+                message.removeTemp = tempMsg.rowid
                 del self.messageList.messages[tempMsgId]
                 idToDelete = tempMsgId
                 break
@@ -386,11 +438,12 @@ class Chat:
         recipientString = recipientString.replace('\'', '\\\'')
         self.sendData(messageTextC, messageId=None, assocType=None,
                       messageCode=0, recipientString=recipientString)
-        msg = Message(None, None, **{'ROWID': self.messagePreviewId,
+        msg = Message(**{'ROWID': self.messagePreviewId,
                                      'text': messageText, 'date':
                                      int(time.time()), 'date_read': 0,
                                      'is_delivered': 0, 'is_from_me': 1,
-                                     'service': 'iMessage', 'temporary': 1})
+                                     'service': 'iMessage'})
+        msg.isTemporary = True
         self.messagePreviewId -= 1
         self.messageList.append(msg)
         self.outgoingList.append(msg)
@@ -435,7 +488,7 @@ class Chat:
                                                [-36:], )).fetchone()
                 if assocMessageId:
                     assocMessageId = assocMessageId[0]
-                    reaction = Reaction(assocMessageId, **row)
+                    reaction = Reaction(associated_message_id=assocMessageId, **row)
                     self.messageList.addReaction(reaction)
                     break
         conn.close()

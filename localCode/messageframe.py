@@ -172,6 +172,7 @@ class MessageFrame(VerticalScrolledFrame):
 
         if message.isFromMe and message.rowid < 0:
             return True
+
         if (message.isFromMe and not chat.isGroup() and message.isiMessage
                 and message.rowid == lastFromMeId):
             return True
@@ -210,10 +211,10 @@ class MessageFrame(VerticalScrolledFrame):
             msg.pack(anchor=tk.W, expand=tk.FALSE)
         # If this message is replacing a temporary message,
         # get rid of that old message.
-        if ('removeTemp' in message.attr and message.attr['removeTemp'] in
+        if (message.removeTemp < 0 and message.removeTemp in
                 self.messageBubbles):
-            self.messageBubbles[message.attr['removeTemp']].destroy()
-            del self.messageBubbles[message.attr['removeTemp']]
+            self.messageBubbles[message.removeTemp].destroy()
+            del self.messageBubbles[message.removeTemp]
         self.messageBubbles[message.rowid] = msg
 
     # Add the chat's messages to the MessageFrame as MessageBubbles
@@ -381,8 +382,8 @@ class MessageBubble(tk.Frame):
             self.body.configure(text=message.text)
 
         if self.readReceipt:
-            if 'date_read' in message.attr and message.attr['date_read'] != 0:
-                timeText = getTimeText(message.attr['date_read'])
+            if message.dateRead != 0:
+                timeText = getTimeText(message.dateRead)
                 self.readReceipt.configure(text='Read at {}'.format(timeText))
             elif message.isDelivered:
                 self.readReceipt.configure(text='Delivered')
