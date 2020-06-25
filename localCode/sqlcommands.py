@@ -20,7 +20,7 @@ HANDLE_SQL = """SELECT id
 FROM handle
     WHERE ROWID = ?"""
 
-ATTACHMENT_SQL = """SELECT filename, uti
+ATTACHMENT_SQL = """SELECT ROWID, guid, filename, uti
 FROM attachment
     WHERE ROWID = ?"""
 
