@@ -223,11 +223,14 @@ class MessageFrame(VerticalScrolledFrame):
     # This can result in two copies of certain messages appearing.
     def addMessages(self, chat):
         self.lock.acquire()
-        if chat.rowid != self.master.currentChat.rowid:
+        if chat.chatId != self.master.currentChat.chatId:
             self.lock.release()
             return None
 
-        chat._loadMessages()
+        db = self.master.api.MessageDatabase()
+        messageList, lastAccessTime = db.getMessagesForChat(chat.chatId, chat.lastAccessTime)
+        chat.addMessages(messageList, lastAccessTime)
+
         messageDict = chat.getMessages()
 
         # For each message in messageDict

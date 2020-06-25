@@ -5,6 +5,7 @@ import time
 import subprocess
 import threading
 import sqlcommands
+from typing import List
 from dataclasses import dataclass
 
 dirname = os.path.dirname(__file__)
@@ -178,8 +179,8 @@ class Received:
         if self.text is not None:
             self.text = ''.join([text[t] for t in range(
                 len(text)) if ord(text[t]) in range(65536)])
-        self._isTemporary = False
         self._handleName = ''
+        self.removeTemp = 0
 
     @property
     def rowid(self):
@@ -210,14 +211,6 @@ class Received:
         return self.rowid < 0
 
     @property
-    def isTemporary(self):
-        return self._isTemporary
-
-    @isTemporary.setter
-    def isTemporary(self, val):
-        self._isTemporary = val
-
-    @property
     def handleName(self):
         return self._handleName
 
@@ -242,7 +235,6 @@ class Message(Received):
         super().__post_init__()
         self.reactions = {}
         self.attachment = None
-        self.removeTemp = 0
 
     def addReaction(self, reaction):
         # If the handle sending the reaction has not reacted to this message,
@@ -272,6 +264,7 @@ class Message(Received):
         self.is_sent = updatedMessage.is_sent
         self.message_update_date = updatedMessage.message_update_date
         self.service = updatedMessage.service
+        self.removeTemp = updatedMessage.removeTemp if self.removeTemp == 0 else self.removeTemp
 
         if updatedMessage.attachment:
             self.attachment = updatedMessage.attachment
@@ -305,7 +298,7 @@ class ChatDeletedException(Exception):
 
 class DummyChat:
     def __init__(self, chatId):
-        self.rowid = chatId
+        self.chatId = chatId
 
 
 @dataclass
@@ -345,7 +338,7 @@ class Chat:
         return self.display_name
 
     def isiMessage(self):
-        if (self.service_name == 'iMessage'):
+        if (self.serviceName == 'iMessage'):
             return True
         return False
 
@@ -370,6 +363,14 @@ class Chat:
         conn.close()
         return recipients
 
+    def addMessages(self, messageList, lastAccessTime):
+        for m in messageList:
+            self.messageList.append(m)
+            if self.messageList.messages[m.rowid].isFromMe:
+                self.removeTemporaryMessage(self.messageList.messages[m.rowid])
+        if lastAccessTime > self.lastAccessTime:
+            self.lastAccessTime = lastAccessTime
+
     def getName(self):
         if self.displayName:
             return ''.join([self.displayName[t] for t in
@@ -380,66 +381,6 @@ class Chat:
 
     def getMessages(self):
         return self.messageList.messages
-
-    def _loadMessages(self):
-        # If self.messages is not none, we should just query for messages
-        # received after last message.
-        conn = sqlite3.connect(dbPath)
-        conn.row_factory = sqlite3.Row
-        tempLastAccess = self.lastAccessTime
-        neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id',
-                                'service', 'error', 'date', 'date_read',
-                                'date_delivered', 'is_delivered',
-                                'is_finished', 'is_from_me', 'is_read',
-                                'is_sent', 'cache_has_attachments',
-                                'cache_roomnames', 'item_type',
-                                'other_handle', 'group_title',
-                                'group_action_type', 'associated_message_guid',
-                                'associated_message_type', 'attachment_id',
-                                'message_update_date']
-        columns = ', '.join(neededColumnsMessage)
-        sql = sqlcommands.LOAD_MESSAGES_SQL.format(columns)
-        cursor = conn.execute(sql, (self.chatId, tempLastAccess))
-
-        for row in cursor:
-            handleName = conn.execute(sqlcommands.HANDLE_SQL,
-                                      (row['handle_id'], )).fetchone()
-            if handleName:
-                handleName = handleName[0]
-            else:
-                handleName = ''
-
-            if row['message_update_date'] > tempLastAccess:
-                tempLastAccess = row['message_update_date']
-
-            # If there are no associated messages
-            if not row['associated_message_guid']:
-                attachment = None
-                if row['attachment_id'] is not None:
-                    a = conn.execute(sqlcommands.ATTACHMENT_SQL,
-                                     (row['attachment_id'], )).fetchone()
-                    attachment = Attachment(**a)
-                message = Message(**row)
-                message.handleName = handleName
-                self.messageList.append(message)
-
-                if message.isFromMe == 1:
-                    self.removeTemporaryMessage(self.messageList.
-                                                messages[message.rowid])
-            else:
-                assocMessageId = conn.execute(sqlcommands.ASSOC_MESSAGE_SQL,
-                                              (row['associated_message_guid']
-                                                  [-36:], )).fetchone()
-                if assocMessageId:
-                    assocMessageId = assocMessageId[0]
-                    reaction = Reaction(
-                        associated_message_id=assocMessageId, **row)
-                    reaction.handleName = handleName
-                    self.messageList.addReaction(reaction)
-
-        conn.close()
-
-        self.lastAccessTime = max(self.lastAccessTime, tempLastAccess)
 
     def removeTemporaryMessage(self, message):
         self.messageList.writeLock.acquire()
@@ -454,6 +395,7 @@ class Chat:
                 idToDelete = tempMsgId
                 break
         if idToDelete != 0:
+            print("DELETED ROWID {} using {}".format(idToDelete, message.rowid))
             del self.outgoingList.messages[idToDelete]
         self.messageList.writeLock.release()
         self.outgoingList.writeLock.release()
@@ -468,7 +410,6 @@ class Chat:
                          int(time.time()), 'date_read': 0,
                          'is_delivered': 0, 'is_from_me': 1,
                          'service': 'iMessage'})
-        msg.isTemporary = True
         self.messagePreviewId -= 1
         self.messageList.append(msg)
         self.outgoingList.append(msg)
@@ -488,7 +429,7 @@ class Chat:
             "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(
                 scriptPath,
                 messageText,
-                self.rowid,
+                self.chatId,
                 messageCode,
                 messageId,
                 assocType,
@@ -519,6 +460,70 @@ class Chat:
                     break
         conn.close()
 
+
+class MessageDatabase:
+
+    def __init__(self):
+        self.conn = sqlite3.connect(dbPath)
+        self.conn.row_factory = sqlite3.Row
+
+    def _getHandleName(self, handleId):
+        handleName = self.conn.execute(sqlcommands.HANDLE_SQL,
+                                  (handleId, )).fetchone()
+        if handleName:
+            handleName = handleName[0]
+        else:
+            handleName = ''
+
+        return handleName
+
+    def getMessagesForChat(self, chatId: int, lastAccessTime: int = 0):
+        messages = []
+        tempLastAccess = lastAccessTime
+        neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id',
+                                'service', 'error', 'date', 'date_read',
+                                'date_delivered', 'is_delivered',
+                                'is_finished', 'is_from_me', 'is_read',
+                                'is_sent', 'cache_has_attachments',
+                                'cache_roomnames', 'item_type',
+                                'other_handle', 'group_title',
+                                'group_action_type', 'associated_message_guid',
+                                'associated_message_type', 'attachment_id',
+                                'message_update_date']
+        columns = ', '.join(neededColumnsMessage)
+        sql = sqlcommands.LOAD_MESSAGES_SQL.format(columns)
+        cursor = self.conn.execute(sql, (chatId, tempLastAccess))
+
+        for row in cursor:
+            handleName = self._getHandleName(row['handle_id'])
+
+            if row['message_update_date'] > tempLastAccess:
+                tempLastAccess = row['message_update_date']
+
+            message = None
+            # If there are no associated messages
+            if not row['associated_message_guid']:
+                attachment = None
+                if row['attachment_id'] is not None:
+                    a = self.conn.execute(sqlcommands.ATTACHMENT_SQL,
+                                     (row['attachment_id'], )).fetchone()
+                    attachment = Attachment(**a)
+                message = Message(**row)
+
+            else:
+                assocMessageId = self.conn.execute(sqlcommands.ASSOC_MESSAGE_SQL,
+                                              (row['associated_message_guid']
+                                                  [-36:], )).fetchone()
+                if assocMessageId:
+                    assocMessageId = assocMessageId[0]
+                    message = Reaction(
+                        associated_message_id=assocMessageId, **row)
+
+            if message is not None:
+                message.handleName = handleName
+                messages.append(message)
+        lastAccessTime = max(lastAccessTime, tempLastAccess)
+        return (messages, lastAccessTime)
 
 def createNewChat(chatId):
     chat = Chat(**{'ROWID': chatId})
@@ -558,7 +563,7 @@ def _getChatsToUpdate(lastAccessTime, chats):
         if chat.localUpdate:
             chat.localUpdate = False
             if chat.chatId not in chatIds:
-                chatIds.append(chat.rowid)
+                chatIds.append(chat.chatId)
     conn.close()
     return chatIds, maxUpdate
 

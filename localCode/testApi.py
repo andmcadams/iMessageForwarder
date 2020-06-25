@@ -42,8 +42,18 @@ class TestMessageMethods(unittest.TestCase):
         self.assertEqual(msg.attachment, None)
         self.assertEqual(msg.isTemporary, False)
         self.assertEqual(msg.handleName, '')
+        self.assertEqual(msg.dateRead, self.messageKw['date_read'])
+        self.assertEqual(msg.isFromMe, True)
+        self.assertEqual(msg.isDelivered, True)
+        self.assertEqual(msg.isiMessage, True)
+        self.assertEqual(msg.isTemporary, False)
+
         for k in self.messageKw.keys():
             self.assertEqual(msg.__dict__[k], self.messageKw[k])
+
+    def test_temporary_message(self):
+        msg = api.Message(ROWID=-1)
+        self.assertEqual(msg.isTemporary, True)
 
     # Test the addition of a single reaction to a message.
     def test_add_reaction(self):
@@ -65,10 +75,17 @@ class TestMessageMethods(unittest.TestCase):
         msg.addReaction(reaction)
         msg.addReaction(reaction2)
 
-        self.assertEqual.__self__.maxDiff = None
         self.assertEqual(msg.reactions, { 19: { 0: reaction2 }})
 
 class TestReactionMethods(unittest.TestCase):
+
+    def test_missing_rowid(self):
+        with self.assertRaises(api.ReceivedNoIdException):
+            api.Reaction()
+
+    def test_missing_associated_message_id(self):
+        with self.assertRaises(api.ReactionNoAssociatedIdException):
+            api.Reaction(ROWID=1)
 
     def test_basic_creation(self):
         reaction = api.Reaction(ROWID=1, associated_message_id=1)
@@ -89,18 +106,20 @@ class TestReactionMethods(unittest.TestCase):
         self.assertEqual(reaction.rowid, 627)
         self.assertEqual(reaction.isAddition, True)
         self.assertEqual(reaction.isiMessage, True)
+        self.assertEqual(reaction.reactionType, 2000)
 
     def test_real_reaction_removal(self):
         kw = {'ROWID': 1393, 'guid': '7A291C84-F43E-4127-AC16-BD0BE4DBD7EC', 'text': 'Removed an exclamation from “..”', 'handle_id': 1, 'service': 'iMessage', 'error': 0, 'date': 1582726653, 'date_read': 1582726656, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 0, 'is_read': 1, 'is_sent': 0, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/459BDF3C-599E-4A86-A6C5-76F6AF93BE65', 'associated_message_type': 3004, 'attachment_id': None}
         reaction = api.Reaction(associated_message_id=1, **kw)
         self.assertEqual(reaction.associatedMessageId, 1)
         self.assertEqual(reaction.isAddition, False)
+        self.assertEqual(reaction.reactionType, 3004)
 
 class TestDummyChatMethods(unittest.TestCase):
 
     def test_basic_creation(self):
         dummyChat = api.DummyChat(1)
-        self.assertEqual(dummyChat.rowid, 1)
+        self.assertEqual(dummyChat.chatId, 1)
 
 class TestChatMethods(unittest.TestCase):
 
@@ -127,7 +146,9 @@ class TestChatMethods(unittest.TestCase):
         chat = api.Chat(**{'ROWID': 85, 'chat_identifier': "+15555555555",
             'display_name': None, 'style': 43})
         self.assertEqual(chat.getMostRecentMessage().rowid, 13062)
-        chat._loadMessages()
+        db = api.MessageDatabase()
+        messageList, lastAccessTime = db.getMessagesForChat(chat.chatId, chat.lastAccessTime)
+        chat.addMessages(messageList, lastAccessTime)
         self.assertEqual(chat.getMostRecentMessage().rowid, 13062)
         # Extra checks to make sure that there haven't been any additions to the chat.
         self.assertEqual(len(list(chat.getMessages().keys())), 5)
@@ -140,7 +161,9 @@ class TestChatMethods(unittest.TestCase):
         chat = api.Chat(**{'ROWID': 86, 'chat_identifier': "+15555555556",
             'display_name': None, 'style': 43})
         self.assertEqual(chat.getMostRecentMessage().rowid, 13066)
-        chat._loadMessages()
+        db = api.MessageDatabase()
+        messageList, lastAccessTime = db.getMessagesForChat(chat.chatId, chat.lastAccessTime)
+        chat.addMessages(messageList, lastAccessTime)
         self.assertEqual(chat.getMostRecentMessage().rowid, 13066)
         # Extra checks to make sure that there haven't been any additions to the chat.
         self.assertEqual(len(list(chat.getMessages().keys())), 5)
@@ -156,7 +179,9 @@ class TestChatMethods(unittest.TestCase):
         chat = api.Chat(**{'ROWID': 82, 'chat_identifier': 'testEmail@test.com', 'display_name': None, 'style': 43})
         self.assertEqual(len(chat.getMessages()), 1)
         self.assertEqual(list(chat.getMessages().keys()), [12732])
-        chat._loadMessages()
+        db = api.MessageDatabase()
+        messageList, lastAccessTime = db.getMessagesForChat(chat.chatId, chat.lastAccessTime)
+        chat.addMessages(messageList, lastAccessTime)
         self.assertEqual(len(chat.getMessages()), 2)
         self.assertEqual(list(chat.getMessages().keys()), [12727, 12732])
         self.assertEqual(chat.getMostRecentMessage().rowid, 12732)
@@ -213,6 +238,19 @@ class TestAttachmentMethods(unittest.TestCase):
     def test_missing_rowid(self):
         with self.assertRaises(api.AttachmentNoIdException):
             api.Attachment()
+
+class TestMessageDatabaseMethods(unittest.TestCase):
+
+    def test_get_messages_for_chat(self):
+        api._useTestDatabase('testing/databases/testDb.db')
+        chat = api.Chat(**{'ROWID': 82, 'chat_identifier': 'testEmail@test.com', 'display_name': None, 'style': 43})
+        db = api.MessageDatabase()
+        messages, lastAccessTime = db.getMessagesForChat(chat.chatId, chat.lastAccessTime)
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[0].rowid, 12727)
+        self.assertEqual(messages[1].rowid, 12732)
+        self.assertEqual(lastAccessTime, 1590500766)
+
 
 if __name__ == '__main__':
     unittest.main()

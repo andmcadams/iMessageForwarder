@@ -48,12 +48,12 @@ class ChatFrame(VerticalScrolledFrame):
         if not self.isLoaded(chat):
             btn = ChatButton(self.interior, chat, responseFrame, bg='orange')
             self.chatButtons.append(btn)
-            self.chats[chat.rowid] = chat
+            self.chats[chat.chatId] = chat
             # self._configure_scrollbars()
 
     def isLoaded(self, chat):
         for chatButton in self.chatButtons:
-            if chat.rowid == chatButton.chat.rowid:
+            if chat.chatId == chatButton.chat.chatId:
                 return True
         return False
 
