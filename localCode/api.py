@@ -385,7 +385,6 @@ class Chat:
                 idToDelete = tempMsgId
                 break
         if idToDelete != 0:
-            print("DELETED ROWID {} using {}".format(idToDelete, message.rowid))
             del self.outgoingList.messages[idToDelete]
         self.messageList.writeLock.release()
         self.outgoingList.writeLock.release()
