@@ -110,12 +110,24 @@ class MessageList(dict):
         return self.mostRecentMessage
 
 
-class Attachment:
-    def __init__(self, **kw):
-        self.attr = {}
-        for key, value in kw.items():
-            self.attr[key] = value
+class AttachmentNoIdException(Exception):
+    pass
 
+@dataclass
+class Attachment:
+
+    ROWID: int = None
+    guid: str = ''
+    filename: str = ''
+    uti: str = ''
+
+    def __post_init__(self):
+        if self.ROWID is None:
+            raise AttachmentNoIdException
+
+    @property
+    def rowid(self):
+        return self.ROWID
 
 class ReceivedNoIdException(Exception):
     pass
