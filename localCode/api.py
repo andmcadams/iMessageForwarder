@@ -314,12 +314,12 @@ class Chat:
 
         self.messageList = MessageList()
         self.outgoingList = MessageList()
-        self.recipientList = self._loadRecipients()
         self._loadMostRecentMessage()
         self.lastAccessTime = 0
         self.localUpdate = False
         self.messagePreviewId = -1
         self.isTemporaryChat = False
+        self.recipientList = MessageDatabase().getRecipients(self.chatId)
 
     @property
     def chatId(self):
@@ -352,16 +352,6 @@ class Chat:
             self.recipientList.append(recipient)
             return True
         return False
-
-    def _loadRecipients(self):
-        conn = sqlite3.connect(dbPath)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.execute(sqlcommands.LOAD_RECIPIENTS_SQL, (self.chatId, ))
-        recipients = []
-        for recipient in cursor.fetchall():
-            recipients.append(recipient[0])
-        conn.close()
-        return recipients
 
     def addMessages(self, messageList, lastAccessTime):
         for m in messageList:
@@ -524,6 +514,14 @@ class MessageDatabase:
                 messages.append(message)
         lastAccessTime = max(lastAccessTime, tempLastAccess)
         return (messages, lastAccessTime)
+
+    def getRecipients(self, chatId: int):
+        cursor = self.conn.execute(sqlcommands.LOAD_RECIPIENTS_SQL, (chatId, ))
+        recipients = []
+        for recipient in cursor.fetchall():
+            recipients.append(recipient[0])
+        return recipients
+
 
 def createNewChat(chatId):
     chat = Chat(**{'ROWID': chatId})
