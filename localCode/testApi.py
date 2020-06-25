@@ -195,6 +195,28 @@ class TestChatMethods(unittest.TestCase):
             'testEmail@test.com', 'display_name': 'Group Message Name', 'style': 43})
         self.assertEqual(chat.getName(), 'Group Message Name')
         
+    def test_chat_add_recipient(self):
+        chat = api.Chat(**{'ROWID': 82, 'chat_identifier': 'testEmail@test.com', 'display_name': None, 'style': 43})
+        returnVal = chat.addRecipient('testEmail2@test.com')
+        self.assertTrue(returnVal)
+        self.assertTrue('testEmail2@test.com' in chat.recipientList)
+        self.assertEqual('testEmail@test.com, testEmail2@test.com',
+                chat.getName())
+
+    def test_chat_add_recipient(self):
+        chat = api.Chat(**{'ROWID': 82, 'chat_identifier': 'testEmail@test.com', 'display_name': None, 'style': 43})
+        for name in ['testEmail2@test.com', 'testEmail3@test.com']:
+            returnVal = chat.addRecipient(name)
+            self.assertTrue(returnVal)
+            self.assertTrue(name in chat.recipientList)
+        self.assertEqual('testEmail@test.com, testEmail2@test.com, testEmail3@test.com', chat.getName())
+
+    def test_chat_add_blank_recipient(self):
+        chat = api.Chat(**{'ROWID': 82, 'chat_identifier': 'testEmail@test.com', 'display_name': None, 'style': 43})
+        returnVal = chat.addRecipient('')
+        self.assertFalse(returnVal)
+        self.assertEqual('testEmail@test.com', chat.getName())
+
     def test_chat_name_with_emoji(self):
         chat = api.Chat(**{'ROWID': 82, 'chat_identifier':
             'testEmail@test.com', 'display_name': 'Group Message 🍄 Name', 'style': 43})
