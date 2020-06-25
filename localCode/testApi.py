@@ -206,5 +206,9 @@ class TestAttachmentMethods(unittest.TestCase):
         attachment = api.Attachment(ROWID=1)
         self.assertEqual(attachment.rowid, 1)
 
+    def test_missing_rowid(self):
+        with self.assertRaises(api.AttachmentNoIdException):
+            api.Attachment()
+
 if __name__ == '__main__':
     unittest.main()
