@@ -8,14 +8,6 @@ class TestMessageMethods(unittest.TestCase):
         self.messageKw = {'ROWID': 581, 'guid': 'A153E7D9-8246-481C-96D4-4C15023658E1', 'text': 'This is some example text.', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582434588, 'date_read': 0, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': None, 'associated_message_type': 0, 'attachment_id': None, 'message_update_date': 1584480798}
         self.reactionKw = {'ROWID': 627, 'guid': '3D8E90A2-B06A-44D1-BF62-F419320592A3', 'text': 'Loved “This is some example text.”', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582480858, 'date_read': 978307200, 'date_delivered': 978307200, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/495488E4-10A7-4BA2-A070-DE82AB2C2401', 'associated_message_type': 2000, 'attachment_id': None}
 
-
-    # Test the creation of a message with no optional parameters.
-    def test_basic_creation(self):
-        msg = api.Message(ROWID=1)
-        self.assertEqual(msg.rowid, 1)
-        self.assertEqual(msg.reactions, {})
-        self.assertEqual(msg.attachment, None)
-
     # Test that attempting to create a message without a 'ROWID' arg fails.
     def test_missing_rowid_creation(self):
         with self.assertRaises(api.ReceivedNoIdException):
@@ -26,12 +18,20 @@ class TestMessageMethods(unittest.TestCase):
         with self.assertRaises(api.ReceivedNoIdException):
             api.Message(handle_id=5)
 
+    # Test the creation of a message with no optional parameters.
+    def test_basic_creation(self):
+        msg = api.Message(ROWID=1)
+        self.assertEqual(msg.rowid, 1)
+        self.assertEqual(msg.reactions, {})
+        self.assertEqual(msg.attachment, None)
+        self.assertEqual(msg.isTemporary, False)
+        self.assertEqual(msg.handleName, '')
+
     # Test the creation of a message with an emoji in its text.
     # Due to tkinter issues, emojis cannot be properly displayed. Thus, they are removed from the text string.
     # They are retained in the local database.
     def test_text_with_emojis(self):
         msg = api.Message(ROWID=1, text='This 🍄 is a mushroom')
-        self.assertEqual(msg.reactions, {})
         self.assertEqual('This  is a mushroom', msg.text)
 
     # Test the creation of a real message, similarly to how it is done in api.
@@ -40,26 +40,32 @@ class TestMessageMethods(unittest.TestCase):
         msg = api.Message(**self.messageKw)
         self.assertEqual(msg.reactions, {})
         self.assertEqual(msg.attachment, None)
+        self.assertEqual(msg.isTemporary, False)
+        self.assertEqual(msg.handleName, '')
+        for k in self.messageKw.keys():
+            self.assertEqual(msg.__dict__[k], self.messageKw[k])
 
     # Test the addition of a single reaction to a message.
     def test_add_reaction(self):
-        msg = api.Message(**self.messageKw)
+        msg = api.Message(ROWID=5)
         reaction = api.Reaction(associated_message_id=msg.rowid,
                                 **self.reactionKw)
         msg.addReaction(reaction)
-
+        self.assertEqual(reaction.associatedMessageId, msg.rowid)
         self.assertEqual(msg.reactions, { 19: { 0: reaction }})
 
     # Test the addition of a reaction and its inverse reaction.
     # The reaction with the highest ROWID should be the current reaction as it (should be) the most recent.
     def test_add_multiple_reactions(self):
-        reactionKw2 = {'ROWID': 628, 'guid': '3D8E90A2-B06A-44D1-BF62-F419320592A3', 'text': 'Removed a heart from “This is some example text.”', 'handle_id': 19, 'service': 'iMessage', 'error': 0, 'date': 1582480858, 'date_read': 978307200, 'date_delivered': 978307200, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 1, 'is_read': 0, 'is_sent': 1, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/495488E4-10A7-4BA2-A070-DE82AB2C2401', 'associated_message_type': 3000, 'attachment_id': None}
+        reactionKw2 = {'ROWID': 628, 'text': 'Removed a heart from “This is some example text.”', 'handle_id':
+                self.reactionKw['handle_id'], 'date': 1582480858, 'date_read': 978307200, 'date_delivered': 978307200, 'is_from_me': 1, 'associated_message_guid': 'p:0/495488E4-10A7-4BA2-A070-DE82AB2C2401', 'associated_message_type': 3000}
         msg = api.Message(**self.messageKw)
         reaction = api.Reaction(associated_message_id=msg.rowid, **self.reactionKw)
         reaction2 = api.Reaction(associated_message_id=msg.rowid, **reactionKw2)
         msg.addReaction(reaction)
         msg.addReaction(reaction2)
 
+        self.assertEqual.__self__.maxDiff = None
         self.assertEqual(msg.reactions, { 19: { 0: reaction2 }})
 
 class TestReactionMethods(unittest.TestCase):
@@ -82,6 +88,7 @@ class TestReactionMethods(unittest.TestCase):
         self.assertEqual(reaction.associatedMessageId, 1)
         self.assertEqual(reaction.rowid, 627)
         self.assertEqual(reaction.isAddition, True)
+        self.assertEqual(reaction.isiMessage, True)
 
     def test_real_reaction_removal(self):
         kw = {'ROWID': 1393, 'guid': '7A291C84-F43E-4127-AC16-BD0BE4DBD7EC', 'text': 'Removed an exclamation from “..”', 'handle_id': 1, 'service': 'iMessage', 'error': 0, 'date': 1582726653, 'date_read': 1582726656, 'date_delivered': 0, 'is_delivered': 1, 'is_finished': 1, 'is_from_me': 0, 'is_read': 1, 'is_sent': 0, 'cache_has_attachments': 0, 'cache_roomnames': None, 'item_type': 0, 'other_handle': 0, 'group_title': None, 'group_action_type': 0, 'associated_message_guid': 'p:0/459BDF3C-599E-4A86-A6C5-76F6AF93BE65', 'associated_message_type': 3004, 'attachment_id': None}
@@ -196,8 +203,8 @@ class TestMessageListMethods(unittest.TestCase):
 class TestAttachmentMethods(unittest.TestCase):
 
     def test_basic_creation(self):
-        attachment = api.Attachment()
-        self.assertEqual(attachment.attr, {})
+        attachment = api.Attachment(ROWID=1)
+        self.assertEqual(attachment.rowid, 1)
 
 if __name__ == '__main__':
     unittest.main()
