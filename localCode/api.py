@@ -113,6 +113,7 @@ class MessageList(dict):
 class AttachmentNoIdException(Exception):
     pass
 
+
 @dataclass
 class Attachment:
 
@@ -128,6 +129,7 @@ class Attachment:
     @property
     def rowid(self):
         return self.ROWID
+
 
 class ReceivedNoIdException(Exception):
     pass
@@ -245,7 +247,7 @@ class Message(Received):
     def addReaction(self, reaction):
         # If the handle sending the reaction has not reacted to this message,
         # add it.
-        if not reaction.handleId in self.reactions:
+        if reaction.handleId not in self.reactions:
             self.reactions[reaction.handleId] = {}
 
         # Reactions and reaction removals have the same digit in the ones place
@@ -306,18 +308,17 @@ class DummyChat:
         self.rowid = chatId
 
 
+@dataclass
 class Chat:
 
-    def __init__(self, chatId, chatIdentifier, displayName, **kw):
+    ROWID: int = None
+    chat_identifier: str = None
+    display_name: str = ''
+    style: int = 0
+    service_name: str = ''
 
-        self.attr = {}
-        for key, value in kw.items():
-            self.attr[key] = value
-        if 'display_name' not in self.attr:
-            self.attr['display_name'] = ''
-        self.chatId = chatId
-        self.chatIdentifier = chatIdentifier
-        self.displayName = displayName
+    def __post_init__(self):
+
         self.messageList = MessageList()
         self.outgoingList = MessageList()
         self.recipientList = self._loadRecipients()
@@ -328,17 +329,28 @@ class Chat:
         self.isTemporaryChat = False
 
     @property
-    def rowid(self):
-        return self.attr['ROWID']
+    def chatId(self):
+        return self.ROWID
+
+    @property
+    def serviceName(self):
+        return self.service_name
+
+    @property
+    def chatIdentifier(self):
+        return self.chat_identifier
+
+    @property
+    def displayName(self):
+        return self.display_name
 
     def isiMessage(self):
-        if ('service_name' in self.attr and
-                self.attr['service_name'] == 'iMessage'):
+        if (self.service_name == 'iMessage'):
             return True
         return False
 
     def isGroup(self):
-        if 'style' in self.attr and self.attr['style'] == 43:
+        if self.style == 43:
             return True
         return False
 
@@ -351,7 +363,7 @@ class Chat:
     def _loadRecipients(self):
         conn = sqlite3.connect(dbPath)
         conn.row_factory = sqlite3.Row
-        cursor = conn.execute(sqlcommands.LOAD_RECIPIENTS_SQL, (self.rowid, ))
+        cursor = conn.execute(sqlcommands.LOAD_RECIPIENTS_SQL, (self.chatId, ))
         recipients = []
         for recipient in cursor.fetchall():
             recipients.append(recipient[0])
@@ -387,7 +399,7 @@ class Chat:
                                 'message_update_date']
         columns = ', '.join(neededColumnsMessage)
         sql = sqlcommands.LOAD_MESSAGES_SQL.format(columns)
-        cursor = conn.execute(sql, (self.rowid, tempLastAccess))
+        cursor = conn.execute(sql, (self.chatId, tempLastAccess))
 
         for row in cursor:
             handleName = conn.execute(sqlcommands.HANDLE_SQL,
@@ -420,7 +432,8 @@ class Chat:
                                                   [-36:], )).fetchone()
                 if assocMessageId:
                     assocMessageId = assocMessageId[0]
-                    reaction = Reaction(associated_message_id=assocMessageId, **row)
+                    reaction = Reaction(
+                        associated_message_id=assocMessageId, **row)
                     reaction.handleName = handleName
                     self.messageList.addReaction(reaction)
 
@@ -451,10 +464,10 @@ class Chat:
         self.sendData(messageTextC, messageId=None, assocType=None,
                       messageCode=0, recipientString=recipientString)
         msg = Message(**{'ROWID': self.messagePreviewId,
-                                     'text': messageText, 'date':
-                                     int(time.time()), 'date_read': 0,
-                                     'is_delivered': 0, 'is_from_me': 1,
-                                     'service': 'iMessage'})
+                         'text': messageText, 'date':
+                         int(time.time()), 'date_read': 0,
+                         'is_delivered': 0, 'is_from_me': 1,
+                         'service': 'iMessage'})
         msg.isTemporary = True
         self.messagePreviewId -= 1
         self.messageList.append(msg)
@@ -488,7 +501,7 @@ class Chat:
     def _loadMostRecentMessage(self):
         conn = sqlite3.connect(dbPath)
         conn.row_factory = sqlite3.Row
-        cursor = conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (self.rowid, ))
+        cursor = conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (self.chatId, ))
         for row in cursor.fetchall():
             if not row['associated_message_guid']:
                 message = Message(**row)
@@ -500,14 +513,15 @@ class Chat:
                                                [-36:], )).fetchone()
                 if assocMessageId:
                     assocMessageId = assocMessageId[0]
-                    reaction = Reaction(associated_message_id=assocMessageId, **row)
+                    reaction = Reaction(
+                        associated_message_id=assocMessageId, **row)
                     self.messageList.addReaction(reaction)
                     break
         conn.close()
 
 
 def createNewChat(chatId):
-    chat = Chat(chatId, '', None, **{'ROWID': chatId})
+    chat = Chat(**{'ROWID': chatId})
     return chat
 
 
@@ -519,7 +533,7 @@ def _loadChat(chatId):
     row = cursor.fetchone()
     if row is None:
         raise ChatDeletedException
-    chat = Chat(row[0], row[1], row[2], **row)
+    chat = Chat(**row)
     conn.close()
     if chat is None:
         return None

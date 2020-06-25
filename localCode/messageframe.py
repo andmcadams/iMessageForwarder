@@ -199,7 +199,7 @@ class MessageFrame(VerticalScrolledFrame):
             self.readReceiptMessageId = message.rowid
 
         if (message.attachment is not None and
-                message.attachment.attr['uti'] in allowedTypes):
+                message.attachment.uti in allowedTypes):
             msg = ImageMessageBubble(self.interior, message.rowid, chat,
                                      i, addLabel, addReceipt)
         else:
@@ -463,7 +463,7 @@ class ImageMessageBubble(MessageBubble):
             self.body.original = Image.open(os.path
                                             .expanduser(chat.getMessages()
                                                         [messageId].attachment
-                                                        .attr['filename']))
+                                                        .filename))
             newSize = self.getNewSize(self.body.original,
                                       self.master.master.winfo_width(),
                                       self.master.master.winfo_height())

@@ -96,7 +96,7 @@ class RecipientLabelFrame(tk.Frame):
         # This seems a bit counterintuitive honestly, so I don't do that here.
         if chat.isGroup():
             if chat.isiMessage():
-                displayName = chat.attr['display_name']
+                displayName = chat.displayName
                 menu.add_command(label='Name: {}'.format(displayName if
                                  displayName else 'Add group name...'))
             menu.add_command(label='{} members'
@@ -146,8 +146,8 @@ class RecipientLabelFrame(tk.Frame):
 
         self.master.details.configure(text='Details')
         # self.master.details.update()
-        if chat.attr['display_name']:
-            r = RecipientLabel(self, chat.attr['display_name'])
+        if chat.displayName:
+            r = RecipientLabel(self, chat.displayName)
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=r.fullText)
             r.resizeLabel(True, self.winfo_reqwidth())
             self.topFrame.addLabel(r)
@@ -239,7 +239,7 @@ class RecipientLabelFrame(tk.Frame):
     def resizeRecipients(self, event, chat):
         self.master.lock.acquire()
 
-        if chat.attr['display_name']:
+        if chat.displayName:
             if self.topFrame.labels:
                 self.topFrame.labels[0].resizeLabel(True, event.width)
             self.master.lock.release()
