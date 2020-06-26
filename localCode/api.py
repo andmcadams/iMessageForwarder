@@ -5,7 +5,8 @@ import time
 import subprocess
 import threading
 import sqlcommands
-from typing import List
+from typing import List, Type, Dict, Any, Optional, Tuple
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 dirname = os.path.dirname(__file__)
@@ -41,7 +42,7 @@ class MessageList(dict):
     # one sort.
     # The assumption is that messages will be inserted near the end,
     # requiring fewer checks than looking at the entire list.
-    def append(self, message):
+    def append(self, message: 'Received') -> None:
         self.writeLock.acquire()
         updatedMessages = self.messages
 
@@ -62,7 +63,11 @@ class MessageList(dict):
 
         self.writeLock.release()
 
-    def _insert(self, message, messageList, keys):
+    def _insert(self,
+                message: 'Received',
+                messageList: Dict[int,
+                                  'Received'],
+                keys: List[int]) -> None:
         # Here we need to check the dates near the end of the dictionary
         # We assume that the dictionary will be sorted at this point
         # by induction.
@@ -92,7 +97,7 @@ class MessageList(dict):
             p = poppedMessages.pop()
             messageList[p.rowid] = p
 
-    def addReaction(self, reaction):
+    def addReaction(self, reaction: 'Reaction') -> None:
 
         self.writeLock.acquire()
         if reaction.associatedMessageId in self.messages.keys():
@@ -102,12 +107,12 @@ class MessageList(dict):
 
         self.writeLock.release()
 
-    def _updateMostRecentMessage(self, message):
+    def _updateMostRecentMessage(self, message: 'Received') -> None:
         if (self.mostRecentMessage is None or
                 message.isNewer(self.mostRecentMessage)):
             self.mostRecentMessage = message
 
-    def getMostRecentMessage(self):
+    def getMostRecentMessage(self) -> 'Received':
         return self.mostRecentMessage
 
 
@@ -128,7 +133,7 @@ class Attachment:
             raise AttachmentNoIdException
 
     @property
-    def rowid(self):
+    def rowid(self) -> int:
         return self.ROWID
 
 
@@ -141,7 +146,7 @@ class ReactionNoAssociatedIdException(Exception):
 
 
 @dataclass
-class Received:
+class Received(ABC):
 
     ROWID: int = None
     guid: str = ''
@@ -183,42 +188,54 @@ class Received:
         self.removeTemp = 0
 
     @property
-    def rowid(self):
+    def rowid(self) -> int:
         return self.ROWID
 
     @property
-    def handleId(self):
+    def handleId(self) -> int:
         return self.handle_id
 
     @property
-    def dateRead(self):
+    def dateRead(self) -> int:
         return self.date_read
 
     @property
-    def isFromMe(self):
+    def isFromMe(self) -> bool:
         return self.is_from_me == 1
 
     @property
-    def isDelivered(self):
+    def isDelivered(self) -> bool:
         return self.is_delivered == 1
 
     @property
-    def isiMessage(self):
+    def isiMessage(self) -> bool:
         return self.service == 'iMessage'
 
     @property
-    def isTemporary(self):
+    def isTemporary(self) -> bool:
         return self.rowid < 0
 
     @property
-    def handleName(self):
+    def handleName(self) -> str:
         return self._handleName
 
+    @property
+    def attachment(self) -> None:
+        return None
+
+    @property
+    def reactions(self) -> Dict[Any, Any]:
+        return {}
+
     @handleName.setter
-    def handleName(self, handleName):
+    def handleName(self, handleName: str) -> None:
         self._handleName = handleName
 
-    def isNewer(self, otherMessage):
+    @abstractmethod
+    def isReaction() -> bool:
+        pass
+
+    def isNewer(self, otherMessage: 'Received') -> bool:
         if self.date > otherMessage.date:
             return True
         elif self.date < otherMessage.date:
@@ -233,10 +250,25 @@ class Message(Received):
 
     def __post_init__(self):
         super().__post_init__()
-        self.reactions = {}
-        self.attachment = None
+        self._reactions = {}
+        self._attachment = None
 
-    def addReaction(self, reaction):
+    @property
+    def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
+        return self._reactions
+
+    @property
+    def attachment(self) -> Optional['Attachment']:
+        return self._attachment
+
+    @attachment.setter
+    def attachment(self, attachment: 'Attachment') -> None:
+        self._attachment = attachment
+
+    def isReaction(self) -> bool:
+        return False
+
+    def addReaction(self, reaction: 'Reaction') -> None:
         # If the handle sending the reaction has not reacted to this message,
         # add it.
         if reaction.handleId not in self.reactions:
@@ -254,7 +286,7 @@ class Message(Received):
         elif reactionVal not in handleReactions:
             self.reactions[reaction.handleId][reactionVal] = reaction
 
-    def update(self, updatedMessage):
+    def update(self, updatedMessage: 'Message') -> None:
         self.date = updatedMessage.date
         self.date_read = updatedMessage.date_read
         self.date_delivered = updatedMessage.date_delivered
@@ -264,7 +296,8 @@ class Message(Received):
         self.is_sent = updatedMessage.is_sent
         self.message_update_date = updatedMessage.message_update_date
         self.service = updatedMessage.service
-        self.removeTemp = updatedMessage.removeTemp if self.removeTemp == 0 else self.removeTemp
+        self.removeTemp = (updatedMessage.removeTemp if self.removeTemp == 0
+                           else self.removeTemp)
 
         if updatedMessage.attachment:
             self.attachment = updatedMessage.attachment
@@ -280,16 +313,19 @@ class Reaction(Received):
             raise ReactionNoAssociatedIdException
 
     @property
-    def isAddition(self):
+    def isAddition(self) -> bool:
         return self.associated_message_type < 3000
 
     @property
-    def reactionType(self):
+    def reactionType(self) -> int:
         return self.associated_message_type
 
     @property
-    def associatedMessageId(self):
+    def associatedMessageId(self) -> int:
         return self.associated_message_id
+
+    def isReaction(self) -> bool:
+        return True
 
 
 class ChatDeletedException(Exception):
@@ -297,7 +333,7 @@ class ChatDeletedException(Exception):
 
 
 class DummyChat:
-    def __init__(self, chatId):
+    def __init__(self, chatId: int) -> None:
         self.chatId = chatId
 
 
@@ -322,46 +358,52 @@ class Chat:
         self.recipientList = MessageDatabase().getRecipients(self.chatId)
 
     @property
-    def chatId(self):
+    def chatId(self) -> int:
         return self.ROWID
 
     @property
-    def serviceName(self):
+    def serviceName(self) -> str:
         return self.service_name
 
     @property
-    def chatIdentifier(self):
+    def chatIdentifier(self) -> str:
         return self.chat_identifier
 
     @property
-    def displayName(self):
+    def displayName(self) -> str:
         return self.display_name
 
-    def isiMessage(self):
+    def isiMessage(self) -> bool:
         if (self.serviceName == 'iMessage'):
             return True
         return False
 
-    def isGroup(self):
+    def isGroup(self) -> bool:
         if self.style == 43:
             return True
         return False
 
-    def addRecipient(self, recipient):
+    def addRecipient(self, recipient: str) -> bool:
         if recipient:
             self.recipientList.append(recipient)
             return True
         return False
 
-    def addMessages(self, messageList, lastAccessTime):
+    def addMessages(
+            self,
+            messageList: List['Received'],
+            lastAccessTime: int) -> None:
         for m in messageList:
-            self.messageList.append(m)
-            if self.messageList.messages[m.rowid].isFromMe:
-                self.removeTemporaryMessage(self.messageList.messages[m.rowid])
+            if m.isReaction():
+                self.messageList.addReaction(m)
+            else:
+                self.messageList.append(m)
+                if self.messageList.messages[m.rowid].isFromMe:
+                    self.removeTemporaryMessage(self.messageList.messages[m.rowid])
         if lastAccessTime > self.lastAccessTime:
             self.lastAccessTime = lastAccessTime
 
-    def getName(self):
+    def getName(self) -> str:
         if self.displayName:
             return ''.join([self.displayName[t] for t in
                             range(len(self.displayName)) if
@@ -369,10 +411,10 @@ class Chat:
         else:
             return ', '.join(self.recipientList)
 
-    def getMessages(self):
+    def getMessages(self) -> Dict[int, 'Received']:
         return self.messageList.messages
 
-    def removeTemporaryMessage(self, message):
+    def removeTemporaryMessage(self, message: 'Received') -> None:
         self.messageList.writeLock.acquire()
         self.outgoingList.writeLock.acquire()
         idToDelete = 0
@@ -389,7 +431,7 @@ class Chat:
         self.messageList.writeLock.release()
         self.outgoingList.writeLock.release()
 
-    def sendMessage(self, messageText, recipientString):
+    def sendMessage(self, messageText: str, recipientString: str) -> None:
         messageTextC = messageText.replace("'", "\\'")
         recipientString = recipientString.replace('\'', '\\\'')
         self.sendData(messageTextC, messageId=None, assocType=None,
@@ -404,12 +446,13 @@ class Chat:
         self.outgoingList.append(msg)
         self.localUpdate = True
 
-    def sendReaction(self, messageId, assocType):
+    def sendReaction(self, messageId: int, assocType: int) -> None:
         self.sendData(messageText='', messageId=messageId, assocType=assocType,
                       messageCode=1, recipientString='')
 
-    def sendData(self, messageText='', messageId=None, assocType=None,
-                 messageCode=None, recipientString=''):
+    def sendData(self, messageText: str = '', messageId: int = None,
+                 assocType: int = None, messageCode: int = None,
+                 recipientString: str = '') -> None:
         cmd = [
             "ssh",
             "{}@{}".format(
@@ -425,10 +468,10 @@ class Chat:
                 recipientString)]
         subprocess.run(cmd)
 
-    def getMostRecentMessage(self):
+    def getMostRecentMessage(self) -> 'Received':
         return self.messageList.getMostRecentMessage()
 
-    def _loadMostRecentMessage(self):
+    def _loadMostRecentMessage(self) -> None:
         conn = sqlite3.connect(dbPath)
         conn.row_factory = sqlite3.Row
         cursor = conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (self.chatId, ))
@@ -456,9 +499,9 @@ class MessageDatabase:
         self.conn = sqlite3.connect(dbPath)
         self.conn.row_factory = sqlite3.Row
 
-    def _getHandleName(self, handleId):
+    def _getHandleName(self, handleId: int) -> str:
         handleName = self.conn.execute(sqlcommands.HANDLE_SQL,
-                                  (handleId, )).fetchone()
+                                       (handleId, )).fetchone()
         if handleName:
             handleName = handleName[0]
         else:
@@ -466,7 +509,7 @@ class MessageDatabase:
 
         return handleName
 
-    def getMessagesForChat(self, chatId: int, lastAccessTime: int = 0):
+    def getMessagesForChat(self, chatId: int, lastAccessTime: int = 0) -> Tuple[List['Received'], int]:
         messages = []
         tempLastAccess = lastAccessTime
         neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id',
@@ -495,14 +538,15 @@ class MessageDatabase:
                 attachment = None
                 if row['attachment_id'] is not None:
                     a = self.conn.execute(sqlcommands.ATTACHMENT_SQL,
-                                     (row['attachment_id'], )).fetchone()
+                                          (row['attachment_id'], )).fetchone()
                     attachment = Attachment(**a)
                 message = Message(**row)
+                message.attachment = attachment
 
             else:
                 assocMessageId = self.conn.execute(sqlcommands.ASSOC_MESSAGE_SQL,
-                                              (row['associated_message_guid']
-                                                  [-36:], )).fetchone()
+                                                   (row['associated_message_guid']
+                                                    [-36:], )).fetchone()
                 if assocMessageId:
                     assocMessageId = assocMessageId[0]
                     message = Reaction(
@@ -514,24 +558,25 @@ class MessageDatabase:
         lastAccessTime = max(lastAccessTime, tempLastAccess)
         return (messages, lastAccessTime)
 
-    def getRecipients(self, chatId: int):
+    def getRecipients(self, chatId: int) -> List[str]:
         cursor = self.conn.execute(sqlcommands.LOAD_RECIPIENTS_SQL, (chatId, ))
         recipients = []
         for recipient in cursor.fetchall():
             recipients.append(recipient[0])
         return recipients
 
-    def getChat(self, chatId: int):
+    def getChat(self, chatId: int) -> Dict[str, Any]:
         cursor = self.conn.execute(sqlcommands.LOAD_CHAT_SQL,
-                              (chatId, ))
+                                   (chatId, ))
         row = cursor.fetchone()
         if row is None:
             raise ChatDeletedException
 
         return dict(row)
 
-    def getChatsToUpdate(self, lastAccessTime, chats):
-        cursor = self.conn.execute(sqlcommands.CHATS_TO_UPDATE_SQL, (lastAccessTime, ))
+    def getChatsToUpdate(self, lastAccessTime: int, chats: List['Chat']) -> Tuple[List[int], int]:
+        cursor = self.conn.execute(
+            sqlcommands.CHATS_TO_UPDATE_SQL, (lastAccessTime, ))
         chatIds = []
         maxUpdate = lastAccessTime
         for row in cursor.fetchall():
@@ -546,12 +591,12 @@ class MessageDatabase:
         return chatIds, maxUpdate
 
 
-def createNewChat(chatId):
+def createNewChat(chatId: int) -> 'Chat':
     chat = Chat(**{'ROWID': chatId})
     return chat
 
 
-def _ping():
+def _ping() -> bool:
     try:
         output = subprocess.run(['nc', '-vz', '-w 1', ip, '22'],
                                 stderr=subprocess.DEVNULL, check=True)
@@ -560,6 +605,6 @@ def _ping():
         return False
 
 
-def _useTestDatabase(dbName):
+def _useTestDatabase(dbName: str) -> None:
     global dbPath
     dbPath = os.path.join(dirname, dbName)
