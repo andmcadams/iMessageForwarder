@@ -521,28 +521,19 @@ class MessageDatabase:
             recipients.append(recipient[0])
         return recipients
 
+    def getChat(self, chatId: int):
+        cursor = self.conn.execute(sqlcommands.LOAD_CHAT_SQL,
+                              (chatId, ))
+        row = cursor.fetchone()
+        if row is None:
+            raise ChatDeletedException
+
+        return dict(row)
+
 
 def createNewChat(chatId):
     chat = Chat(**{'ROWID': chatId})
     return chat
-
-
-def _loadChat(chatId):
-    conn = sqlite3.connect(dbPath)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.execute(sqlcommands.LOAD_CHAT_SQL,
-                          (chatId, ))
-    row = cursor.fetchone()
-    if row is None:
-        raise ChatDeletedException
-    chat = Chat(**row)
-    conn.close()
-    if chat is None:
-        return None
-    if chat.getMostRecentMessage().rowid is not None:
-        return chat
-
-    return None
 
 
 def _getChatsToUpdate(lastAccessTime, chats):

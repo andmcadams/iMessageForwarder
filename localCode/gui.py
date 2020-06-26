@@ -29,7 +29,9 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
                  .addMessages(responseFrame.currentChat))
 
             if chatId not in chatFrame.chatButtons:
-                chat = api._loadChat(chatId)
+                db = api.MessageDatabase()
+                row = db.getChat(chatId)
+                chat = api.Chat(**row)
                 chatFrame.addChat(chat, responseFrame)
                 if lastAccessTime == 0:
                     newMessageFlag = False
