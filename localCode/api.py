@@ -20,19 +20,17 @@ ip = secrets['ip']
 scriptPath = secrets['scriptPath']
 
 
-"""
-MessageList needs to satisfy two major criteria:
-    1. Easy lookup to find a message based on messageId to update messages
-    2. Ordering based on date
-1 allows O(1) average time finding messages to update, which can be
-  important if a user doesn't delete messages
-2 allows sorting to happen at insertion in order to save time when printing
-  messages and fetching older ones
-Dictionary order is guaranteed (insertion order) in python 3.7+
-"""
-
-
 class MessageList(dict):
+    """
+    MessageList needs to satisfy two major criteria:
+        1. Easy lookup to find a message based on messageId to update messages
+        2. Ordering based on date
+    1 allows O(1) average time finding messages to update, which can be
+      important if a user doesn't delete messages
+    2 allows sorting to happen at insertion in order to save time when printing
+      messages and fetching older ones
+    Dictionary order is guaranteed (insertion order) in python 3.7+
+    """
     def __init__(self):
         self.messages = {}
         self.mostRecentMessage = None
