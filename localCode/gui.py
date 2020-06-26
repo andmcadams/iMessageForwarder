@@ -15,14 +15,16 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
 
     db = api.MessageDatabase()
     chatIds, newLastAccessTime = db.getChatsToUpdate(lastAccessTime,
-                                                       chatFrame.chats)
+                                                     chatFrame.chats)
     chatFrame.lock.acquire()
     newMessageFlag = False
     for chatId in chatIds:
         try:
             for chatButton in chatFrame.chatButtons:
                 if chatId == chatButton.chat.chatId:
-                    chatButton.chat._loadMostRecentMessage()
+                    recentMessage = db.getMostRecentMessage(
+                        chatButton.chat.chatId)
+                    chatButton.chat.addMessage(recentMessage)
                     if chatButton.update():
                         newMessageFlag = True
 
@@ -81,9 +83,9 @@ def runGui(DEBUG, currentThread):
     style.layout("RoundedFrame", [("RoundedFrame", {"sticky": "nsew"})])
 
     minWidthChatFrame = 270
-    minWidthResponseFrame = int(4*minWidthChatFrame/3)
-    root.minsize(minWidthChatFrame+minWidthResponseFrame,
-                 (minWidthChatFrame+minWidthResponseFrame)//2)
+    minWidthResponseFrame = int(4 * minWidthChatFrame / 3)
+    root.minsize(minWidthChatFrame + minWidthResponseFrame,
+                 (minWidthChatFrame + minWidthResponseFrame) // 2)
     responseFrame = ResponseFrame(root, minWidthResponseFrame, api)
     responseFrame.grid(row=0, column=1, sticky='nsew')
     leftFrame = LeftFrame(root, 0, minWidthChatFrame, responseFrame, api)

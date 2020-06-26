@@ -350,11 +350,11 @@ class Chat:
 
         self.messageList = MessageList()
         self.outgoingList = MessageList()
-        self._loadMostRecentMessage()
         self.lastAccessTime = 0
         self.localUpdate = False
         self.messagePreviewId = -1
         self.isTemporaryChat = False
+        self._addMessage(MessageDatabase().getMostRecentMessage(self.chatId))
         self.recipientList = MessageDatabase().getRecipients(self.chatId)
 
     @property
@@ -389,17 +389,31 @@ class Chat:
             return True
         return False
 
+    def _addMessage(
+            self,
+            message: Optional['Received']) -> None:
+        if message is None:
+            pass
+        elif message.isReaction():
+            self.messageList.addReaction(message)
+        else:
+            self.messageList.append(message)
+            if self.messageList.messages[message.rowid].isFromMe:
+                self.removeTemporaryMessage(
+                    self.messageList.messages[message.rowid])
+
+    def addMessage(
+            self,
+            message: 'Received',
+            lastAccessTime: int = 0) -> None:
+        self.addMessages([message], lastAccessTime)
+
     def addMessages(
             self,
             messageList: List['Received'],
-            lastAccessTime: int) -> None:
+            lastAccessTime: int = 0) -> None:
         for m in messageList:
-            if m.isReaction():
-                self.messageList.addReaction(m)
-            else:
-                self.messageList.append(m)
-                if self.messageList.messages[m.rowid].isFromMe:
-                    self.removeTemporaryMessage(self.messageList.messages[m.rowid])
+            self._addMessage(m)
         if lastAccessTime > self.lastAccessTime:
             self.lastAccessTime = lastAccessTime
 
@@ -471,27 +485,6 @@ class Chat:
     def getMostRecentMessage(self) -> 'Received':
         return self.messageList.getMostRecentMessage()
 
-    def _loadMostRecentMessage(self) -> None:
-        conn = sqlite3.connect(dbPath)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (self.chatId, ))
-        for row in cursor.fetchall():
-            if not row['associated_message_guid']:
-                message = Message(**row)
-                self.messageList.append(message)
-                break
-            else:
-                assocMessageId = conn.execute(sqlcommands.ASSOC_MESSAGE_SQL,
-                                              (row['associated_message_guid']
-                                               [-36:], )).fetchone()
-                if assocMessageId:
-                    assocMessageId = assocMessageId[0]
-                    reaction = Reaction(
-                        associated_message_id=assocMessageId, **row)
-                    self.messageList.addReaction(reaction)
-                    break
-        conn.close()
-
 
 class MessageDatabase:
 
@@ -509,7 +502,10 @@ class MessageDatabase:
 
         return handleName
 
-    def getMessagesForChat(self, chatId: int, lastAccessTime: int = 0) -> Tuple[List['Received'], int]:
+    def getMessagesForChat(
+            self,
+            chatId: int,
+            lastAccessTime: int = 0) -> Tuple[List['Received'], int]:
         messages = []
         tempLastAccess = lastAccessTime
         neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id',
@@ -544,9 +540,10 @@ class MessageDatabase:
                 message.attachment = attachment
 
             else:
-                assocMessageId = self.conn.execute(sqlcommands.ASSOC_MESSAGE_SQL,
-                                                   (row['associated_message_guid']
-                                                    [-36:], )).fetchone()
+                assocMessageId = (self.conn
+                                  .execute(sqlcommands.ASSOC_MESSAGE_SQL,
+                                           (row['associated_message_guid']
+                                               [-36:], )).fetchone())
                 if assocMessageId:
                     assocMessageId = assocMessageId[0]
                     message = Reaction(
@@ -557,6 +554,24 @@ class MessageDatabase:
                 messages.append(message)
         lastAccessTime = max(lastAccessTime, tempLastAccess)
         return (messages, lastAccessTime)
+
+    def getMostRecentMessage(self, chatId: int) -> Optional['Received']:
+        cursor = self.conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (chatId, ))
+        for row in cursor:
+            if not row['associated_message_guid']:
+                message = Message(**row)
+                return message
+            else:
+                assocMessageId = (self.conn
+                                  .execute(sqlcommands.ASSOC_MESSAGE_SQL,
+                                           (row['associated_message_guid']
+                                               [-36:], )).fetchone())
+                if assocMessageId:
+                    assocMessageId = assocMessageId[0]
+                    reaction = Reaction(
+                        associated_message_id=assocMessageId, **row)
+                    return reaction
+        return None
 
     def getRecipients(self, chatId: int) -> List[str]:
         cursor = self.conn.execute(sqlcommands.LOAD_RECIPIENTS_SQL, (chatId, ))
@@ -574,7 +589,8 @@ class MessageDatabase:
 
         return dict(row)
 
-    def getChatsToUpdate(self, lastAccessTime: int, chats: List['Chat']) -> Tuple[List[int], int]:
+    def getChatsToUpdate(self, lastAccessTime: int,
+                         chats: List['Chat']) -> Tuple[List[int], int]:
         cursor = self.conn.execute(
             sqlcommands.CHATS_TO_UPDATE_SQL, (lastAccessTime, ))
         chatIds = []
