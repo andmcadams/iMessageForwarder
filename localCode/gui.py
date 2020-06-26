@@ -12,7 +12,9 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
         chatFrame.master.quit()
         # chatFrame.master.destroy()
         return
-    chatIds, newLastAccessTime = api._getChatsToUpdate(lastAccessTime,
+
+    db = api.MessageDatabase()
+    chatIds, newLastAccessTime = db.getChatsToUpdate(lastAccessTime,
                                                        chatFrame.chats)
     chatFrame.lock.acquire()
     newMessageFlag = False
@@ -29,7 +31,6 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
                  .addMessages(responseFrame.currentChat))
 
             if chatId not in chatFrame.chatButtons:
-                db = api.MessageDatabase()
                 row = db.getChat(chatId)
                 chat = api.Chat(**row)
                 chatFrame.addChat(chat, responseFrame)

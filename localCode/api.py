@@ -530,30 +530,25 @@ class MessageDatabase:
 
         return dict(row)
 
+    def getChatsToUpdate(self, lastAccessTime, chats):
+        cursor = self.conn.execute(sqlcommands.CHATS_TO_UPDATE_SQL, (lastAccessTime, ))
+        chatIds = []
+        maxUpdate = lastAccessTime
+        for row in cursor.fetchall():
+            chatIds.append(row['chat_id'])
+            if row['max(message_update_date)'] > maxUpdate:
+                maxUpdate = row['max(message_update_date)']
+        for _, chat in chats.items():
+            if chat.localUpdate:
+                chat.localUpdate = False
+                if chat.chatId not in chatIds:
+                    chatIds.append(chat.chatId)
+        return chatIds, maxUpdate
+
 
 def createNewChat(chatId):
     chat = Chat(**{'ROWID': chatId})
     return chat
-
-
-def _getChatsToUpdate(lastAccessTime, chats):
-    conn = sqlite3.connect(dbPath)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.execute(sqlcommands.CHATS_TO_UPDATE_SQL, (lastAccessTime, ))
-    chatIds = []
-    maxUpdate = lastAccessTime
-    for row in cursor.fetchall():
-        chatIds.append(row['chat_id'])
-        if row['max(message_update_date)'] > maxUpdate:
-            maxUpdate = row['max(message_update_date)']
-    for idx in chats:
-        chat = chats[idx]
-        if chat.localUpdate:
-            chat.localUpdate = False
-            if chat.chatId not in chatIds:
-                chatIds.append(chat.chatId)
-    conn.close()
-    return chatIds, maxUpdate
 
 
 def _ping():
