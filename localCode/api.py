@@ -4,7 +4,7 @@ import json
 import time
 import subprocess
 import threading
-import sqlcommands
+from localCode import sqlcommands
 from typing import List, Type, Dict, Any, Optional, Tuple
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -194,28 +194,40 @@ class Received(ABC):
         return self.handle_id
 
     @property
-    def dateRead(self) -> int:
-        return self.date_read
+    def handleName(self) -> str:
+        return self._handleName
+
+    @handleName.setter
+    def handleName(self, handleName: str) -> None:
+        self._handleName = handleName
 
     @property
-    def isFromMe(self) -> bool:
-        return self.is_from_me == 1
+    def dateRead(self) -> int:
+        return self.date_read
 
     @property
     def isDelivered(self) -> bool:
         return self.is_delivered == 1
 
     @property
+    def isFromMe(self) -> bool:
+        return self.is_from_me == 1
+
+    @property
     def isiMessage(self) -> bool:
         return self.service == 'iMessage'
 
     @property
-    def isTemporary(self) -> bool:
-        return self.rowid < 0
+    def isRead(self) -> bool:
+        return self.is_read == 1
 
     @property
-    def handleName(self) -> str:
-        return self._handleName
+    def isSent(self) -> bool:
+        return self.is_sent == 1
+
+    @property
+    def isTemporary(self) -> bool:
+        return self.rowid < 0
 
     @property
     def attachment(self) -> None:
@@ -225,15 +237,24 @@ class Received(ABC):
     def reactions(self) -> Dict[Any, Any]:
         return {}
 
-    @handleName.setter
-    def handleName(self, handleName: str) -> None:
-        self._handleName = handleName
-
+    @property
     @abstractmethod
-    def isReaction() -> bool:
+    def isReaction(self) -> bool:
         pass
 
     def isNewer(self, otherMessage: 'Received') -> bool:
+        """Return whether or not this message is newer than otherMessage.
+
+        Parameters:
+        otherMessage : Message
+            The message to compare.
+
+        Returns:
+            True if this message is newer than otherMessage.
+            False if this message is older than otherMessage.
+            If this message and otherMessage have the same date, age is
+            determined by ROWID, with larger ROWIDs considered newer.
+        """
         if self.date > otherMessage.date:
             return True
         elif self.date < otherMessage.date:
@@ -263,6 +284,7 @@ class Message(Received):
     def attachment(self, attachment: 'Attachment') -> None:
         self._attachment = attachment
 
+    @property
     def isReaction(self) -> bool:
         return False
 
@@ -273,7 +295,7 @@ class Message(Received):
             self.reactions[reaction.handleId] = {}
 
         # Reactions and reaction removals have the same digit in the ones place
-        reactionVal = reaction.associated_message_type % 1000
+        reactionVal = reaction.reactionType % 1000
 
         # If the handle has already sent this reaction, but this one is newer,
         # replace the old reaction with this one.
@@ -322,6 +344,7 @@ class Reaction(Received):
     def associatedMessageId(self) -> int:
         return self.associated_message_id
 
+    @property
     def isReaction(self) -> bool:
         return True
 
@@ -392,7 +415,7 @@ class Chat:
             message: Optional['Received']) -> None:
         if message is None:
             pass
-        elif message.isReaction():
+        elif message.isReaction:
             self.messageList.addReaction(message)
         else:
             self.messageList.append(message)
@@ -433,7 +456,7 @@ class Chat:
         for tempMsgId in self.outgoingList.messages:
             tempMsg = self.outgoingList.messages[tempMsgId]
             if (tempMsg.text == message.text and
-                    message.removeTemp is 0):
+                    message.removeTemp == 0):
                 message.removeTemp = tempMsg.rowid
                 del self.messageList.messages[tempMsgId]
                 idToDelete = tempMsgId
