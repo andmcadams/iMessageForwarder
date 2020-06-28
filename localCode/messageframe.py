@@ -58,7 +58,7 @@ class MessageFrame(VerticalScrolledFrame):
             self.addedMessages = not hitLimit
             newHeight = self.interior.winfo_reqheight()
 
-            newY = (top*oldHeight+(newHeight-oldHeight))/newHeight
+            newY = (top * oldHeight + (newHeight - oldHeight)) / newHeight
             self.canvas.yview_moveto(newY)
 
     # To change chats (ie display messages of a new chat)
@@ -228,7 +228,8 @@ class MessageFrame(VerticalScrolledFrame):
             return None
 
         db = self.master.api.MessageDatabase()
-        messageList, lastAccessTime = db.getMessagesForChat(chat.chatId, chat.lastAccessTime)
+        messageList, lastAccessTime = db.getMessagesForChat(
+            chat.chatId, chat.lastAccessTime)
         chat.addMessages(messageList, lastAccessTime)
 
         messageDict = chat.getMessages()
@@ -248,7 +249,7 @@ class MessageFrame(VerticalScrolledFrame):
         for i in range(len(subList)):
             messageId = subList[i]
             if messageId not in self.messageBubbles:
-                prevMessage = (messageDict[subList[i-1]] if (i-1) in
+                prevMessage = (messageDict[subList[i - 1]] if (i - 1) in
                                range(len(subList)) else None)
                 self.addMessage(chat, i, messageDict[messageId], prevMessage,
                                 lastFromMeId)
@@ -435,7 +436,7 @@ class TextMessageBubble(MessageBubble):
                  addReadReceipt, *args, **kw):
         MessageBubble.__init__(self, parent, messageId, chat, addLabel,
                                addReadReceipt, *args, **kw)
-        maxWidth = 3*self.master.master.winfo_width()//5
+        maxWidth = 3 * self.master.master.winfo_width() // 5
         # Could make color a gradient depending on index later but it will
         # add a lot of dumb code.
         self.messageInterior.configure(style="RoundedFrame")
@@ -448,7 +449,7 @@ class TextMessageBubble(MessageBubble):
         self.initBody()
 
     def resize(self, event):
-        self.body.configure(width=3*event.width//5)
+        self.body.configure(width=3 * event.width // 5)
 
 
 class ImageMessageBubble(MessageBubble):
@@ -484,16 +485,16 @@ class ImageMessageBubble(MessageBubble):
         self.initBody()
 
     def getNewSize(self, im, winWidth, winHeight):
-        maxWidth = 3*winWidth//4
-        maxHeight = 4*winHeight//5
+        maxWidth = 3 * winWidth // 4
+        maxHeight = 4 * winHeight // 5
 
         resized = im
         size = (im.width, im.height)
 
         if im.height > maxHeight or im.width > maxWidth:
-            h = int(im.height*(maxWidth/im.width))
+            h = int(im.height * (maxWidth / im.width))
             if h > maxHeight:
-                w = int(im.width*(maxHeight/im.height))
+                w = int(im.width * (maxHeight / im.height))
                 size = (w, maxHeight)
             else:
                 size = (maxWidth, h)
@@ -509,4 +510,4 @@ class ImageMessageBubble(MessageBubble):
             self.body.configure(image=self.body.image)
             self.display.configure(width=newSize[0], height=newSize[1])
         else:
-            self.body.configure(width=3*event.width//5)
+            self.body.configure(width=3 * event.width // 5)
