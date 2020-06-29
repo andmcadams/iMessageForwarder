@@ -34,8 +34,9 @@ only when there is text in the textbox and a connection to the remote machine.
 
 
 class SendFrame(tk.Frame):
-    def __init__(self, parent, *args, **kw):
+    def __init__(self, parent, mp, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
+        self.mp = mp
         self.text = ResponsiveText(self, wrap=tk.WORD, width=1, height=1)
         self.text.grid(row=0, column=0, sticky='ew')
         self.text.bind("<<TextModified>>", self.activateButton)
@@ -72,14 +73,14 @@ class SendFrame(tk.Frame):
         else:
             self.sendButton.configure(state='disabled')
 
-    def sendMessage(self, chat):
+    def sendMessage(self, mp, chat):
         recipientString = (str(chat.recipientList) if chat.isTemporaryChat is
                            True else '')
-        chat.sendMessage(self.text.get('1.0', 'end-1c'), recipientString)
+        chat.sendMessage(mp, self.text.get('1.0', 'end-1c'), recipientString)
         self.text.delete('1.0', 'end')
 
     # Changes the function called when clicking the send button so it is
     # passed the current chat.
-    def updateSendButton(self, chat):
-        self.sendButton.configure(command=(lambda chat=chat:
-                                           self.sendMessage(chat)))
+    def updateSendButton(self, mp, chat):
+        self.sendButton.configure(command=(lambda chat=chat, mp=mp:
+                                           self.sendMessage(mp, chat)))

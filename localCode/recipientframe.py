@@ -94,8 +94,8 @@ class RecipientLabelFrame(tk.Frame):
         # Apple's version adds one to the number of members to
         # include yourself.
         # This seems a bit counterintuitive honestly, so I don't do that here.
-        if chat.isGroup():
-            if chat.isiMessage():
+        if chat.isGroup:
+            if chat.isiMessage:
                 displayName = chat.displayName
                 menu.add_command(label='Name: {}'.format(displayName if
                                  displayName else 'Add group name...'))
@@ -106,12 +106,12 @@ class RecipientLabelFrame(tk.Frame):
             pass
         for r in chat.recipientList:
             menu.add_command(label=r)
-        if chat.isGroup() and chat.isiMessage():
+        if chat.isGroup and chat.isiMessage:
             menu.add_command(label='Add Member')
         menu.add_checkbutton(label='Do Not Disturb')
-        if chat.isGroup() and chat.isiMessage():
+        if chat.isGroup and chat.isiMessage:
             menu.add_command(label='Leave this Conversation')
-        elif not chat.isGroup() and chat.isiMessage():
+        elif not chat.isGroup and chat.isiMessage:
             menu.add_checkbutton(label='Send Read Receipts')
         menu.tk_popup(event.x_root, event.y_root)
 

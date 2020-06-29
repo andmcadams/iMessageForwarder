@@ -26,7 +26,7 @@ def getTimeText(timeStamp):
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
 
-    def __init__(self, parent, minHeight, minWidth, *args, **kw):
+    def __init__(self, parent, minHeight, minWidth, mp, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth,
                                        *args, **kw)
         self.messageBubbles = {}
@@ -40,6 +40,7 @@ class MessageFrame(VerticalScrolledFrame):
         self.scrollLock = threading.Lock()
 
         self.readReceiptMessageId = None
+        self.mp = mp
 
     # This probably has some nasty race conditions.
     # This also has unfortunate recursion issues that should be fixed
@@ -107,7 +108,7 @@ class MessageFrame(VerticalScrolledFrame):
             False if a sender label does not need to be appended.
         """
 
-        if chat.isGroup():
+        if chat.isGroup:
             if not message.isFromMe:
                 if (prevMessage is None or
                         prevMessage.handleId != message.handleId):
@@ -173,7 +174,7 @@ class MessageFrame(VerticalScrolledFrame):
         if message.isFromMe and message.rowid < 0:
             return True
 
-        if (message.isFromMe and not chat.isGroup() and message.isiMessage
+        if (message.isFromMe and not chat.isGroup and message.isiMessage
                 and message.rowid == lastFromMeId):
             return True
         return False
@@ -211,10 +212,10 @@ class MessageFrame(VerticalScrolledFrame):
             msg.pack(anchor=tk.W, expand=tk.FALSE)
         # If this message is replacing a temporary message,
         # get rid of that old message.
-        if (message.removeTemp < 0 and message.removeTemp in
+        if (message.removedTempId < 0 and message.removedTempId in
                 self.messageBubbles):
-            self.messageBubbles[message.removeTemp].destroy()
-            del self.messageBubbles[message.removeTemp]
+            self.messageBubbles[message.removedTempId].destroy()
+            del self.messageBubbles[message.removedTempId]
         self.messageBubbles[message.rowid] = msg
 
     # Add the chat's messages to the MessageFrame as MessageBubbles
@@ -298,7 +299,7 @@ class MessageMenu(tk.Menu):
 
     def sendReaction(self, messageId, reactionValue):
         responseFrame = self.master.master.master.master.master
-        responseFrame.currentChat.sendReaction(messageId, reactionValue)
+        responseFrame.currentChat.sendReaction(responseFrame.mp, messageId, reactionValue)
 
 
 class MessageBubble(tk.Frame):
