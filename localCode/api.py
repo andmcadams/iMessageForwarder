@@ -359,6 +359,8 @@ class ChatNoIdException(Exception):
 
 class DummyChat:
     def __init__(self, chatId: int) -> None:
+        if chatId is None:
+            raise ChatNoIdException
         self.chatId = chatId
 
 
@@ -485,11 +487,11 @@ class Chat:
     def getMessages(self) -> Dict[int, 'Received']:
         return self.messageList.messages
 
-    def sendMessage(self, messageText: str, recipientString: str) -> None:
-        messageTextC = messageText.replace("'", "\\'")
-        recipientString = recipientString.replace('\'', '\\\'')
-        self.sendData(messageTextC, messageId=None, assocType=None,
-                      messageCode=0, recipientString=recipientString)
+    def getMostRecentMessage(self) -> 'Received':
+        return self.messageList.getMostRecentMessage()
+
+    def sendMessage(self, mp: 'MessagePasser', messageText: str, recipientString: str) -> None:
+        mp.sendMessage(self.chatId, messageText, recipientString)
         msg = Message(**{'ROWID': self.messagePreviewId,
                          'text': messageText, 'date':
                          int(time.time()), 'date_read': 0,
@@ -500,37 +502,65 @@ class Chat:
         self.outgoingList.append(msg)
         self.localUpdate = True
 
-    def sendReaction(self, messageId: int, assocType: int) -> None:
-        self.sendData(messageText='', messageId=messageId, assocType=assocType,
-                      messageCode=1, recipientString='')
-
-    def sendData(self, messageText: str = '', messageId: int = None,
-                 assocType: int = None, messageCode: int = None,
-                 recipientString: str = '') -> None:
-        cmd = [
-            "ssh",
-            "{}@{}".format(
-                user,
-                ip),
-            "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(
-                scriptPath,
-                messageText,
-                self.chatId,
-                messageCode,
-                messageId,
-                assocType,
-                recipientString)]
-        subprocess.run(cmd)
-
-    def getMostRecentMessage(self) -> 'Received':
-        return self.messageList.getMostRecentMessage()
+    def sendReaction(self, mp: 'MessagePasser', messageId: int, reactionType: int) -> None:
+        mp.sendReaction(self.chatId, messageId, reactionType)
 
 
 class MessageDatabase:
 
     def __init__(self):
-        self.conn = sqlite3.connect(dbPath)
+        self.dbPath = dbPath
+        self.conn = sqlite3.connect(self.dbPath)
         self.conn.row_factory = sqlite3.Row
+
+    def getMessagesForChat(
+            self,
+            chatId: int,
+            lastAccessTime: int = 0) -> Tuple[List['Received'], int]:
+        messages = []
+        tempLastAccess = lastAccessTime
+        columns = self._getFormattedColumns()
+        sql = sqlcommands.LOAD_MESSAGES_SQL.format(columns)
+        cursor = self.conn.execute(sql, (chatId, tempLastAccess))
+
+        for row in cursor:
+            if row['message_update_date'] > tempLastAccess:
+                tempLastAccess = row['message_update_date']
+
+            message = self._parseMessage(row)
+
+            handleName = self._getHandleName(row['handle_id'])
+            if message is not None:
+                message.handleName = handleName
+                messages.append(message)
+
+        lastAccessTime = max(lastAccessTime, tempLastAccess)
+        return (messages, lastAccessTime)
+
+    def _parseMessage(self, row) -> 'Message':
+
+        message = None
+        # If there are no associated messages
+        if not row['associated_message_guid']:
+            attachment = None
+            if row['attachment_id'] is not None:
+                a = self.conn.execute(sqlcommands.ATTACHMENT_SQL,
+                                      (row['attachment_id'], )).fetchone()
+                attachment = Attachment(**a)
+            message = Message(**row)
+            message.attachment = attachment
+
+        else:
+            assocMessageId = (self.conn
+                              .execute(sqlcommands.ASSOC_MESSAGE_SQL,
+                                       (row['associated_message_guid']
+                                           [-36:], )).fetchone())
+            if assocMessageId:
+                assocMessageId = assocMessageId[0]
+                message = Reaction(
+                    associated_message_id=assocMessageId, **row)
+
+        return message
 
     def _getHandleName(self, handleId: int) -> str:
         handleName = self.conn.execute(sqlcommands.HANDLE_SQL,
@@ -542,12 +572,7 @@ class MessageDatabase:
 
         return handleName
 
-    def getMessagesForChat(
-            self,
-            chatId: int,
-            lastAccessTime: int = 0) -> Tuple[List['Received'], int]:
-        messages = []
-        tempLastAccess = lastAccessTime
+    def _getFormattedColumns(self) -> str:
         neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id',
                                 'service', 'error', 'date', 'date_read',
                                 'date_delivered', 'is_delivered',
@@ -559,41 +584,7 @@ class MessageDatabase:
                                 'associated_message_type', 'attachment_id',
                                 'message_update_date']
         columns = ', '.join(neededColumnsMessage)
-        sql = sqlcommands.LOAD_MESSAGES_SQL.format(columns)
-        cursor = self.conn.execute(sql, (chatId, tempLastAccess))
-
-        for row in cursor:
-            handleName = self._getHandleName(row['handle_id'])
-
-            if row['message_update_date'] > tempLastAccess:
-                tempLastAccess = row['message_update_date']
-
-            message = None
-            # If there are no associated messages
-            if not row['associated_message_guid']:
-                attachment = None
-                if row['attachment_id'] is not None:
-                    a = self.conn.execute(sqlcommands.ATTACHMENT_SQL,
-                                          (row['attachment_id'], )).fetchone()
-                    attachment = Attachment(**a)
-                message = Message(**row)
-                message.attachment = attachment
-
-            else:
-                assocMessageId = (self.conn
-                                  .execute(sqlcommands.ASSOC_MESSAGE_SQL,
-                                           (row['associated_message_guid']
-                                               [-36:], )).fetchone())
-                if assocMessageId:
-                    assocMessageId = assocMessageId[0]
-                    message = Reaction(
-                        associated_message_id=assocMessageId, **row)
-
-            if message is not None:
-                message.handleName = handleName
-                messages.append(message)
-        lastAccessTime = max(lastAccessTime, tempLastAccess)
-        return (messages, lastAccessTime)
+        return columns
 
     def getMostRecentMessage(self, chatId: int) -> Optional['Received']:
         cursor = self.conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (chatId, ))
@@ -647,6 +638,70 @@ class MessageDatabase:
         return chatIds, maxUpdate
 
 
+class MessagePasser(ABC):
+
+    @abstractmethod
+    def sendMessage(self) -> None:
+        pass
+
+    @abstractmethod
+    def sendReaction(self) -> None:
+        pass
+
+
+class SshMessagePasser():
+
+    class __SshMessagePasser(MessagePasser):
+
+        def __init__(self, timeout):
+            self.__timeout = timeout
+
+        @property
+        def timeout(self):
+            return self.__timeout
+
+        @timeout.setter
+        def timeout(self, timeout):
+            self.__timeout = timeout
+
+        def sendMessage(self, chatId: int, messageText: str,
+                        recipientString: str) -> None:
+            text = messageText.replace("'", "\\'")
+            recipients = recipientString.replace('\'', '\\\'')
+            self.sendData(messageCode=0, chatId=chatId, messageText=text,
+                          recipientString=recipients)
+
+        def sendReaction(self, chatId: int, messageId: int, reactionType: int) -> None:
+            self.sendData(messageCode=1, chatId=chatId, messageId=messageId,
+                          reactionType=reactionType)
+
+        def sendData(self, messageCode: int, chatId: int, messageText: str = '', messageId: int = 0,
+                     reactionType: int = 0, recipientString: str = '') -> None:
+            cmd = [
+                "ssh",
+                "{}@{}".format(
+                    user,
+                    ip),
+                "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(
+                    scriptPath,
+                    messageText,
+                    chatId,
+                    messageCode,
+                    messageId,
+                    reactionType,
+                    recipientString)]
+            subprocess.run(cmd)
+
+    instance = None
+    def __init__(self, timeout):
+        if SshMessagePasser.instance is None:
+            SshMessagePasser.instance = SshMessagePasser.__SshMessagePasser(timeout)
+        else:
+            SshMessagePasser.instance.timeout = timeout
+
+    def __getattr__(self, name):
+        return getattr(self.instance, name)
+
 def createNewChat(chatId: int) -> 'Chat':
     chat = Chat(**{'ROWID': chatId})
     return chat
@@ -663,4 +718,4 @@ def _ping() -> bool:
 
 def _useTestDatabase(dbName: str) -> None:
     global dbPath
-    dbPath = os.path.join(dirname, dbName)
+    dbPath = dbName
