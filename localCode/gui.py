@@ -35,6 +35,9 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
             if chatId not in chatFrame.chatButtons:
                 row = db.getChat(chatId)
                 chat = api.Chat(**row)
+                chat.addRecipients(db.getRecipients(chat.chatId))
+                recentMessage = db.getMostRecentMessage(chat.chatId)
+                chat.addMessage(recentMessage)
                 chatFrame.addChat(chat, responseFrame)
                 if lastAccessTime == 0:
                     newMessageFlag = False
