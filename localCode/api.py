@@ -183,7 +183,7 @@ class Received(ABC):
             self.text = ''.join([text[t] for t in range(
                 len(text)) if ord(text[t]) in range(65536)])
         self._handleName = ''
-        self.removeTemp = 0
+        self.removedTempId = 0
 
     @property
     def rowid(self) -> int:
@@ -316,8 +316,8 @@ class Message(Received):
         self.is_sent = updatedMessage.is_sent
         self.message_update_date = updatedMessage.message_update_date
         self.service = updatedMessage.service
-        self.removeTemp = (updatedMessage.removeTemp if self.removeTemp == 0
-                           else self.removeTemp)
+        self.removedTempId = (updatedMessage.removedTempId if self.removedTempId == 0
+                           else self.removedTempId)
 
         if updatedMessage.attachment:
             self.attachment = updatedMessage.attachment
@@ -353,6 +353,10 @@ class ChatDeletedException(Exception):
     pass
 
 
+class ChatNoIdException(Exception):
+    pass
+
+
 class DummyChat:
     def __init__(self, chatId: int) -> None:
         self.chatId = chatId
@@ -369,14 +373,16 @@ class Chat:
 
     def __post_init__(self):
 
+        if self.ROWID is None:
+            raise ChatNoIdException
+
         self.messageList = MessageList()
         self.outgoingList = MessageList()
         self.lastAccessTime = 0
         self.localUpdate = False
         self.messagePreviewId = -1
         self.isTemporaryChat = False
-        self._addMessage(MessageDatabase().getMostRecentMessage(self.chatId))
-        self.recipientList = MessageDatabase().getRecipients(self.chatId)
+        self.recipientList = []
 
     @property
     def chatId(self) -> int:
@@ -394,34 +400,33 @@ class Chat:
     def displayName(self) -> str:
         return self.display_name
 
+    @property
     def isiMessage(self) -> bool:
         if (self.serviceName == 'iMessage'):
             return True
         return False
 
+    @property
     def isGroup(self) -> bool:
         if self.style == 43:
             return True
         return False
 
     def addRecipient(self, recipient: str) -> bool:
+        return self.addRecipients([recipient])
+
+    def addRecipients(self, recipients: List[str]) -> bool:
+        allTrue = True
+        if recipients:
+            for recipient in recipients:
+                allTrue = self._addRecipient(recipient) and allTrue
+        return allTrue
+
+    def _addRecipient(self, recipient: str) -> bool:
         if recipient:
             self.recipientList.append(recipient)
             return True
         return False
-
-    def _addMessage(
-            self,
-            message: Optional['Received']) -> None:
-        if message is None:
-            pass
-        elif message.isReaction:
-            self.messageList.addReaction(message)
-        else:
-            self.messageList.append(message)
-            if self.messageList.messages[message.rowid].isFromMe:
-                self.removeTemporaryMessage(
-                    self.messageList.messages[message.rowid])
 
     def addMessage(
             self,
@@ -438,6 +443,37 @@ class Chat:
         if lastAccessTime > self.lastAccessTime:
             self.lastAccessTime = lastAccessTime
 
+    def _addMessage(
+            self,
+            message: Optional['Received']) -> None:
+        if message is None:
+            pass
+        elif message.isReaction:
+            self.messageList.addReaction(message)
+        else:
+            self.messageList.append(message)
+            if self.messageList.messages[message.rowid].isFromMe:
+                self.removeTemporaryMessage(
+                    self.messageList.messages[message.rowid])
+
+    def removeTemporaryMessage(self, message: 'Received') -> None:
+        self.messageList.writeLock.acquire()
+        self.outgoingList.writeLock.acquire()
+        idToDelete = 0
+        for tempMsgId in self.outgoingList.messages:
+            tempMsg = self.outgoingList.messages[tempMsgId]
+            if (tempMsg.text == message.text and
+                    message.removedTempId == 0 and
+                    tempMsg.rowid != message.rowid):
+                message.removedTempId = tempMsg.rowid
+                del self.messageList.messages[tempMsgId]
+                idToDelete = tempMsgId
+                break
+        if idToDelete != 0:
+            del self.outgoingList.messages[idToDelete]
+        self.messageList.writeLock.release()
+        self.outgoingList.writeLock.release()
+
     def getName(self) -> str:
         if self.displayName:
             return ''.join([self.displayName[t] for t in
@@ -448,23 +484,6 @@ class Chat:
 
     def getMessages(self) -> Dict[int, 'Received']:
         return self.messageList.messages
-
-    def removeTemporaryMessage(self, message: 'Received') -> None:
-        self.messageList.writeLock.acquire()
-        self.outgoingList.writeLock.acquire()
-        idToDelete = 0
-        for tempMsgId in self.outgoingList.messages:
-            tempMsg = self.outgoingList.messages[tempMsgId]
-            if (tempMsg.text == message.text and
-                    message.removeTemp == 0):
-                message.removeTemp = tempMsg.rowid
-                del self.messageList.messages[tempMsgId]
-                idToDelete = tempMsgId
-                break
-        if idToDelete != 0:
-            del self.outgoingList.messages[idToDelete]
-        self.messageList.writeLock.release()
-        self.outgoingList.writeLock.release()
 
     def sendMessage(self, messageText: str, recipientString: str) -> None:
         messageTextC = messageText.replace("'", "\\'")
