@@ -218,20 +218,20 @@ class TestMessageMethods(unittest.TestCase):
     def test_update_remove_temp(self):
         msg = api.Message(ROWID=1)
         msg2 = api.Message(ROWID=2)
-        msg2.removeTemp = -1
+        msg2.removedTempId = -1
 
         msg.update(msg2)
 
-        self.assertEqual(msg.removeTemp, msg2.removeTemp)
+        self.assertEqual(msg.removedTempId, msg2.removedTempId)
 
     def test_update_do_not_update_remove_temp(self):
         msg = api.Message(ROWID=1)
         msg2 = api.Message(ROWID=2)
-        msg.removeTemp = -1
+        msg.removedTempId = -1
 
         msg.update(msg2)
 
-        self.assertEqual(msg.removeTemp, -1)
+        self.assertEqual(msg.removedTempId, -1)
 
     def test_update_attachment(self):
         msg = api.Message(ROWID=1)
