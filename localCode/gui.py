@@ -1,9 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
 import threading
+import os
 from playsound import playsound
 from responseframe import ResponseFrame
 from chatframe import LeftFrame
+import messageApi.api as api
 
 
 def updateFrames(chatFrame, responseFrame, lastAccessTime,
@@ -12,15 +14,19 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
         chatFrame.master.quit()
         # chatFrame.master.destroy()
         return
-    chatIds, newLastAccessTime = api._getChatsToUpdate(lastAccessTime,
-                                                       chatFrame.chats)
+
+    db = api.MessageDatabase()
+    chatIds, newLastAccessTime = db.getChatsToUpdate(lastAccessTime,
+                                                     chatFrame.chats)
     chatFrame.lock.acquire()
     newMessageFlag = False
     for chatId in chatIds:
         try:
             for chatButton in chatFrame.chatButtons:
                 if chatId == chatButton.chat.chatId:
-                    chatButton.chat._loadMostRecentMessage()
+                    recentMessage = db.getMostRecentMessage(
+                        chatButton.chat.chatId)
+                    chatButton.chat.addMessage(recentMessage)
                     if chatButton.update():
                         newMessageFlag = True
 
@@ -29,7 +35,11 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
                  .addMessages(responseFrame.currentChat))
 
             if chatId not in chatFrame.chatButtons:
-                chat = api._loadChat(chatId)
+                row = db.getChat(chatId)
+                chat = api.Chat(**row)
+                chat.addRecipients(db.getRecipients(chat.chatId))
+                recentMessage = db.getMostRecentMessage(chat.chatId)
+                chat.addMessage(recentMessage)
                 chatFrame.addChat(chat, responseFrame)
                 if lastAccessTime == 0:
                     newMessageFlag = False
@@ -63,7 +73,6 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
 
 
 def runGui(DEBUG, currentThread):
-    globals()["api"] = __import__('api')
     root = tk.Tk()
     root.title("Messages")
     root.configure(background="gray99")
@@ -78,9 +87,9 @@ def runGui(DEBUG, currentThread):
     style.layout("RoundedFrame", [("RoundedFrame", {"sticky": "nsew"})])
 
     minWidthChatFrame = 270
-    minWidthResponseFrame = int(4*minWidthChatFrame/3)
-    root.minsize(minWidthChatFrame+minWidthResponseFrame,
-                 (minWidthChatFrame+minWidthResponseFrame)//2)
+    minWidthResponseFrame = int(4 * minWidthChatFrame / 3)
+    root.minsize(minWidthChatFrame + minWidthResponseFrame,
+                 (minWidthChatFrame + minWidthResponseFrame) // 2)
     responseFrame = ResponseFrame(root, minWidthResponseFrame, api)
     responseFrame.grid(row=0, column=1, sticky='nsew')
     leftFrame = LeftFrame(root, 0, minWidthChatFrame, responseFrame, api)
@@ -104,6 +113,12 @@ class GuiThread(threading.Thread):
     def __init__(self, name='GuiThread'):
         self._stopevent = threading.Event()
         threading.Thread.__init__(self, name=name)
+
+        dirname = os.path.dirname(__file__)
+
+        secretsPath = os.path.join(dirname, 'secrets.json')
+        dbPath = os.path.join(dirname, 'sms.db')
+        api.initialize(dbPath, secretsPath)
 
     def run(self):
         runGui(0, self)

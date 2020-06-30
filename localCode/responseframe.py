@@ -9,7 +9,8 @@ class ResponseFrame(tk.Frame):
     def __init__(self, parent, minWidth, api, *args, **kw):
         tk.Frame.__init__(self, parent, *args, **kw)
 
-        self.messageFrame = MessageFrame(self, 0, minWidth)
+        self.mp = api.SshMessagePasser(0)
+        self.messageFrame = MessageFrame(self, 0, minWidth, self.mp)
         self.messageFrame.grid(row=1, column=0, sticky='nsew')
 
         self.columnconfigure(0, weight=1)
@@ -18,11 +19,12 @@ class ResponseFrame(tk.Frame):
         self.recipientFrame = RecipientFrame(self)
         self.recipientFrame.grid(row=0, column=0, sticky='ew')
 
-        self.sendFrame = SendFrame(self)
+        self.sendFrame = SendFrame(self, self.mp)
         self.sendFrame.grid(row=2, column=0, sticky='ew')
 
         # Hold a dummy chat with an invalid id initially
         self.currentChat = api.DummyChat(-1)
+        self.api = api
 
     def changeChat(self, chat):
         if chat.chatId != self.currentChat.chatId:
@@ -31,7 +33,7 @@ class ResponseFrame(tk.Frame):
             self.recipientFrame.clearWindow()
             self.recipientFrame.addRecipients(chat)
             self.messageFrame.changeChat(chat)
-            self.sendFrame.updateSendButton(chat)
+            self.sendFrame.updateSendButton(self.mp, chat)
 
     def isCurrentChat(self, chatToCompare):
         if chatToCompare.chatId == self.currentChat.chatId:

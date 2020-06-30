@@ -26,7 +26,7 @@ def getTimeText(timeStamp):
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
 
-    def __init__(self, parent, minHeight, minWidth, *args, **kw):
+    def __init__(self, parent, minHeight, minWidth, mp, *args, **kw):
         VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth,
                                        *args, **kw)
         self.messageBubbles = {}
@@ -40,6 +40,7 @@ class MessageFrame(VerticalScrolledFrame):
         self.scrollLock = threading.Lock()
 
         self.readReceiptMessageId = None
+        self.mp = mp
 
     # This probably has some nasty race conditions.
     # This also has unfortunate recursion issues that should be fixed
@@ -58,7 +59,7 @@ class MessageFrame(VerticalScrolledFrame):
             self.addedMessages = not hitLimit
             newHeight = self.interior.winfo_reqheight()
 
-            newY = (top*oldHeight+(newHeight-oldHeight))/newHeight
+            newY = (top * oldHeight + (newHeight - oldHeight)) / newHeight
             self.canvas.yview_moveto(newY)
 
     # To change chats (ie display messages of a new chat)
@@ -92,14 +93,22 @@ class MessageFrame(VerticalScrolledFrame):
         self.canvas.yview_moveto(self.interior.winfo_reqheight())
 
     def needSenderLabel(self, chat, message, prevMessage):
-        # Need slightly more complex logic for when to use sender labels
-        # (label showing who the sender is)
-        # addLabel is True iff
-        # 1) This is a group message
-        # 2) The sender of this message is not the same as the last sender
-        # 3) The sender of the message is not me
+        """Return whether or not a sender label needs to be added.
 
-        if chat.isGroup():
+        Parameters:
+        chat : Chat
+            The open chat.
+        message : Message
+            The message that the sender label would appear before.
+        prevMessage : Message
+            The message that the sender label would appear after.
+
+        Returns:
+            True if a sender label needs to be appended.
+            False if a sender label does not need to be appended.
+        """
+
+        if chat.isGroup:
             if not message.isFromMe:
                 if (prevMessage is None or
                         prevMessage.handleId != message.handleId):
@@ -107,11 +116,19 @@ class MessageFrame(VerticalScrolledFrame):
         return False
 
     def needTimeLabel(self, message, previousMessage):
-        # A time label should be added iff
-        # 1) The message is not a message currently being sent
-        # 2) There is no previous message
-        # 3) It has been 15 minutes since the previous message was received
-        if message.rowid < 0:
+        """Return whether or not a time label needs to be added.
+
+        Parameters:
+        message : Message
+            The message that the time label would appear before.
+        prevMessage : Message
+            The message that the time label would appear after.
+
+        Returns:
+            True if a time label needs to be appended.
+            False if a sender label does not need to be appended.
+        """
+        if message.isTemporary:
             return False
         if previousMessage is None:
             return True
@@ -130,6 +147,21 @@ class MessageFrame(VerticalScrolledFrame):
         timeLabel.pack()
 
     def needReadReceipt(self, chat, message, lastFromMeId):
+        """Return whether or not a read receipt needs to be added to the
+        message.
+
+        Parameters:
+        chat : Chat
+            The open chat.
+        message : Message
+            The message that the read receipt would be added to.
+        lastFromMeId : int
+            The rowid of the last message sent from the user in the chat.
+
+        Returns:
+            True if a read receipt needs to be added to the message.
+            False if a read receipt does not need to be added to the message.
+        """
         # Need to add a read receipt iff
         # 1) The message is from me.
         # AND one of the two following:
@@ -141,7 +173,8 @@ class MessageFrame(VerticalScrolledFrame):
 
         if message.isFromMe and message.rowid < 0:
             return True
-        if (message.isFromMe and not chat.isGroup() and message.isiMessage
+
+        if (message.isFromMe and not chat.isGroup and message.isiMessage
                 and message.rowid == lastFromMeId):
             return True
         return False
@@ -167,7 +200,7 @@ class MessageFrame(VerticalScrolledFrame):
             self.readReceiptMessageId = message.rowid
 
         if (message.attachment is not None and
-                message.attachment.attr['uti'] in allowedTypes):
+                message.attachment.uti in allowedTypes):
             msg = ImageMessageBubble(self.interior, message.rowid, chat,
                                      i, addLabel, addReceipt)
         else:
@@ -179,10 +212,10 @@ class MessageFrame(VerticalScrolledFrame):
             msg.pack(anchor=tk.W, expand=tk.FALSE)
         # If this message is replacing a temporary message,
         # get rid of that old message.
-        if ('removeTemp' in message.attr and message.attr['removeTemp'] in
+        if (message.removedTempId < 0 and message.removedTempId in
                 self.messageBubbles):
-            self.messageBubbles[message.attr['removeTemp']].destroy()
-            del self.messageBubbles[message.attr['removeTemp']]
+            self.messageBubbles[message.removedTempId].destroy()
+            del self.messageBubbles[message.removedTempId]
         self.messageBubbles[message.rowid] = msg
 
     # Add the chat's messages to the MessageFrame as MessageBubbles
@@ -195,7 +228,11 @@ class MessageFrame(VerticalScrolledFrame):
             self.lock.release()
             return None
 
-        chat._loadMessages()
+        db = self.master.api.MessageDatabase()
+        messageList, lastAccessTime = db.getMessagesForChat(
+            chat.chatId, chat.lastAccessTime)
+        chat.addMessages(messageList, lastAccessTime)
+
         messageDict = chat.getMessages()
 
         # For each message in messageDict
@@ -213,7 +250,7 @@ class MessageFrame(VerticalScrolledFrame):
         for i in range(len(subList)):
             messageId = subList[i]
             if messageId not in self.messageBubbles:
-                prevMessage = (messageDict[subList[i-1]] if (i-1) in
+                prevMessage = (messageDict[subList[i - 1]] if (i - 1) in
                                range(len(subList)) else None)
                 self.addMessage(chat, i, messageDict[messageId], prevMessage,
                                 lastFromMeId)
@@ -261,8 +298,9 @@ class MessageMenu(tk.Menu):
         tk.Menu.__init__(self, parent, tearoff=0, *args, **kw)
 
     def sendReaction(self, messageId, reactionValue):
-        responseFrame = self.master.master.master.master.master
-        responseFrame.currentChat.sendReaction(messageId, reactionValue)
+        respFrame = self.master.master.master.master.master
+        respFrame.currentChat.sendReaction(respFrame.mp, messageId,
+                                           reactionValue)
 
 
 class MessageBubble(tk.Frame):
@@ -350,8 +388,8 @@ class MessageBubble(tk.Frame):
             self.body.configure(text=message.text)
 
         if self.readReceipt:
-            if 'date_read' in message.attr and message.attr['date_read'] != 0:
-                timeText = getTimeText(message.attr['date_read'])
+            if message.dateRead != 0:
+                timeText = getTimeText(message.dateRead)
                 self.readReceipt.configure(text='Read at {}'.format(timeText))
             elif message.isDelivered:
                 self.readReceipt.configure(text='Delivered')
@@ -400,7 +438,7 @@ class TextMessageBubble(MessageBubble):
                  addReadReceipt, *args, **kw):
         MessageBubble.__init__(self, parent, messageId, chat, addLabel,
                                addReadReceipt, *args, **kw)
-        maxWidth = 3*self.master.master.winfo_width()//5
+        maxWidth = 3 * self.master.master.winfo_width() // 5
         # Could make color a gradient depending on index later but it will
         # add a lot of dumb code.
         self.messageInterior.configure(style="RoundedFrame")
@@ -413,7 +451,7 @@ class TextMessageBubble(MessageBubble):
         self.initBody()
 
     def resize(self, event):
-        self.body.configure(width=3*event.width//5)
+        self.body.configure(width=3 * event.width // 5)
 
 
 class ImageMessageBubble(MessageBubble):
@@ -431,7 +469,7 @@ class ImageMessageBubble(MessageBubble):
             self.body.original = Image.open(os.path
                                             .expanduser(chat.getMessages()
                                                         [messageId].attachment
-                                                        .attr['filename']))
+                                                        .filename))
             newSize = self.getNewSize(self.body.original,
                                       self.master.master.winfo_width(),
                                       self.master.master.winfo_height())
@@ -449,16 +487,16 @@ class ImageMessageBubble(MessageBubble):
         self.initBody()
 
     def getNewSize(self, im, winWidth, winHeight):
-        maxWidth = 3*winWidth//4
-        maxHeight = 4*winHeight//5
+        maxWidth = 3 * winWidth // 4
+        maxHeight = 4 * winHeight // 5
 
         resized = im
         size = (im.width, im.height)
 
         if im.height > maxHeight or im.width > maxWidth:
-            h = int(im.height*(maxWidth/im.width))
+            h = int(im.height * (maxWidth / im.width))
             if h > maxHeight:
-                w = int(im.width*(maxHeight/im.height))
+                w = int(im.width * (maxHeight / im.height))
                 size = (w, maxHeight)
             else:
                 size = (maxWidth, h)
@@ -474,4 +512,4 @@ class ImageMessageBubble(MessageBubble):
             self.body.configure(image=self.body.image)
             self.display.configure(width=newSize[0], height=newSize[1])
         else:
-            self.body.configure(width=3*event.width//5)
+            self.body.configure(width=3 * event.width // 5)

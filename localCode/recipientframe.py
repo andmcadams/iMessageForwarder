@@ -94,9 +94,9 @@ class RecipientLabelFrame(tk.Frame):
         # Apple's version adds one to the number of members to
         # include yourself.
         # This seems a bit counterintuitive honestly, so I don't do that here.
-        if chat.isGroup():
-            if chat.isiMessage():
-                displayName = chat.attr['display_name']
+        if chat.isGroup:
+            if chat.isiMessage:
+                displayName = chat.displayName
                 menu.add_command(label='Name: {}'.format(displayName if
                                  displayName else 'Add group name...'))
             menu.add_command(label='{} members'
@@ -106,12 +106,12 @@ class RecipientLabelFrame(tk.Frame):
             pass
         for r in chat.recipientList:
             menu.add_command(label=r)
-        if chat.isGroup() and chat.isiMessage():
+        if chat.isGroup and chat.isiMessage:
             menu.add_command(label='Add Member')
         menu.add_checkbutton(label='Do Not Disturb')
-        if chat.isGroup() and chat.isiMessage():
+        if chat.isGroup and chat.isiMessage:
             menu.add_command(label='Leave this Conversation')
-        elif not chat.isGroup() and chat.isiMessage():
+        elif not chat.isGroup and chat.isiMessage:
             menu.add_checkbutton(label='Send Read Receipts')
         menu.tk_popup(event.x_root, event.y_root)
 
@@ -146,8 +146,8 @@ class RecipientLabelFrame(tk.Frame):
 
         self.master.details.configure(text='Details')
         # self.master.details.update()
-        if chat.attr['display_name']:
-            r = RecipientLabel(self, chat.attr['display_name'])
+        if chat.displayName:
+            r = RecipientLabel(self, chat.displayName)
             r.configure(padx=5, anchor='nw', justify=tk.LEFT, text=r.fullText)
             r.resizeLabel(True, self.winfo_reqwidth())
             self.topFrame.addLabel(r)
@@ -239,7 +239,7 @@ class RecipientLabelFrame(tk.Frame):
     def resizeRecipients(self, event, chat):
         self.master.lock.acquire()
 
-        if chat.attr['display_name']:
+        if chat.displayName:
             if self.topFrame.labels:
                 self.topFrame.labels[0].resizeLabel(True, event.width)
             self.master.lock.release()
