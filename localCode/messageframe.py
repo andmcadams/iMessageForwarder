@@ -298,8 +298,9 @@ class MessageMenu(tk.Menu):
         tk.Menu.__init__(self, parent, tearoff=0, *args, **kw)
 
     def sendReaction(self, messageId, reactionValue):
-        responseFrame = self.master.master.master.master.master
-        responseFrame.currentChat.sendReaction(responseFrame.mp, messageId, reactionValue)
+        respFrame = self.master.master.master.master.master
+        respFrame.currentChat.sendReaction(respFrame.mp, messageId,
+                                           reactionValue)
 
 
 class MessageBubble(tk.Frame):

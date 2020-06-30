@@ -19,6 +19,7 @@ def initialize(pathToDb, secretsFile):
     ip = secrets['ip']
     scriptPath = secrets['scriptPath']
 
+
 class MessageList(dict):
     """
     MessageList needs to satisfy two major criteria:
@@ -30,6 +31,7 @@ class MessageList(dict):
       messages and fetching older ones
     Dictionary order is guaranteed (insertion order) in python 3.7+
     """
+
     def __init__(self):
         self.messages = {}
         self.mostRecentMessage = None
@@ -315,8 +317,8 @@ class Message(Received):
         self.is_sent = updatedMessage.is_sent
         self.message_update_date = updatedMessage.message_update_date
         self.service = updatedMessage.service
-        self.removedTempId = (updatedMessage.removedTempId if self.removedTempId == 0
-                           else self.removedTempId)
+        self.removedTempId = (updatedMessage.removedTempId if
+                              self.removedTempId == 0 else self.removedTempId)
 
         if updatedMessage.attachment:
             self.attachment = updatedMessage.attachment
@@ -489,7 +491,11 @@ class Chat:
     def getMostRecentMessage(self) -> 'Received':
         return self.messageList.getMostRecentMessage()
 
-    def sendMessage(self, mp: 'MessagePasser', messageText: str, recipientString: str) -> None:
+    def sendMessage(
+            self,
+            mp: 'MessagePasser',
+            messageText: str,
+            recipientString: str) -> None:
         mp.sendMessage(self.chatId, messageText, recipientString)
         msg = Message(**{'ROWID': self.messagePreviewId,
                          'text': messageText, 'date':
@@ -501,7 +507,11 @@ class Chat:
         self.outgoingList.append(msg)
         self.localUpdate = True
 
-    def sendReaction(self, mp: 'MessagePasser', messageId: int, reactionType: int) -> None:
+    def sendReaction(
+            self,
+            mp: 'MessagePasser',
+            messageId: int,
+            reactionType: int) -> None:
         mp.sendReaction(self.chatId, messageId, reactionType)
 
 
@@ -550,7 +560,8 @@ class MessageDatabase:
         # If there are no associated messages
         if not row['associated_message_guid']:
             attachment = None
-            if 'attachment_id' in row.keys() and row['attachment_id'] is not None:
+            if 'attachment_id' in row.keys(
+            ) and row['attachment_id'] is not None:
                 a = self.conn.execute(sqlcommands.ATTACHMENT_SQL,
                                       (row['attachment_id'], )).fetchone()
                 attachment = Attachment(**a)
@@ -609,8 +620,11 @@ class MessageDatabase:
 
         return dict(row)
 
-    def getChatsToUpdate(self, lastAccessTime: int,
-                         chats: Dict[int, 'Chat'] = None) -> Tuple[List[int], int]:
+    def getChatsToUpdate(self,
+                         lastAccessTime: int,
+                         chats: Dict[int,
+                                     'Chat'] = None) -> Tuple[List[int],
+                                                              int]:
         if chats is None:
             chats = {}
 
@@ -663,12 +677,22 @@ class SshMessagePasser():
             self.sendData(messageCode=0, chatId=chatId, messageText=text,
                           recipientString=recipients)
 
-        def sendReaction(self, chatId: int, messageId: int, reactionType: int) -> None:
+        def sendReaction(
+                self,
+                chatId: int,
+                messageId: int,
+                reactionType: int) -> None:
             self.sendData(messageCode=1, chatId=chatId, messageId=messageId,
                           reactionType=reactionType)
 
-        def sendData(self, messageCode: int, chatId: int, messageText: str = '', messageId: int = 0,
-                     reactionType: int = 0, recipientString: str = '') -> None:
+        def sendData(
+                self,
+                messageCode: int,
+                chatId: int,
+                messageText: str = '',
+                messageId: int = 0,
+                reactionType: int = 0,
+                recipientString: str = '') -> None:
             cmd = [
                 "ssh",
                 "{}@{}".format(
@@ -685,14 +709,17 @@ class SshMessagePasser():
             subprocess.run(cmd)
 
     instance = None
+
     def __init__(self, timeout):
         if SshMessagePasser.instance is None:
-            SshMessagePasser.instance = SshMessagePasser.__SshMessagePasser(timeout)
+            SshMessagePasser.instance = SshMessagePasser.__SshMessagePasser(
+                timeout)
         else:
             SshMessagePasser.instance.timeout = timeout
 
     def __getattr__(self, name):
         return getattr(self.instance, name)
+
 
 def createNewChat(chatId: int) -> 'Chat':
     chat = Chat(**{'ROWID': chatId})
