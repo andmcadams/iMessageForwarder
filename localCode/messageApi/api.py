@@ -4,21 +4,20 @@ import json
 import time
 import subprocess
 import threading
-from localCode import sqlcommands
+from . import sqlcommands
 from typing import List, Type, Dict, Any, Optional, Tuple
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-dirname = os.path.dirname(__file__)
 
-dbPath = os.path.join(dirname, 'sms.db')
+def initialize(pathToDb, secretsFile):
+    global dbPath, user, ip, scriptPath
 
-secretsFile = os.path.join(dirname, 'secrets.json')
-secrets = json.load(open(secretsFile))
-user = secrets['user']
-ip = secrets['ip']
-scriptPath = secrets['scriptPath']
-
+    dbPath = pathToDb
+    secrets = json.load(open(secretsFile))
+    user = secrets['user']
+    ip = secrets['ip']
+    scriptPath = secrets['scriptPath']
 
 class MessageList(dict):
     """
