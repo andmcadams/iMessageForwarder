@@ -1,5 +1,5 @@
 import unittest
-from localCode import api
+from localCode.messageApi import api
 
 class TestReactionMethods(unittest.TestCase):
 

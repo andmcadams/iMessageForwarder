@@ -1,6 +1,6 @@
 import unittest
 import threading
-from localCode import api
+from localCode.messageApi import api
 
 class TestMessageListMethods(unittest.TestCase):
 

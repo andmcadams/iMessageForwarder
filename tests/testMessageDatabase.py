@@ -1,7 +1,7 @@
 import unittest
 import sqlite3
 import os
-from localCode import api
+from localCode.messageApi import api
 
 class TestMessageDatabaseMethods(unittest.TestCase):
 
