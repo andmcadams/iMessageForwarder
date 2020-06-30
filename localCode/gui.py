@@ -1,9 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
 import threading
+import os
 from playsound import playsound
 from responseframe import ResponseFrame
 from chatframe import LeftFrame
+import messageApi.api as api
 
 
 def updateFrames(chatFrame, responseFrame, lastAccessTime,
@@ -71,7 +73,6 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
 
 
 def runGui(DEBUG, currentThread):
-    globals()["api"] = __import__('api')
     root = tk.Tk()
     root.title("Messages")
     root.configure(background="gray99")
@@ -112,6 +113,12 @@ class GuiThread(threading.Thread):
     def __init__(self, name='GuiThread'):
         self._stopevent = threading.Event()
         threading.Thread.__init__(self, name=name)
+
+        dirname = os.path.dirname(__file__)
+
+        secretsPath = os.path.join(dirname, 'secrets.json')
+        dbPath = os.path.join(dirname, 'sms.db')
+        api.initialize(dbPath, secretsPath)
 
     def run(self):
         runGui(0, self)
