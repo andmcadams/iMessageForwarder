@@ -537,13 +537,21 @@ class MessageDatabase:
         lastAccessTime = max(lastAccessTime, tempLastAccess)
         return (messages, lastAccessTime)
 
-    def _parseMessage(self, row) -> 'Message':
+    def getMostRecentMessage(self, chatId: int) -> Optional['Received']:
+        cursor = self.conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (chatId, ))
+        for row in cursor:
+            message = self._parseMessage(row)
+            if message is not None:
+                return message
+        return None
+
+    def _parseMessage(self, row: sqlite3.Row) -> 'Message':
 
         message = None
         # If there are no associated messages
         if not row['associated_message_guid']:
             attachment = None
-            if row['attachment_id'] is not None:
+            if 'attachment_id' in row.keys() and row['attachment_id'] is not None:
                 a = self.conn.execute(sqlcommands.ATTACHMENT_SQL,
                                       (row['attachment_id'], )).fetchone()
                 attachment = Attachment(**a)
@@ -586,24 +594,6 @@ class MessageDatabase:
         columns = ', '.join(neededColumnsMessage)
         return columns
 
-    def getMostRecentMessage(self, chatId: int) -> Optional['Received']:
-        cursor = self.conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (chatId, ))
-        for row in cursor:
-            if not row['associated_message_guid']:
-                message = Message(**row)
-                return message
-            else:
-                assocMessageId = (self.conn
-                                  .execute(sqlcommands.ASSOC_MESSAGE_SQL,
-                                           (row['associated_message_guid']
-                                               [-36:], )).fetchone())
-                if assocMessageId:
-                    assocMessageId = assocMessageId[0]
-                    reaction = Reaction(
-                        associated_message_id=assocMessageId, **row)
-                    return reaction
-        return None
-
     def getRecipients(self, chatId: int) -> List[str]:
         cursor = self.conn.execute(sqlcommands.LOAD_RECIPIENTS_SQL, (chatId, ))
         recipients = []
@@ -621,7 +611,10 @@ class MessageDatabase:
         return dict(row)
 
     def getChatsToUpdate(self, lastAccessTime: int,
-                         chats: List['Chat']) -> Tuple[List[int], int]:
+                         chats: Dict[int, 'Chat'] = None) -> Tuple[List[int], int]:
+        if chats is None:
+            chats = {}
+
         cursor = self.conn.execute(
             sqlcommands.CHATS_TO_UPDATE_SQL, (lastAccessTime, ))
         chatIds = []
