@@ -81,6 +81,10 @@ class SendFrame(tk.Frame):
                            True else '')
         chat.sendMessage(mp, self.text.get('1.0', 'end-1c'), recipientString)
         self.text.delete('1.0', 'end')
+        if chat.isTemporaryChat:
+            if self.master.recipientFrame.addRecipientButton:
+                self.master.recipientFrame.addRecipientButton.destroy()
+            self.master.recipientFrame.clearWindow()
 
     # Changes the function called when clicking the send button so it is
     # passed the current chat.
