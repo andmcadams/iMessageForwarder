@@ -68,16 +68,23 @@ class SendFrame(tk.Frame):
 
     # Turns the send button "on" and "off".
     def updateButton(self):
-        if self.isConnected and self.hasText:
+        if self.isConnected and self.hasText and self._hasRecipients():
             self.sendButton.configure(state='normal')
         else:
             self.sendButton.configure(state='disabled')
+
+    def _hasRecipients(self):
+        return self.master.currentChat.recipientList != []
 
     def sendMessage(self, mp, chat):
         recipientString = (str(chat.recipientList) if chat.isTemporaryChat is
                            True else '')
         chat.sendMessage(mp, self.text.get('1.0', 'end-1c'), recipientString)
         self.text.delete('1.0', 'end')
+        if chat.isTemporaryChat:
+            if self.master.recipientFrame.addRecipientButton:
+                self.master.recipientFrame.addRecipientButton.destroy()
+            self.master.recipientFrame.clearWindow()
 
     # Changes the function called when clicking the send button so it is
     # passed the current chat.
