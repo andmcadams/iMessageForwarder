@@ -550,7 +550,9 @@ class MessageDatabase:
         cursor = self.conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (chatId, ))
         for row in cursor:
             message = self._parseMessage(row)
+            handleName = self._getHandleName(row['handle_id'])
             if message is not None:
+                message.handleName = handleName
                 return message
         return None
 
