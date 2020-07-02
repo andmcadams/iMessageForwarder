@@ -377,7 +377,7 @@ class MessageBubble(tk.Frame):
                 else:
                     reactionBubble.grid(row=1, padx=-5*self.reactionCount,
                                         sticky='e')
-                self.reactionCount += 1
+                self.reactionCount += 1 if self.reactionCount < 10 else 0
                 self.body.configure(bg='red')
         elif not reaction.isAddition:
             if reactionBubble is not None:
