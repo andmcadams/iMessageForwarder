@@ -18,7 +18,6 @@ retrieveScriptPath = secrets['retrieveScriptPath']
 def updateLastAccess(newTime):
     global lastAccess
     lastAccess = newTime
-    print('Last access time updated to {}'.format(lastAccess))
 
 
 def readLastAccess():
@@ -65,7 +64,7 @@ def retrieveUpdates():
                                                    retrieveScriptPath,
                                                    lastAccess)]
         output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE,
-                                check=True)
+                                stderr=subprocess.DEVNULL, check=True)
         output = json.loads(output.stdout)
         attachmentPre = './attachments/{}'
         for attachment in output['attachment']:
