@@ -708,7 +708,7 @@ class SshMessagePasser():
                     messageId,
                     reactionType,
                     recipientString)]
-            subprocess.run(cmd)
+            subprocess.run(cmd, stderr=subprocess.DEVNULL)
 
     instance = None
 
