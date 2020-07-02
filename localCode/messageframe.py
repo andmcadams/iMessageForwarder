@@ -319,6 +319,7 @@ class MessageBubble(tk.Frame):
         # we can just call self.update()
         self.messageId = messageId
         self.chat = chat
+        self.reactionCount = 0
 
         self.readReceipt = None
         if addReadReceipt:
@@ -348,8 +349,8 @@ class MessageBubble(tk.Frame):
     def onRightClick(self, event):
 
         def sendReaction(mesMenu, mesId):
-            return lambda rValue: lambda: messageMenu.sendReaction(mesId,
-                                                                   rValue)
+            return lambda rValue: lambda: mesMenu.sendReaction(mesId,
+                                                               rValue)
         messageMenu = MessageMenu(self)
         message = self.chat.getMessages()[self.messageId]
 
@@ -371,9 +372,12 @@ class MessageBubble(tk.Frame):
             if reactionBubble is None:
                 reactionBubble = ReactionBubble(self, reaction.reactionType)
                 if message.isFromMe:
-                    reactionBubble.grid(row=1, sticky='w')
+                    reactionBubble.grid(row=1, padx=5*self.reactionCount,
+                                        sticky='w')
                 else:
-                    reactionBubble.grid(row=1, sticky='e')
+                    reactionBubble.grid(row=1, padx=-5*self.reactionCount,
+                                        sticky='e')
+                self.reactionCount += 1
                 self.body.configure(bg='red')
         elif not reaction.isAddition:
             if reactionBubble is not None:
@@ -396,6 +400,7 @@ class MessageBubble(tk.Frame):
             else:
                 self.readReceipt.configure(text='Sending...')
         # Handle reactions
+        self.reactionCount = 0
         for handle in message.reactions:
             if handle not in self.reactions:
                 self.reactions[handle] = {}
