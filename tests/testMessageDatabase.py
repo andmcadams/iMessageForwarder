@@ -26,6 +26,7 @@ class TestMessageDatabaseMethods(unittest.TestCase):
         self.assertEqual(msgs[1].ROWID, 12732)
         self.assertEqual(lastAccessTime, 1593467018)
         self.assertIsNotNone(msgs[1].attachment)
+        self.assertEqual(msgs[0].handleName, 'testEmail@test.com')
 
     def test_get_messages_for_chat_reaction(self):
         messageDb = api.MessageDatabase()
@@ -42,6 +43,7 @@ class TestMessageDatabaseMethods(unittest.TestCase):
         msg = messageDb.getMostRecentMessage(82)
 
         self.assertEqual(msg.ROWID, 12732) 
+        self.assertEqual(msg.handleName, 'testEmail@test.com')
 
     def test_get_most_recent_message_reaction(self):
         messageDb = api.MessageDatabase()
