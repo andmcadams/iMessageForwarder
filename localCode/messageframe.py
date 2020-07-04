@@ -296,8 +296,13 @@ class MessageFrame(VerticalScrolledFrame):
         # Create a new window with a text box and submit button
         if message.reactions == {}:
             return
+        if self.reactionWindow is not None and self.reactionWindow.messageId != message.rowid:
+            self.reactionWindow.destroy()
+            self.reactionWindow.messageId = 0
+
         if not self.reactionWindow or not self.reactionWindow.winfo_exists():
             self.reactionWindow = tk.Toplevel(self)
+            self.reactionWindow.messageId = message.rowid
             self.reactionWindow.grid_propagate(True)
             reactionsByType = self._reactionsByTypeDict(message.reactions)
             i = 0
