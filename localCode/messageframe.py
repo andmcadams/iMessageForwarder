@@ -401,7 +401,7 @@ class MessageBubble(tk.Frame):
         react = sendReaction(messageMenu, self.messageId)
 
         messageMenu.add_command(label=self.messageId)
-        if self.reactions != {}:
+        if self.reactions != {} and self.chat.isGroup:
             messageMenu.add_command(label='Reactions', command=lambda: self.master.master.master._showReactionWindow(message))
         messageMenu.add_command(label=getTimeText(message.date))
         messageMenu.add_command(label="Love", command=react(2000))
