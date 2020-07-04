@@ -588,7 +588,7 @@ class MessageDatabase:
         if handleName:
             handleName = handleName[0]
         else:
-            handleName = ''
+            handleName = 'Me'
 
         return handleName
 
