@@ -41,6 +41,7 @@ class MessageFrame(VerticalScrolledFrame):
 
         self.readReceiptMessageId = None
         self.mp = mp
+        self.reactionWindow = None
 
     # This probably has some nasty race conditions.
     # This also has unfortunate recursion issues that should be fixed
@@ -291,6 +292,44 @@ class MessageFrame(VerticalScrolledFrame):
         else:
             self.vscrollbar.set(top, bottom)
 
+    def _showReactionWindow(self, message):
+        # Create a new window with a text box and submit button
+        if message.reactions == {}:
+            return
+        if not self.reactionWindow or not self.reactionWindow.winfo_exists():
+            self.reactionWindow = tk.Toplevel(self)
+            self.reactionWindow.grid_propagate(True)
+            reactionsByType = self._reactionsByTypeDict(message.reactions)
+            i = 0
+            for reactionType in reactionsByType:
+                if reactionsByType[reactionType] != []:
+                    reactionLabel = tk.Label(self.reactionWindow)
+                    reactionLabel.configure(text=reactionType)
+                    handleLabel = tk.Label(self.reactionWindow)
+                    handleText = ', '.join(reactionsByType[reactionType])
+                    handleLabel.configure(text=handleText)
+                    reactionLabel.grid(row=0, column=i)
+                    handleLabel.grid(row=1, column=i)
+                    self.reactionWindow.columnconfigure(index=i, weight=1)
+                    i += 1
+        else:
+            self.reactionWindow.lift()
+            self.reactionWindow.focus_force()
+
+    def _reactionsByTypeDict(self, reactionsDict):
+        reactionsBySender = {0: [], 1: [], 2: [], 3: [], 4: [], 5: []}
+        for handle in reactionsDict:
+            for reactionType in reactionsDict[handle]:
+                reactionsBySender[reactionType].append(reactionsDict[handle][reactionType].handleName)
+
+        reactionsBySender['Loved'] = reactionsBySender.pop(0)
+        reactionsBySender['Liked'] = reactionsBySender.pop(1)
+        reactionsBySender['Disliked'] = reactionsBySender.pop(2)
+        reactionsBySender['Laughed'] = reactionsBySender.pop(3)
+        reactionsBySender['Emphasized'] = reactionsBySender.pop(4)
+        reactionsBySender['Questioned'] = reactionsBySender.pop(5)
+        return reactionsBySender
+
 
 class MessageMenu(tk.Menu):
 
@@ -357,7 +396,8 @@ class MessageBubble(tk.Frame):
         react = sendReaction(messageMenu, self.messageId)
 
         messageMenu.add_command(label=self.messageId)
-        messageMenu.add_command(label=message.reactions)
+        if self.reactions != {}:
+            messageMenu.add_command(label='Reactions', command=lambda: self.master.master.master._showReactionWindow(message))
         messageMenu.add_command(label=getTimeText(message.date))
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
@@ -375,7 +415,7 @@ class MessageBubble(tk.Frame):
                     reactionBubble.grid(row=1, padx=5*self.reactionCount,
                                         sticky='w')
                 else:
-                    reactionBubble.grid(row=1, padx=-5*self.reactionCount,
+                    reactionBubble.grid(row=1, padx=5*self.reactionCount,
                                         sticky='e')
                 self.reactionCount += 1 if self.reactionCount < 10 else 0
                 self.body.configure(bg='red')
