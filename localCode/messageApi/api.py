@@ -200,7 +200,10 @@ class Received(ABC):
 
     @handleName.setter
     def handleName(self, handleName: str) -> None:
-        self._handleName = handleName
+        if handleName == '' and self.isFromMe:
+            self._handleName = 'Me'
+        else:
+            self._handleName = handleName
 
     @property
     def dateRead(self) -> int:
@@ -588,7 +591,7 @@ class MessageDatabase:
         if handleName:
             handleName = handleName[0]
         else:
-            handleName = 'Me'
+            handleName = ''
 
         return handleName
 
