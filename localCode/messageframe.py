@@ -93,6 +93,8 @@ class MessageFrame(VerticalScrolledFrame):
         self.checkScroll(top, bottom)
         self.canvas.yview_moveto(self.interior.winfo_reqheight())
 
+        self._destroyReactionWindow()
+
     def needSenderLabel(self, chat, message, prevMessage):
         """Return whether or not a sender label needs to be added.
 
@@ -296,12 +298,12 @@ class MessageFrame(VerticalScrolledFrame):
         # Create a new window with a text box and submit button
         if message.reactions == {}:
             return
+
         if self.reactionWindow is not None and self.reactionWindow.messageId != message.rowid:
-            self.reactionWindow.destroy()
-            self.reactionWindow.messageId = 0
+            self._destroyReactionWindow()
 
         if not self.reactionWindow or not self.reactionWindow.winfo_exists():
-            self.reactionWindow = tk.Toplevel(self)
+            self.reactionWindow = tk.Toplevel(self, bg='black')
             self.reactionWindow.messageId = message.rowid
             self.reactionWindow.grid_propagate(True)
             reactionsByType = self._reactionsByTypeDict(message.reactions)
@@ -313,13 +315,18 @@ class MessageFrame(VerticalScrolledFrame):
                     handleLabel = tk.Label(self.reactionWindow)
                     handleText = ', '.join(reactionsByType[reactionType])
                     handleLabel.configure(text=handleText)
-                    reactionLabel.grid(row=0, column=i)
-                    handleLabel.grid(row=1, column=i)
+                    reactionLabel.grid(row=0, column=i, pady=(1, 1), padx=(1, 1), sticky='ew')
+                    handleLabel.grid(row=1, column=i, padx=(1, 1), sticky='ew')
                     self.reactionWindow.columnconfigure(index=i, weight=1)
                     i += 1
         else:
             self.reactionWindow.lift()
             self.reactionWindow.focus_force()
+
+    def _destroyReactionWindow(self):
+        if self.reactionWindow is not None:
+            self.reactionWindow.destroy()
+            self.reactionWindow.messageId = 0
 
     def _reactionsByTypeDict(self, reactionsDict):
         reactionsBySender = {0: [], 1: [], 2: [], 3: [], 4: [], 5: []}
