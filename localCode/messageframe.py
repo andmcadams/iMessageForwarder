@@ -299,7 +299,8 @@ class MessageFrame(VerticalScrolledFrame):
         if message.reactions == {}:
             return
 
-        if self.reactionWindow is not None and self.reactionWindow.messageId != message.rowid:
+        if (self.reactionWindow is not None
+                and self.reactionWindow.messageId != message.rowid):
             self._destroyReactionWindow()
 
         if not self.reactionWindow or not self.reactionWindow.winfo_exists():
@@ -315,7 +316,10 @@ class MessageFrame(VerticalScrolledFrame):
                     handleLabel = tk.Label(self.reactionWindow)
                     handleText = ', '.join(reactionsByType[reactionType])
                     handleLabel.configure(text=handleText)
-                    reactionLabel.grid(row=0, column=i, pady=(1, 1), padx=(1, 1), sticky='ew')
+                    reactionLabel.grid(
+                        row=0, column=i, pady=(
+                            1, 1), padx=(
+                            1, 1), sticky='ew')
                     handleLabel.grid(row=1, column=i, padx=(1, 1), sticky='ew')
                     self.reactionWindow.columnconfigure(index=i, weight=1)
                     i += 1
@@ -332,7 +336,8 @@ class MessageFrame(VerticalScrolledFrame):
         reactionsBySender = {0: [], 1: [], 2: [], 3: [], 4: [], 5: []}
         for handle in reactionsDict:
             for reactionType in reactionsDict[handle]:
-                reactionsBySender[reactionType].append(reactionsDict[handle][reactionType].handleName)
+                reactionsBySender[reactionType].append(
+                    reactionsDict[handle][reactionType].handleName)
 
         reactionsBySender['Loved'] = reactionsBySender.pop(0)
         reactionsBySender['Liked'] = reactionsBySender.pop(1)
@@ -409,7 +414,10 @@ class MessageBubble(tk.Frame):
 
         messageMenu.add_command(label=self.messageId)
         if self.reactions != {} and self.chat.isGroup:
-            messageMenu.add_command(label='Reactions', command=lambda: self.master.master.master._showReactionWindow(message))
+            messageMenu.add_command(
+                label='Reactions',
+                command=lambda: (self.master
+                                 .master.master._showReactionWindow(message)))
         messageMenu.add_command(label=getTimeText(message.date))
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
@@ -424,10 +432,10 @@ class MessageBubble(tk.Frame):
             if reactionBubble is None:
                 reactionBubble = ReactionBubble(self, reaction.reactionType)
                 if message.isFromMe:
-                    reactionBubble.grid(row=1, padx=5*self.reactionCount,
+                    reactionBubble.grid(row=1, padx=5 * self.reactionCount,
                                         sticky='w')
                 else:
-                    reactionBubble.grid(row=1, padx=5*self.reactionCount,
+                    reactionBubble.grid(row=1, padx=5 * self.reactionCount,
                                         sticky='e')
                 self.reactionCount += 1 if self.reactionCount < 10 else 0
                 self.body.configure(bg='red')
