@@ -41,6 +41,7 @@ class MessageFrame(VerticalScrolledFrame):
 
         self.readReceiptMessageId = None
         self.mp = mp
+        self.reactionWindow = None
 
     # This probably has some nasty race conditions.
     # This also has unfortunate recursion issues that should be fixed
@@ -91,6 +92,8 @@ class MessageFrame(VerticalScrolledFrame):
         (top, bottom) = self.vscrollbar.get()
         self.checkScroll(top, bottom)
         self.canvas.yview_moveto(self.interior.winfo_reqheight())
+
+        self._destroyReactionWindow()
 
     def needSenderLabel(self, chat, message, prevMessage):
         """Return whether or not a sender label needs to be added.
@@ -291,6 +294,59 @@ class MessageFrame(VerticalScrolledFrame):
         else:
             self.vscrollbar.set(top, bottom)
 
+    def _showReactionWindow(self, message):
+        # Create a new window with a text box and submit button
+        if message.reactions == {}:
+            return
+
+        if (self.reactionWindow is not None
+                and self.reactionWindow.messageId != message.rowid):
+            self._destroyReactionWindow()
+
+        if not self.reactionWindow or not self.reactionWindow.winfo_exists():
+            self.reactionWindow = tk.Toplevel(self, bg='black')
+            self.reactionWindow.messageId = message.rowid
+            self.reactionWindow.grid_propagate(True)
+            reactionsByType = self._reactionsByTypeDict(message.reactions)
+            i = 0
+            for reactionType in reactionsByType:
+                if reactionsByType[reactionType] != []:
+                    reactionLabel = tk.Label(self.reactionWindow)
+                    reactionLabel.configure(text=reactionType)
+                    handleLabel = tk.Label(self.reactionWindow)
+                    handleText = ', '.join(reactionsByType[reactionType])
+                    handleLabel.configure(text=handleText)
+                    reactionLabel.grid(
+                        row=0, column=i, pady=(
+                            1, 1), padx=(
+                            1, 1), sticky='ew')
+                    handleLabel.grid(row=1, column=i, padx=(1, 1), sticky='ew')
+                    self.reactionWindow.columnconfigure(index=i, weight=1)
+                    i += 1
+        else:
+            self.reactionWindow.lift()
+            self.reactionWindow.focus_force()
+
+    def _destroyReactionWindow(self):
+        if self.reactionWindow is not None:
+            self.reactionWindow.destroy()
+            self.reactionWindow.messageId = 0
+
+    def _reactionsByTypeDict(self, reactionsDict):
+        reactionsBySender = {0: [], 1: [], 2: [], 3: [], 4: [], 5: []}
+        for handle in reactionsDict:
+            for reactionType in reactionsDict[handle]:
+                reactionsBySender[reactionType].append(
+                    reactionsDict[handle][reactionType].handleName)
+
+        reactionsBySender['Loved'] = reactionsBySender.pop(0)
+        reactionsBySender['Liked'] = reactionsBySender.pop(1)
+        reactionsBySender['Disliked'] = reactionsBySender.pop(2)
+        reactionsBySender['Laughed'] = reactionsBySender.pop(3)
+        reactionsBySender['Emphasized'] = reactionsBySender.pop(4)
+        reactionsBySender['Questioned'] = reactionsBySender.pop(5)
+        return reactionsBySender
+
 
 class MessageMenu(tk.Menu):
 
@@ -319,6 +375,7 @@ class MessageBubble(tk.Frame):
         # we can just call self.update()
         self.messageId = messageId
         self.chat = chat
+        self.reactionCount = 0
 
         self.readReceipt = None
         if addReadReceipt:
@@ -348,15 +405,19 @@ class MessageBubble(tk.Frame):
     def onRightClick(self, event):
 
         def sendReaction(mesMenu, mesId):
-            return lambda rValue: lambda: messageMenu.sendReaction(mesId,
-                                                                   rValue)
+            return lambda rValue: lambda: mesMenu.sendReaction(mesId,
+                                                               rValue)
         messageMenu = MessageMenu(self)
         message = self.chat.getMessages()[self.messageId]
 
         react = sendReaction(messageMenu, self.messageId)
 
         messageMenu.add_command(label=self.messageId)
-        messageMenu.add_command(label=message.reactions)
+        if self.reactions != {} and self.chat.isGroup:
+            messageMenu.add_command(
+                label='Reactions',
+                command=lambda: (self.master
+                                 .master.master._showReactionWindow(message)))
         messageMenu.add_command(label=getTimeText(message.date))
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
@@ -371,9 +432,12 @@ class MessageBubble(tk.Frame):
             if reactionBubble is None:
                 reactionBubble = ReactionBubble(self, reaction.reactionType)
                 if message.isFromMe:
-                    reactionBubble.grid(row=1, sticky='w')
+                    reactionBubble.grid(row=1, padx=5 * self.reactionCount,
+                                        sticky='w')
                 else:
-                    reactionBubble.grid(row=1, sticky='e')
+                    reactionBubble.grid(row=1, padx=5 * self.reactionCount,
+                                        sticky='e')
+                self.reactionCount += 1 if self.reactionCount < 10 else 0
                 self.body.configure(bg='red')
         elif not reaction.isAddition:
             if reactionBubble is not None:
@@ -396,6 +460,7 @@ class MessageBubble(tk.Frame):
             else:
                 self.readReceipt.configure(text='Sending...')
         # Handle reactions
+        self.reactionCount = 0
         for handle in message.reactions:
             if handle not in self.reactions:
                 self.reactions[handle] = {}

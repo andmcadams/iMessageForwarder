@@ -200,7 +200,10 @@ class Received(ABC):
 
     @handleName.setter
     def handleName(self, handleName: str) -> None:
-        self._handleName = handleName
+        if handleName == '' and self.isFromMe:
+            self._handleName = 'Me'
+        else:
+            self._handleName = handleName
 
     @property
     def dateRead(self) -> int:
@@ -550,7 +553,9 @@ class MessageDatabase:
         cursor = self.conn.execute(sqlcommands.RECENT_MESSAGE_SQL, (chatId, ))
         for row in cursor:
             message = self._parseMessage(row)
+            handleName = self._getHandleName(row['handle_id'])
             if message is not None:
+                message.handleName = handleName
                 return message
         return None
 
@@ -706,7 +711,7 @@ class SshMessagePasser():
                     messageId,
                     reactionType,
                     recipientString)]
-            subprocess.run(cmd)
+            subprocess.run(cmd, stderr=subprocess.DEVNULL)
 
     instance = None
 
