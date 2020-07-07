@@ -12,13 +12,17 @@ FROM message
         AND chat_message_join.chat_id = ?
     INNER JOIN message_update_date_join
         ON message.ROWID = message_update_date_join.message_id
-        AND message_update_date_join.message_update_date > ?
-    LEFT JOIN message_attachment_join
-        ON message.ROWID = message_attachment_join.message_id"""
+        AND message_update_date_join.message_update_date > ?"""
 
 HANDLE_SQL = """SELECT id
 FROM handle
     WHERE ROWID = ?"""
+
+ATTACHMENTS_SQL = """SELECT ROWID, guid, filename, uti
+FROM message_attachment_join
+    INNER JOIN attachment
+        ON attachment.ROWID = attachment_id 
+    WHERE message_id = ?"""
 
 ATTACHMENT_SQL = """SELECT ROWID, guid, filename, uti
 FROM attachment
@@ -35,6 +39,8 @@ FROM message
     INNER JOIN chat_message_join AS CMJ
         ON message.ROWID = CMJ.message_id
         AND CMJ.chat_id = ?
+    LEFT JOIN message_attachment_join
+        ON message.ROWID = message_attachment_join.message_id
     ORDER BY date DESC, ROWID DESC"""
 
 LOAD_CHAT_SQL = """SELECT ROWID, chat_identifier, display_name, style,

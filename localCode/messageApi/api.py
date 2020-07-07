@@ -1,4 +1,5 @@
 import sqlite3
+import re
 import os
 import json
 import time
@@ -130,11 +131,33 @@ class Attachment:
     def __post_init__(self):
         if self.ROWID is None:
             raise AttachmentNoIdException
+        self._reactions = {}
 
     @property
     def rowid(self) -> int:
         return self.ROWID
 
+    @property
+    def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
+        return self._reactions
+
+    def addReaction(self, reaction: 'Reaction') -> None:
+        # If the handle sending the reaction has not reacted to this message,
+        # add it.
+        if reaction.handleId not in self.reactions:
+            self.reactions[reaction.handleId] = {}
+
+        # Reactions and reaction removals have the same digit in the ones place
+        reactionVal = reaction.reactionType % 1000
+
+        # If the handle has already sent this reaction, but this one is newer,
+        # replace the old reaction with this one.
+        handleReactions = self.reactions[reaction.handleId]
+        if (reactionVal in handleReactions and
+                reaction.isNewer(handleReactions[reactionVal])):
+            self.reactions[reaction.handleId][reactionVal] = reaction
+        elif reactionVal not in handleReactions:
+            self.reactions[reaction.handleId][reactionVal] = reaction
 
 class ReceivedNoIdException(Exception):
     pass
@@ -168,7 +191,6 @@ class Received(ABC):
     group_action_type: int = 0
     associated_message_guid: str = None
     associated_message_type: int = 0
-    attachment_id: str = None
     message_update_date: int = 0
     error: int = 0
 
@@ -182,7 +204,7 @@ class Received(ABC):
         text = self.text
         if self.text is not None:
             self.text = ''.join([text[t] for t in range(
-                len(text)) if ord(text[t]) in range(65536)])
+                len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
         self._handleName = ''
         self.removedTempId = 0
 
@@ -268,47 +290,67 @@ class Received(ABC):
                 return True
             return False
 
+    def getText(self) -> str:
+        return self.text
+
 
 class Message(Received):
 
     def __post_init__(self):
         super().__post_init__()
         self._reactions = {}
-        self._attachment = None
+        self._attachments = []
+
+    def getText(self) -> str:
+        if self.text != '':
+            return self.text
+        else:
+            return '{} attachments'.format(len(self.attachments))
 
     @property
     def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
         return self._reactions
 
     @property
-    def attachment(self) -> Optional['Attachment']:
-        return self._attachment
+    def attachments(self) -> Dict[int, 'Attachment']:
+        return self._attachments
 
-    @attachment.setter
-    def attachment(self, attachment: 'Attachment') -> None:
-        self._attachment = attachment
+    @attachments.setter
+    def attachments(self, attachments: Dict[int, 'Attachment']) -> None:
+        self._attachments = attachments
+
+    def addAttachment(self, attachment: 'Attachment') -> None:
+        if attachment is not None:
+            self._attachments.append(attachment)
+
 
     @property
     def isReaction(self) -> bool:
         return False
 
     def addReaction(self, reaction: 'Reaction') -> None:
-        # If the handle sending the reaction has not reacted to this message,
-        # add it.
-        if reaction.handleId not in self.reactions:
-            self.reactions[reaction.handleId] = {}
 
-        # Reactions and reaction removals have the same digit in the ones place
-        reactionVal = reaction.reactionType % 1000
+        ind = reaction.attachmentIndex
 
-        # If the handle has already sent this reaction, but this one is newer,
-        # replace the old reaction with this one.
-        handleReactions = self.reactions[reaction.handleId]
-        if (reactionVal in handleReactions and
-                reaction.isNewer(handleReactions[reactionVal])):
-            self.reactions[reaction.handleId][reactionVal] = reaction
-        elif reactionVal not in handleReactions:
-            self.reactions[reaction.handleId][reactionVal] = reaction
+        if ind < len(self.attachments):
+            self.attachments[ind].addReaction(reaction)
+        else:
+            # If the handle sending the reaction has not reacted to this message,
+            # add it.
+            if reaction.handleId not in self.reactions:
+                self.reactions[reaction.handleId] = {}
+
+            # Reactions and reaction removals have the same digit in the ones place
+            reactionVal = reaction.reactionType % 1000
+
+            # If the handle has already sent this reaction, but this one is newer,
+            # replace the old reaction with this one.
+            handleReactions = self.reactions[reaction.handleId]
+            if (reactionVal in handleReactions and
+                    reaction.isNewer(handleReactions[reactionVal])):
+                self.reactions[reaction.handleId][reactionVal] = reaction
+            elif reactionVal not in handleReactions:
+                self.reactions[reaction.handleId][reactionVal] = reaction
 
     def update(self, updatedMessage: 'Message') -> None:
         self.date = updatedMessage.date
@@ -323,18 +365,26 @@ class Message(Received):
         self.removedTempId = (updatedMessage.removedTempId if
                               self.removedTempId == 0 else self.removedTempId)
 
-        if updatedMessage.attachment:
-            self.attachment = updatedMessage.attachment
+        if updatedMessage.attachments != []:
+            for attachment in updatedMessage.attachments: 
+                self.addAttachment(attachment)
+
+
+class ReactionNoAttachmentIndexException:
+    pass
 
 
 @dataclass
 class Reaction(Received):
     associated_message_id: int = None
+    attachmentIndex: int = None
 
     def __post_init__(self):
         super().__post_init__()
         if self.associated_message_id is None:
             raise ReactionNoAssociatedIdException
+        if self.attachmentIndex is None:
+            raise ReactionNoAttachmentIndexException
 
     @property
     def isAddition(self) -> bool:
@@ -352,6 +402,8 @@ class Reaction(Received):
     def isReaction(self) -> bool:
         return True
 
+    def getText(self):
+        return super().getText()
 
 class ChatDeletedException(Exception):
     pass
@@ -564,14 +616,8 @@ class MessageDatabase:
         message = None
         # If there are no associated messages
         if not row['associated_message_guid']:
-            attachment = None
-            if 'attachment_id' in row.keys(
-            ) and row['attachment_id'] is not None:
-                a = self.conn.execute(sqlcommands.ATTACHMENT_SQL,
-                                      (row['attachment_id'], )).fetchone()
-                attachment = Attachment(**a)
             message = Message(**row)
-            message.attachment = attachment
+            self._getAttachments(message)
 
         else:
             assocMessageId = (self.conn
@@ -580,10 +626,19 @@ class MessageDatabase:
                                            [-36:], )).fetchone())
             if assocMessageId:
                 assocMessageId = assocMessageId[0]
+                match = re.match('p:(\d+)/.*', row['associated_message_guid'])
+                ind = int(match.group(1)) if match is not None else None
                 message = Reaction(
-                    associated_message_id=assocMessageId, **row)
+                    associated_message_id=assocMessageId, attachmentIndex=ind, **row)
 
         return message
+
+    def _getAttachments(self, message: 'Received') -> None:
+        cursor = self.conn.execute(sqlcommands.ATTACHMENTS_SQL, (message.rowid, ))
+        for row in cursor:
+            attachment = Attachment(**row)
+            if attachment is not None:
+                message.addAttachment(attachment)
 
     def _getHandleName(self, handleId: int) -> str:
         handleName = self.conn.execute(sqlcommands.HANDLE_SQL,
@@ -604,7 +659,7 @@ class MessageDatabase:
                                 'cache_roomnames', 'item_type',
                                 'other_handle', 'group_title',
                                 'group_action_type', 'associated_message_guid',
-                                'associated_message_type', 'attachment_id',
+                                'associated_message_type',
                                 'message_update_date']
         columns = ', '.join(neededColumnsMessage)
         return columns
