@@ -116,10 +116,6 @@ class MessageList(dict):
         return self.mostRecentMessage
 
 
-class AttachmentNoIdException(Exception):
-    pass
-
-
 @dataclass
 class Attachment:
 
@@ -158,13 +154,6 @@ class Attachment:
             self.reactions[reaction.handleId][reactionVal] = reaction
         elif reactionVal not in handleReactions:
             self.reactions[reaction.handleId][reactionVal] = reaction
-
-class ReceivedNoIdException(Exception):
-    pass
-
-
-class ReactionNoAssociatedIdException(Exception):
-    pass
 
 
 @dataclass
@@ -370,10 +359,6 @@ class Message(Received):
                 self.addAttachment(attachment)
 
 
-class ReactionNoAttachmentIndexException:
-    pass
-
-
 @dataclass
 class Reaction(Received):
     associated_message_id: int = None
@@ -404,13 +389,6 @@ class Reaction(Received):
 
     def getText(self):
         return super().getText()
-
-class ChatDeletedException(Exception):
-    pass
-
-
-class ChatNoIdException(Exception):
-    pass
 
 
 class DummyChat:
@@ -796,6 +774,30 @@ def _ping() -> bool:
         return True
     except subprocess.CalledProcessError as e:
         return False
+
+
+class ReceivedNoIdException(Exception):
+    pass
+
+
+class ReactionNoAssociatedIdException(Exception):
+    pass
+
+
+class AttachmentNoIdException(Exception):
+    pass
+
+
+class ChatDeletedException(Exception):
+    pass
+
+
+class ChatNoIdException(Exception):
+    pass
+
+
+class ReactionNoAttachmentIndexException(Exception):
+    pass
 
 
 def _useTestDatabase(dbName: str) -> None:
