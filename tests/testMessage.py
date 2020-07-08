@@ -27,7 +27,6 @@ class TestMessageMethods(unittest.TestCase):
         self.assertEqual(msg.group_action_type, 0)
         self.assertIsNone(msg.associated_message_guid)
         self.assertEqual(msg.associated_message_type, 0)
-        self.assertIsNone(msg.attachment_id)
         self.assertEqual(msg.message_update_date, 0)
         self.assertEqual(msg.error, 0)
 
@@ -61,9 +60,9 @@ class TestMessageMethods(unittest.TestCase):
         msg = api.Message(ROWID=1)
         attachment = api.Attachment(ROWID=1)
 
-        msg.attachment = attachment
+        msg.addAttachment(attachment)
 
-        self.assertEqual(msg.attachment, attachment)
+        self.assertEqual(msg.attachments[0], attachment)
 
     def test_add_handle_name(self):
         testHandleName = 'Handle name'
@@ -237,11 +236,11 @@ class TestMessageMethods(unittest.TestCase):
         msg = api.Message(ROWID=1)
         msg2 = api.Message(ROWID=2)
         attachment = api.Attachment(ROWID=1)
-        msg2.attachment = attachment
+        msg2.addAttachment(attachment)
 
         msg.update(msg2)
 
-        self.assertEqual(msg.attachment, attachment)
+        self.assertEqual(msg.attachments[0], attachment)
 
     def test_is_newer(self):
         msg = api.Message(ROWID=1, date=0)

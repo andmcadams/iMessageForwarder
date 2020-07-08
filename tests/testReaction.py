@@ -28,7 +28,6 @@ class TestReactionMethods(unittest.TestCase):
         self.assertEqual(reaction.group_action_type, 0)
         self.assertIsNone(reaction.associated_message_guid)
         self.assertEqual(reaction.associated_message_type, 0)
-        self.assertIsNone(reaction.attachment_id)
         self.assertEqual(reaction.message_update_date, 0)
         self.assertEqual(reaction.error, 0)
 

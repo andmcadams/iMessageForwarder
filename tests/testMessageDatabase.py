@@ -25,7 +25,7 @@ class TestMessageDatabaseMethods(unittest.TestCase):
         self.assertEqual(msgs[0].ROWID, 12727)
         self.assertEqual(msgs[1].ROWID, 12732)
         self.assertEqual(lastAccessTime, 1593467018)
-        self.assertIsNotNone(msgs[1].attachment)
+        self.assertEqual(len(msgs[1].attachments), 1)
         self.assertEqual(msgs[0].handleName, 'testEmail@test.com')
 
     def test_get_messages_for_chat_reaction(self):
@@ -81,7 +81,7 @@ class TestMessageDatabaseMethods(unittest.TestCase):
                           ' cache_has_attachments, cache_roomnames, item_type,'
                           ' other_handle, group_title, group_action_type,'
                           ' associated_message_guid, associated_message_type,'
-                          ' attachment_id, message_update_date')
+                          ' message_update_date')
 
         cols = messageDb._getFormattedColumns()
 
