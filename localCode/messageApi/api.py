@@ -377,7 +377,7 @@ class ReactionNoAttachmentIndexException:
 @dataclass
 class Reaction(Received):
     associated_message_id: int = None
-    attachmentIndex: int = None
+    attachmentIndex: int = 0
 
     def __post_init__(self):
         super().__post_init__()
@@ -626,8 +626,11 @@ class MessageDatabase:
                                            [-36:], )).fetchone())
             if assocMessageId:
                 assocMessageId = assocMessageId[0]
-                match = re.match('p:(\d+)/.*', row['associated_message_guid'])
-                ind = int(match.group(1)) if match is not None else None
+                match = re.match('[\w]+:((\d+)/)?.*', row['associated_message_guid'])
+                ind = int(match.group(2)) if match.group(2) is not None else None
+                if ind is None:
+                    ind = 0
+
                 message = Reaction(
                     associated_message_id=assocMessageId, attachmentIndex=ind, **row)
 
