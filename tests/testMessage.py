@@ -47,6 +47,18 @@ class TestMessageMethods(unittest.TestCase):
         self.assertDictEqual(msg.reactions, {})
         self.assertFalse(msg.isReaction)
 
+    def test_handle_name_from_me(self):
+        msg = api.Message(ROWID=1, is_from_me=1)
+
+        self.assertEqual(msg.handleName, 'Me')
+
+    def test_set_handle_name_blank_from_me(self):
+        msg = api.Message(ROWID=1, is_from_me=1)
+
+        msg.handleName = ''
+
+        self.assertEqual(msg.handleName, 'Me')
+
     def test_is_temporary(self):
         msg = api.Message(ROWID=-1)
 
@@ -194,6 +206,22 @@ class TestMessageMethods(unittest.TestCase):
 
         self.assertDictEqual(msg.reactions, correctReactionDict)
 
+    def test_add_reaction_to_attachment(self):
+        testReaction = api.Reaction(associated_message_id=1, ROWID=1,
+                handle_id=1, associated_message_type=2000, attachmentIndex=0)
+        attachment = api.Attachment(ROWID=1)
+        correctReactionDict = {
+            testReaction.handleId: {
+                (testReaction.associated_message_type % 1000): testReaction
+            }
+        }
+        msg = api.Message(ROWID=1)
+        msg.addAttachment(attachment)
+
+        msg.addReaction(testReaction)
+
+        self.assertDictEqual(attachment.reactions, correctReactionDict)
+
     def test_update_no_remove_temp_no_attachment(self):
         msg = api.Message(ROWID=1, date=0, date_read=0, date_delivered=0,
                 is_delivered=0, is_finished=0, is_read=0, is_sent=0,
@@ -255,3 +283,37 @@ class TestMessageMethods(unittest.TestCase):
 
         self.assertFalse(msg.isNewer(msg2))
         self.assertTrue(msg2.isNewer(msg))
+
+    def test_get_text_not_blank(self):
+        correctText = 'Test'
+        msg = api.Message(ROWID=1, text=correctText)
+
+        text = msg.getText()
+
+        self.assertEqual(text, correctText)
+
+    def test_get_text_blank_attachment(self):
+        correctText = '1 attachments'
+        msg = api.Message(ROWID=1)
+        attachment = api.Attachment(ROWID=1)
+        msg.addAttachment(attachment)
+
+        text = msg.getText()
+
+        self.assertEqual(text, correctText)
+
+    def test_get_text_blank_no_attachment(self):
+        correctText = ''
+        msg = api.Message(ROWID=1)
+
+        text = msg.getText()
+
+        self.assertEqual(text, correctText)
+
+    def test_setter_attachment(self):
+        attachmentList = [api.Attachment(ROWID=1)]
+        msg = api.Message(ROWID=1)
+        
+        msg.attachments = attachmentList
+
+        self.assertListEqual(msg._attachments, attachmentList)

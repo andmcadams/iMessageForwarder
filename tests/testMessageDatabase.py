@@ -59,6 +59,22 @@ class TestMessageDatabaseMethods(unittest.TestCase):
 
         self.assertIsNone(msg) 
 
+    def test_get_attachment_index_p_str(self):
+        associatedMessageGuid = 'p:1/B7E83654-FE3F-4D60-AA56-0D7E3704D5FF'
+        messageDb = api.MessageDatabase()
+
+        ind = messageDb._getAttachmentIndex(associatedMessageGuid)
+
+        self.assertEqual(ind, 1)
+
+    def test_get_attachment_index_bp_str(self):
+        associatedMessageGuid = 'bp:D5A96C8F-D001-4BD4-A0D1-2539635BC92E'
+        messageDb = api.MessageDatabase()
+
+        ind = messageDb._getAttachmentIndex(associatedMessageGuid)
+
+        self.assertEqual(ind, 0)
+
     def test_get_handle_name(self):
         messageDb = api.MessageDatabase()
 
