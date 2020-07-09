@@ -194,7 +194,7 @@ class Received(ABC):
         if self.text is not None:
             self.text = ''.join([text[t] for t in range(
                 len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
-        self._handleName = ''
+        self._handleName = 'Me' if self.is_from_me == 1 else ''
         self.removedTempId = 0
 
     @property
@@ -290,32 +290,33 @@ class Message(Received):
         self._reactions = {}
         self._attachments = []
 
-    def getText(self) -> str:
-        if self.text != '':
-            return self.text
-        else:
-            return '{} attachments'.format(len(self.attachments))
-
     @property
     def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
         return self._reactions
 
     @property
-    def attachments(self) -> Dict[int, 'Attachment']:
+    def attachments(self) -> List['Attachment']:
         return self._attachments
 
     @attachments.setter
-    def attachments(self, attachments: Dict[int, 'Attachment']) -> None:
+    def attachments(self, attachments: List['Attachment']) -> None:
         self._attachments = attachments
 
     def addAttachment(self, attachment: 'Attachment') -> None:
         if attachment is not None:
             self._attachments.append(attachment)
 
-
     @property
     def isReaction(self) -> bool:
         return False
+
+    def getText(self) -> str:
+        if self.text != '':
+            return self.text
+        elif len(self.attachments) > 0:
+            return '{} attachments'.format(len(self.attachments))
+        else:
+            return ''
 
     def addReaction(self, reaction: 'Reaction') -> None:
 
@@ -604,15 +605,19 @@ class MessageDatabase:
                                            [-36:], )).fetchone())
             if assocMessageId:
                 assocMessageId = assocMessageId[0]
-                match = re.match('[\w]+:((\d+)/)?.*', row['associated_message_guid'])
-                ind = int(match.group(2)) if match.group(2) is not None else None
-                if ind is None:
-                    ind = 0
+                ind = self._getAttachmentIndex(row['associated_message_guid'])
 
                 message = Reaction(
                     associated_message_id=assocMessageId, attachmentIndex=ind, **row)
 
         return message
+
+    def _getAttachmentIndex(self, associatedMessageGuid: str) -> int:
+        match = re.match('[\w]+:((\d+)/)?.*', associatedMessageGuid)
+        ind = int(match.group(2)) if match.group(2) is not None else None
+        if ind is None:
+            ind = 0
+        return ind
 
     def _getAttachments(self, message: 'Received') -> None:
         cursor = self.conn.execute(sqlcommands.ATTACHMENTS_SQL, (message.rowid, ))
