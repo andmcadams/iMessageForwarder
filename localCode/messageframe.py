@@ -9,6 +9,7 @@ from PIL import Image, ImageTk
 from verticalscrolledframe import VerticalScrolledFrame
 from constants import LINUX, MACOS
 
+dirname = os.path.dirname(__file__)
 
 def getTimeText(timeStamp):
     currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
@@ -26,9 +27,8 @@ def getTimeText(timeStamp):
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
 
-    def __init__(self, parent, minHeight, minWidth, mp, *args, **kw):
-        VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth,
-                                       *args, **kw)
+    def __init__(self, parent, minHeight, minWidth, mp, messageDatabase):
+        VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth)
         self.messageBubbles = {}
         self.canvas.bind('<Configure>', self._configure_messages_canvas)
         self.lock = threading.Lock()
@@ -41,7 +41,17 @@ class MessageFrame(VerticalScrolledFrame):
 
         self.readReceiptMessageId = None
         self.mp = mp
+        self.messageDatabase = messageDatabase
         self.reactionWindow = None
+        self._currentChat = None
+
+    @property
+    def currentChat(self):
+        return self._currentChat
+
+    @currentChat.setter
+    def currentChat(self, chat: 'api.Chat'):
+        self._currentChat = chat
 
     # This probably has some nasty race conditions.
     # This also has unfortunate recursion issues that should be fixed
@@ -55,7 +65,7 @@ class MessageFrame(VerticalScrolledFrame):
             for widget in self.interior.winfo_children():
                 widget.destroy()
             self.messageBubbles = {}
-            hitLimit = self.addMessages(self.master.currentChat)
+            hitLimit = self.addMessages(self.currentChat)
             self._configure_message_scrollbars()
             self.addedMessages = not hitLimit
             newHeight = self.interior.winfo_reqheight()
@@ -73,6 +83,7 @@ class MessageFrame(VerticalScrolledFrame):
     # However, this probably needs to follow restricting chats to their first x
     # messages without scrolling up to avoid consuming too much memory.
     def changeChat(self, chat):
+        self.currentChat = chat
         self.addedMessages = False
         for widget in self.interior.winfo_children():
             widget.destroy()
@@ -197,7 +208,7 @@ class MessageFrame(VerticalScrolledFrame):
         addReceipt = self.needReadReceipt(chat, message, lastFromMeId)
         if addReceipt:
             self.removeOldReadReceipt()
-            self.readReceiptMessageId = message.rowid
+            self.readReceiptMessageId = message.guid
 
         self.addAttachments(message, chat, i, addLabel, addReceipt)
         msg = TextMessageBubble(self.interior, message.rowid, chat, i,
@@ -244,11 +255,11 @@ class MessageFrame(VerticalScrolledFrame):
     # This can result in two copies of certain messages appearing.
     def addMessages(self, chat):
         self.lock.acquire()
-        if chat.chatId != self.master.currentChat.chatId:
+        if chat.chatId != self.currentChat.chatId:
             self.lock.release()
             return None
 
-        db = self.master.api.MessageDatabase()
+        db = self.messageDatabase()
         messageList, lastAccessTime = db.getMessagesForChat(
             chat.chatId, chat.lastAccessTime)
         chat.addMessages(messageList, lastAccessTime)
@@ -266,7 +277,11 @@ class MessageFrame(VerticalScrolledFrame):
                 lastFromMeId = messageDict[i].rowid
                 break
 
-        (top, bottom) = self.vscrollbar.get()
+        # val is grabbed and then assigned to top/bottom since this gives a 4-tuple
+        # in testing.
+        val = self.vscrollbar.get()
+        (top, bottom) = (val[0], val[1])
+
         for i in range(len(subList)):
             messageId = subList[i]
             if messageId not in self.messageBubbles:
@@ -500,6 +515,10 @@ class MessageBubble(tk.Frame):
         pass
 
 
+class ReactionBubbleBadMessageTypeException(Exception):
+    pass
+
+
 class ReactionBubble(tk.Label):
     def __init__(self, parent, associatedMessageType, *args, **kw):
         tk.Label.__init__(self, parent, *args, **kw)
@@ -512,7 +531,10 @@ class ReactionBubble(tk.Label):
             2004: 'emphasizeReact.png',
             2005: 'questionReact.png'
         }
-        self.original = Image.open(imageDictionary[associatedMessageType])
+        if associatedMessageType not in imageDictionary:
+            raise ReactionBubbleBadMessageTypeException
+
+        self.original = Image.open('{}/{}'.format(dirname, imageDictionary[associatedMessageType]))
         self.original.image = ImageTk.PhotoImage(self.original)
         self.configure(image=self.original.image)
 
