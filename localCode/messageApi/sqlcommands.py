@@ -32,7 +32,7 @@ ASSOC_MESSAGE_SQL = """SELECT ROWID
 FROM message
     WHERE guid = ?"""
 
-RECENT_MESSAGE_SQL = """SELECT ROWID, handle_id, text, date, is_from_me,
+RECENT_MESSAGE_SQL = """SELECT ROWID, guid, handle_id, text, date, is_from_me,
                         associated_message_guid, associated_message_type,
                         is_delivered
 FROM message
