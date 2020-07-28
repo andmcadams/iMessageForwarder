@@ -190,10 +190,10 @@ class Received(ABC):
 
         # tkinter only supports some unicode characters.
         # This removes unsupported ones.
-        text = self.text
-        if self.text is not None:
-            self.text = ''.join([text[t] for t in range(
-                len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
+#         text = self.text
+#         if self.text is not None:
+#             self.text = ''.join([text[t] for t in range(
+#                 len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
         self._handleName = 'Me' if self.is_from_me == 1 else ''
         self.removedTempId = 0
 
@@ -290,6 +290,11 @@ class Message(Received):
         self._reactions = {}
         self._attachments = []
 
+        text = self.text
+        if self.text is not None:
+            self.text = ''.join([text[t] for t in range(
+                len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
+
     @property
     def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
         return self._reactions
@@ -322,25 +327,7 @@ class Message(Received):
 
         ind = reaction.attachmentIndex
 
-        if ind < len(self.attachments):
-            self.attachments[ind].addReaction(reaction)
-        else:
-            # If the handle sending the reaction has not reacted to this message,
-            # add it.
-            if reaction.handleId not in self.reactions:
-                self.reactions[reaction.handleId] = {}
-
-            # Reactions and reaction removals have the same digit in the ones place
-            reactionVal = reaction.reactionType % 1000
-
-            # If the handle has already sent this reaction, but this one is newer,
-            # replace the old reaction with this one.
-            handleReactions = self.reactions[reaction.handleId]
-            if (reactionVal in handleReactions and
-                    reaction.isNewer(handleReactions[reactionVal])):
-                self.reactions[reaction.handleId][reactionVal] = reaction
-            elif reactionVal not in handleReactions:
-                self.reactions[reaction.handleId][reactionVal] = reaction
+        self.messageParts[ind].addReaction(reaction)
 
     def update(self, updatedMessage: 'Message') -> None:
         self.date = updatedMessage.date
@@ -359,6 +346,54 @@ class Message(Received):
             for attachment in updatedMessage.attachments: 
                 self.addAttachment(attachment)
 
+@dataclass
+class MessagePart(ABC):
+    _kind: str = None
+
+    self._reactions = {}
+    
+    @property
+    def kind(self):
+        return self._kind
+
+    @kind.setter
+    def kind(self, _):
+        raise CannotChangeKindException
+
+    @property
+    def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
+        return self._reactions
+
+    def addReaction(self, reaction: 'Reaction') -> None:
+        # If the handle sending the reaction has not reacted to this message,
+        # add it.
+        if reaction.handleId not in self.reactions:
+            self.reactions[reaction.handleId] = {}
+
+        # Reactions and reaction removals have the same digit in the ones place
+        reactionVal = reaction.reactionType % 1000
+
+        # If the handle has already sent this reaction, but this one is newer,
+        # replace the old reaction with this one.
+        handleReactions = self.reactions[reaction.handleId]
+        if (reactionVal in handleReactions and
+                reaction.isNewer(handleReactions[reactionVal])):
+            self.reactions[reaction.handleId][reactionVal] = reaction
+        elif reactionVal not in handleReactions:
+            self.reactions[reaction.handleId][reactionVal] = reaction
+    
+
+class TextPart(MessagePart):
+    text: str = ''
+
+    def __post_init__(self):
+        self._kind = 'text'
+
+class ImagePart(MessagePart):
+    img_path: str = ''
+
+    def __post_init__(self):
+        self._kind = 'image'
 
 @dataclass
 class Reaction(Received):
@@ -802,6 +837,10 @@ class ChatNoIdException(Exception):
 
 
 class ReactionNoAttachmentIndexException(Exception):
+    pass
+
+
+class CannotChangeKindException(Exception):
     pass
 
 
