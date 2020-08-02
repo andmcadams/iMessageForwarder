@@ -127,33 +127,10 @@ class Attachment:
     def __post_init__(self):
         if self.ROWID is None:
             raise AttachmentNoIdException
-        self._reactions = {}
 
     @property
     def rowid(self) -> int:
         return self.ROWID
-
-    @property
-    def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
-        return self._reactions
-
-    def addReaction(self, reaction: 'Reaction') -> None:
-        # If the handle sending the reaction has not reacted to this message,
-        # add it.
-        if reaction.handleId not in self.reactions:
-            self.reactions[reaction.handleId] = {}
-
-        # Reactions and reaction removals have the same digit in the ones place
-        reactionVal = reaction.reactionType % 1000
-
-        # If the handle has already sent this reaction, but this one is newer,
-        # replace the old reaction with this one.
-        handleReactions = self.reactions[reaction.handleId]
-        if (reactionVal in handleReactions and
-                reaction.isNewer(handleReactions[reactionVal])):
-            self.reactions[reaction.handleId][reactionVal] = reaction
-        elif reactionVal not in handleReactions:
-            self.reactions[reaction.handleId][reactionVal] = reaction
 
 
 @dataclass
@@ -285,12 +262,31 @@ class Received(ABC):
 
 class Message(Received):
 
+
     def __post_init__(self):
         super().__post_init__()
+        messageRegex = '\w+|￼'
         self._reactions = {}
-        self._attachments = []
+        self._messageParts = []
+        self._imageCount = 0
 
         text = self.text
+        messageParts = re.findall(messageRegex, self.text)
+
+        for part in messageParts:
+            if part == '￼':
+                #this is an attachment message part
+                i = ImagePart() 
+                self._messageParts.append(i)
+                self._imageCount += 1
+            else:
+                #this is a text message part
+                t = TextPart(text=part)
+                self._messageParts.append(t)
+
+        if len(messageParts) == 0:
+            self._messageParts.append(TextPart(_kind='Text', text=''))
+
         if self.text is not None:
             self.text = ''.join([text[t] for t in range(
                 len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
@@ -299,17 +295,14 @@ class Message(Received):
     def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
         return self._reactions
 
-    @property
-    def attachments(self) -> List['Attachment']:
-        return self._attachments
-
-    @attachments.setter
-    def attachments(self, attachments: List['Attachment']) -> None:
-        self._attachments = attachments
-
-    def addAttachment(self, attachment: 'Attachment') -> None:
+    def addAttachment(self, attachment: 'Attachment', ind: int) -> None:
         if attachment is not None:
-            self._attachments.append(attachment)
+            for i in range(len(self._messageParts)):
+                if self._messageParts[i].kind == 'image':
+                    if ind == 0:
+                        self._messageParts[i].attachment = attachment
+                    else:
+                        ind -= 1
 
     @property
     def isReaction(self) -> bool:
@@ -318,10 +311,14 @@ class Message(Received):
     def getText(self) -> str:
         if self.text != '':
             return self.text
-        elif len(self.attachments) > 0:
-            return '{} attachments'.format(len(self.attachments))
+        elif self._imageCount >= 1:
+            return '{} attachments'.format(len(self.messageParts))
         else:
             return ''
+
+    @property
+    def messageParts(self) -> List['MessagePart']:
+        return self._messageParts
 
     def addReaction(self, reaction: 'Reaction') -> None:
 
@@ -342,15 +339,13 @@ class Message(Received):
         self.removedTempId = (updatedMessage.removedTempId if
                               self.removedTempId == 0 else self.removedTempId)
 
-        if updatedMessage.attachments != []:
-            for attachment in updatedMessage.attachments: 
-                self.addAttachment(attachment)
 
 @dataclass
 class MessagePart(ABC):
     _kind: str = None
 
-    self._reactions = {}
+    def __post_init__(self):
+        self._reactions = {}
     
     @property
     def kind(self):
@@ -383,17 +378,32 @@ class MessagePart(ABC):
             self.reactions[reaction.handleId][reactionVal] = reaction
     
 
+@dataclass
 class TextPart(MessagePart):
     text: str = ''
 
     def __post_init__(self):
+        super().__post_init__()
         self._kind = 'text'
+        text = self.text
+        if self.text is not None:
+            self.text = ''.join([text[t] for t in range(
+                len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
 
+@dataclass
 class ImagePart(MessagePart):
-    img_path: str = ''
 
     def __post_init__(self):
+        super().__post_init__()
         self._kind = 'image'
+
+    @property
+    def attachment(self) -> 'Attachment':
+        return self._attachment
+
+    @attachment.setter
+    def attachment(self, attachment: 'Attachment') -> None:
+        self._attachment = attachment
 
 @dataclass
 class Reaction(Received):
@@ -656,10 +666,12 @@ class MessageDatabase:
 
     def _getAttachments(self, message: 'Received') -> None:
         cursor = self.conn.execute(sqlcommands.ATTACHMENTS_SQL, (message.rowid, ))
+        count = 0
         for row in cursor:
             attachment = Attachment(**row)
             if attachment is not None:
-                message.addAttachment(attachment)
+                message.addAttachment(attachment, count)
+                count += 1
 
     def _getHandleName(self, handleId: int) -> str:
         handleName = self.conn.execute(sqlcommands.HANDLE_SQL,
