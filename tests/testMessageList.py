@@ -114,7 +114,7 @@ class TestMessageListMethods(unittest.TestCase):
 
         msgList.addReaction(reaction)
 
-        self.assertEqual(msgList.messages[msg.ROWID].reactions,
+        self.assertEqual(msgList.messages[msg.ROWID].messageParts[0].reactions,
                          correctReactionDict)
 
     def test_add_reaction_no_message_in_list(self):

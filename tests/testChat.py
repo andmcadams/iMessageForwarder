@@ -176,7 +176,7 @@ class TestChatMethods(unittest.TestCase):
         
         chat._addMessage(reaction)
 
-        self.assertDictEqual(chat.messageList.messages[msg.ROWID].reactions, correctReactionDict)
+        self.assertDictEqual(chat.messageList.messages[msg.ROWID].messageParts[0].reactions, correctReactionDict)
 
     def test__add_message_message(self):
         chat = api.Chat(ROWID=1)

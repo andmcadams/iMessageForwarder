@@ -24,8 +24,9 @@ class TestMessageDatabaseMethods(unittest.TestCase):
 
         self.assertEqual(msgs[0].ROWID, 12727)
         self.assertEqual(msgs[1].ROWID, 12732)
-        self.assertEqual(lastAccessTime, 1593467018)
-        self.assertEqual(len(msgs[1].attachments), 1)
+        self.assertEqual(lastAccessTime, 1596330123)
+        self.assertEqual(len(msgs[1].messageParts), 2)
+        self.assertIsNotNone(msgs[1].messageParts[1].attachment)
         self.assertEqual(msgs[0].handleName, 'testEmail@test.com')
 
     def test_get_messages_for_chat_reaction(self):
@@ -135,7 +136,7 @@ class TestMessageDatabaseMethods(unittest.TestCase):
 
         (chats, maxUpdate) = messageDb.getChatsToUpdate(0)
 
-        self.assertEqual(maxUpdate, 1593473316)
+        self.assertEqual(maxUpdate, 1596330123)
         self.assertListEqual(chats, [82, 85, 86, 87])
 
     def test_get_chats_to_update_with_local_updates(self):
@@ -145,6 +146,6 @@ class TestMessageDatabaseMethods(unittest.TestCase):
 
         (chats, maxUpdate) = messageDb.getChatsToUpdate(0, {chat.ROWID: chat})
 
-        self.assertEqual(maxUpdate, 1593473316)
+        self.assertEqual(maxUpdate, 1596330123)
         self.assertListEqual(chats, [82, 85, 86, 87, 1])
         self.assertFalse(chat.localUpdate)
