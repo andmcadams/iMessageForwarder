@@ -265,7 +265,7 @@ class Message(Received):
 
     def __post_init__(self):
         super().__post_init__()
-        messageRegex = '\w+|￼'
+        messageRegex = '[^￼]+|￼'
         self._reactions = {}
         self._messageParts = []
         self._imageCount = 0
@@ -285,7 +285,7 @@ class Message(Received):
                 self._messageParts.append(t)
 
         if len(messageParts) == 0:
-            self._messageParts.append(TextPart(_kind='Text', text=''))
+            self._messageParts.append(TextPart(text=''))
 
         if self.text is not None:
             self.text = ''.join([text[t] for t in range(
@@ -416,6 +416,11 @@ class Reaction(Received):
             raise ReactionNoAssociatedIdException
         if self.attachmentIndex is None:
             raise ReactionNoAttachmentIndexException
+
+        text = self.text
+        if self.text is not None:
+            self.text = ''.join([text[t] for t in range(
+                len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
 
     @property
     def isAddition(self) -> bool:
