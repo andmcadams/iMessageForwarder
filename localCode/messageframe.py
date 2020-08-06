@@ -333,13 +333,19 @@ class MessageFrame(VerticalScrolledFrame):
         if messagePart.reactions == {}:
             return
 
+        # In order to guarantee uniqueness of the bubble, I either need to make
+        # reactionWindow store the startLocation of message parts or give each
+        # bubble its own unique id. Note that message ids/guids can't be used
+        # since message parts of the same message all share these.
         if (self.reactionWindow is not None
-                and self.reactionWindow.messageId != message.rowid):
+                and (self.reactionWindow.messageId != message.rowid
+                    or self.reactionWindow.startLocation != messagePart.startLocation)):
             self._destroyReactionWindow()
 
         if not self.reactionWindow or not self.reactionWindow.winfo_exists():
             self.reactionWindow = tk.Toplevel(self, bg='black')
             self.reactionWindow.messageId = message.rowid
+            self.reactionWindow.startLocation = messagePart.startLocation
             self.reactionWindow.grid_propagate(True)
             reactionsByType = self._reactionsByTypeDict(messagePart.reactions)
             i = 0
