@@ -270,6 +270,7 @@ class Message(Received):
         messageRegex = '[^￼]+|￼'
         self._reactions = {}
         self._messageParts = []
+        self._imageCount = 0
 
         text = self.text or ''
         messageParts = re.findall(messageRegex, text)
@@ -282,6 +283,7 @@ class Message(Received):
                 i = ImagePart(startLocation=currentLocation) 
                 self._messageParts.append(i)
                 currentLocation += 2 if hadText else 1
+                self._imageCount += 1
             else:
                 #this is a text message part
                 t = TextPart(startLocation=currentLocation, text=part)
@@ -314,10 +316,10 @@ class Message(Received):
         return False
 
     def getText(self) -> str:
-        if self.text != '':
-            return self.text
-        elif len(self.messageParts) >= 1:
+        if self._imageCount >= 1:
             return '{} attachments'.format(len(self.messageParts))
+        elif self.text != '':
+            return self.text
         else:
             return ''
 
@@ -398,6 +400,11 @@ class TextPart(MessagePart):
             self.text = ''.join([text[t] for t in range(
                 len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
 
+
+    def getText(self) -> str:
+        return self.text
+
+
 @dataclass
 class ImagePart(MessagePart):
 
@@ -412,6 +419,10 @@ class ImagePart(MessagePart):
     @attachment.setter
     def attachment(self, attachment: 'Attachment') -> None:
         self._attachment = attachment
+
+    def getText(self) -> None:
+        return None
+
 
 @dataclass
 class Reaction(Received):

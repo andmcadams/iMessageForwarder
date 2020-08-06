@@ -213,15 +213,18 @@ class MessageFrame(VerticalScrolledFrame):
         messageParts = []
         allowedTypes = ['public.jpeg', 'public.png', 'public.gif',
                         'com.compuserve.gif']
-        for messagePart in message.messageParts:
+        for i in range(len(message.messageParts)):
+            messagePart = message.messageParts[i]
+            lastPart = (i == len(message.messageParts)-1)
+            firstPart = i == 0
             if messagePart.kind == 'image':
                 if messagePart.attachment.uti in allowedTypes:
                     bubble = ImageMessageBubble(self.interior, message.rowid, chat,
-                                                i, addLabel, addReceipt, messagePart)
+                                                i, addLabel and firstPart, addReceipt and lastPart, messagePart)
                 messageParts.append(bubble)
             else:
                 bubble = TextMessageBubble(self.interior, message.rowid, chat, i,
-                                           addLabel, addReceipt, messagePart)
+                                           addLabel and firstPart, addReceipt and lastPart, messagePart)
                 messageParts.append(bubble)
 
         for msg in messageParts:
@@ -491,7 +494,7 @@ class MessageBubble(tk.Frame):
         # Text probably won't change but this is nice for initially populating.
         message = self.chat.getMessages()[self.messageId]
         if message.text is not None:
-            self.body.configure(text=message.getText())
+            self.body.configure(text=self.messagePart.getText())
 
         if self.readReceipt:
             if message.dateRead != 0:
