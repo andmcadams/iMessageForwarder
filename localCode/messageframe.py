@@ -328,9 +328,9 @@ class MessageFrame(VerticalScrolledFrame):
         else:
             self.vscrollbar.set(top, bottom)
 
-    def _showReactionWindow(self, message):
+    def _showReactionWindow(self, message, messagePart):
         # Create a new window with a text box and submit button
-        if message.reactions == {}:
+        if messagePart.reactions == {}:
             return
 
         if (self.reactionWindow is not None
@@ -341,7 +341,7 @@ class MessageFrame(VerticalScrolledFrame):
             self.reactionWindow = tk.Toplevel(self, bg='black')
             self.reactionWindow.messageId = message.rowid
             self.reactionWindow.grid_propagate(True)
-            reactionsByType = self._reactionsByTypeDict(message.reactions)
+            reactionsByType = self._reactionsByTypeDict(messagePart.reactions)
             i = 0
             for reactionType in reactionsByType:
                 if reactionsByType[reactionType] != []:
@@ -452,7 +452,7 @@ class MessageBubble(tk.Frame):
             messageMenu.add_command(
                 label='Reactions',
                 command=lambda: (self.master
-                                 .master.master._showReactionWindow(message)))
+                                 .master.master._showReactionWindow(message, self.messagePart)))
         messageMenu.add_command(label=getTimeText(message.date))
         messageMenu.add_command(label=message.guid)
         messageMenu.add_command(label="Love", command=react(2000))
