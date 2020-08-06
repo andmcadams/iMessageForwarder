@@ -159,6 +159,8 @@ class Received(ABC):
     associated_message_type: int = 0
     message_update_date: int = 0
     error: int = 0
+    associated_message_range_location: int = 0
+    associated_message_range_length: int = 0
 
     def __post_init__(self):
 
@@ -268,21 +270,24 @@ class Message(Received):
         messageRegex = '[^￼]+|￼'
         self._reactions = {}
         self._messageParts = []
-        self._imageCount = 0
 
-        text = self.text
-        messageParts = re.findall(messageRegex, self.text)
+        text = self.text or ''
+        messageParts = re.findall(messageRegex, text)
 
+        currentLocation = 0
+        hadText = False
         for part in messageParts:
             if part == '￼':
                 #this is an attachment message part
-                i = ImagePart() 
+                i = ImagePart(startLocation=currentLocation) 
                 self._messageParts.append(i)
-                self._imageCount += 1
+                currentLocation += 2 if hadText else 1
             else:
                 #this is a text message part
-                t = TextPart(text=part)
+                t = TextPart(startLocation=currentLocation, text=part)
                 self._messageParts.append(t)
+                currentLocation += len(part)
+                hadText = True
 
         if len(messageParts) == 0:
             self._messageParts.append(TextPart(text=''))
@@ -311,7 +316,7 @@ class Message(Received):
     def getText(self) -> str:
         if self.text != '':
             return self.text
-        elif self._imageCount >= 1:
+        elif len(self.messageParts) >= 1:
             return '{} attachments'.format(len(self.messageParts))
         else:
             return ''
@@ -322,9 +327,11 @@ class Message(Received):
 
     def addReaction(self, reaction: 'Reaction') -> None:
 
-        ind = reaction.attachmentIndex
-
-        self.messageParts[ind].addReaction(reaction)
+        ind = reaction.associated_message_range_location
+        for part in self.messageParts:
+            if part.startLocation == ind:
+                part.addReaction(reaction)
+                break
 
     def update(self, updatedMessage: 'Message') -> None:
         self.date = updatedMessage.date
@@ -343,6 +350,7 @@ class Message(Received):
 @dataclass
 class MessagePart(ABC):
     _kind: str = None
+    startLocation: int = 0
 
     def __post_init__(self):
         self._reactions = {}
@@ -698,7 +706,8 @@ class MessageDatabase:
                                 'other_handle', 'group_title',
                                 'group_action_type', 'associated_message_guid',
                                 'associated_message_type',
-                                'message_update_date']
+                                'message_update_date', 'associated_message_range_location',
+                                'associated_message_range_length']
         columns = ', '.join(neededColumnsMessage)
         return columns
 
