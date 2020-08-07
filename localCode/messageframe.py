@@ -594,12 +594,13 @@ class ImageMessageBubble(MessageBubble):
             self.body.configure(image=self.body.image)
             self.display.configure(width=newSize[0], height=newSize[1])
 
+            self.body.grid(row=0, sticky='nsew')
+            self.initBody()
+
         except FileNotFoundError as e:
             print(e)
             self.body.original = None
             self.body.configure(text='Image not found')
-        self.body.grid(row=0, sticky='nsew')
-        self.initBody()
 
     def getNewSize(self, im, winWidth, winHeight):
         maxWidth = 3 * winWidth // 4
