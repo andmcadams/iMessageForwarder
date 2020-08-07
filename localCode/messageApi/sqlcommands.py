@@ -21,7 +21,7 @@ FROM handle
 ATTACHMENTS_SQL = """SELECT ROWID, guid, filename, uti
 FROM message_attachment_join
     INNER JOIN attachment
-        ON attachment.ROWID = attachment_id 
+        ON attachment.ROWID = attachment_id
     WHERE message_id = ?"""
 
 ATTACHMENT_SQL = """SELECT ROWID, guid, filename, uti
