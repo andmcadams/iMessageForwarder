@@ -98,7 +98,9 @@ class TestMessageDatabaseMethods(unittest.TestCase):
                           ' cache_has_attachments, cache_roomnames, item_type,'
                           ' other_handle, group_title, group_action_type,'
                           ' associated_message_guid, associated_message_type,'
-                          ' message_update_date')
+                          ' message_update_date,'
+                          ' associated_message_range_location,'
+                          ' associated_message_range_length')
 
         cols = messageDb._getFormattedColumns()
 
