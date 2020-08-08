@@ -25,7 +25,7 @@ lastTime = sys.argv[1]
 cursor.execute('select * from message inner join message_update_date_join inner join chat_message_join on message_update_date >= ? and message.ROWID = message_update_date_join.message_id and chat_message_join.message_id = message.ROWID left join message_attachment_join on ROWID = message_attachment_join.message_id', (lastTime, ))
 messages = []
 
-neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type']
+neededColumnsMessage = ['ROWID', 'guid', 'text', 'handle_id', 'service', 'error', 'date', 'date_read', 'date_delivered', 'is_delivered', 'is_finished', 'is_from_me', 'is_read', 'is_sent', 'cache_has_attachments', 'cache_roomnames', 'item_type', 'other_handle', 'group_title', 'group_action_type', 'associated_message_guid', 'associated_message_type', 'associated_message_range_location', 'associated_message_range_length']
 neededColumnsAttachment = ['ROWID', 'guid', 'filename', 'uti']
 neededColumnsChat = ['ROWID', 'guid', 'style', 'state', 'account_id', 'chat_identifier', 'service_name', 'room_name', 'account_login', 'display_name', 'group_id']
 neededColumnsHandle = ['ROWID', 'id', 'country', 'service', 'uncanonicalized_id']
