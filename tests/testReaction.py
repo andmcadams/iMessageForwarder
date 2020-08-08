@@ -28,7 +28,6 @@ class TestReactionMethods(unittest.TestCase):
         self.assertEqual(reaction.group_action_type, 0)
         self.assertIsNone(reaction.associated_message_guid)
         self.assertEqual(reaction.associated_message_type, 0)
-        self.assertIsNone(reaction.attachment_id)
         self.assertEqual(reaction.message_update_date, 0)
         self.assertEqual(reaction.error, 0)
 
@@ -96,3 +95,15 @@ class TestReactionMethods(unittest.TestCase):
         reaction2 = api.Reaction(ROWID=4, associated_message_id=3, date=1)
 
         self.assertFalse(reaction.isNewer(reaction2))
+
+    def test_get_text(self):
+        reaction = api.Reaction(ROWID=2, associated_message_id=1)
+
+        text = reaction.getText()
+
+        self.assertEqual(text, '')
+
+    def test_none_attachment_index(self):
+        with self.assertRaises(api.ReactionNoAttachmentIndexException):
+            api.Reaction(ROWID=1, associated_message_id=1, attachmentIndex=None)
+

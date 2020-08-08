@@ -143,7 +143,7 @@ class ChatButton(tk.Frame):
         self.lastMessageId = self.chat.getMostRecentMessage().rowid
 
         name = self.truncate(self.chat.getName(), 20)
-        text = self.truncate(self.chat.getMostRecentMessage().text, 50)
+        text = self.truncate(self.chat.getMostRecentMessage().getText(), 50)
         # TODO 4: Need to grab the type of message and set the text to that.
         # Perhaps this should be implemented on message load.
         if text == '￼':

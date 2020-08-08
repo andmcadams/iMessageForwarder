@@ -10,7 +10,8 @@ class ResponseFrame(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kw)
 
         self.mp = api.SshMessagePasser(0)
-        self.messageFrame = MessageFrame(self, 0, minWidth, self.mp)
+        self.messageFrame = MessageFrame(self, 0, minWidth,
+                                         self.mp, api.MessageDatabase)
         self.messageFrame.grid(row=1, column=0, sticky='nsew')
 
         self.columnconfigure(0, weight=1)

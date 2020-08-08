@@ -24,8 +24,9 @@ class TestMessageDatabaseMethods(unittest.TestCase):
 
         self.assertEqual(msgs[0].ROWID, 12727)
         self.assertEqual(msgs[1].ROWID, 12732)
-        self.assertEqual(lastAccessTime, 1593467018)
-        self.assertIsNotNone(msgs[1].attachment)
+        self.assertEqual(lastAccessTime, 1596330123)
+        self.assertEqual(len(msgs[1].messageParts), 2)
+        self.assertIsNotNone(msgs[1].messageParts[1].attachment)
         self.assertEqual(msgs[0].handleName, 'testEmail@test.com')
 
     def test_get_messages_for_chat_reaction(self):
@@ -59,6 +60,22 @@ class TestMessageDatabaseMethods(unittest.TestCase):
 
         self.assertIsNone(msg) 
 
+    def test_get_attachment_index_p_str(self):
+        associatedMessageGuid = 'p:1/B7E83654-FE3F-4D60-AA56-0D7E3704D5FF'
+        messageDb = api.MessageDatabase()
+
+        ind = messageDb._getAttachmentIndex(associatedMessageGuid)
+
+        self.assertEqual(ind, 1)
+
+    def test_get_attachment_index_bp_str(self):
+        associatedMessageGuid = 'bp:D5A96C8F-D001-4BD4-A0D1-2539635BC92E'
+        messageDb = api.MessageDatabase()
+
+        ind = messageDb._getAttachmentIndex(associatedMessageGuid)
+
+        self.assertEqual(ind, 0)
+
     def test_get_handle_name(self):
         messageDb = api.MessageDatabase()
 
@@ -81,7 +98,9 @@ class TestMessageDatabaseMethods(unittest.TestCase):
                           ' cache_has_attachments, cache_roomnames, item_type,'
                           ' other_handle, group_title, group_action_type,'
                           ' associated_message_guid, associated_message_type,'
-                          ' attachment_id, message_update_date')
+                          ' message_update_date,'
+                          ' associated_message_range_location,'
+                          ' associated_message_range_length')
 
         cols = messageDb._getFormattedColumns()
 
@@ -119,7 +138,7 @@ class TestMessageDatabaseMethods(unittest.TestCase):
 
         (chats, maxUpdate) = messageDb.getChatsToUpdate(0)
 
-        self.assertEqual(maxUpdate, 1593473316)
+        self.assertEqual(maxUpdate, 1596330123)
         self.assertListEqual(chats, [82, 85, 86, 87])
 
     def test_get_chats_to_update_with_local_updates(self):
@@ -129,6 +148,6 @@ class TestMessageDatabaseMethods(unittest.TestCase):
 
         (chats, maxUpdate) = messageDb.getChatsToUpdate(0, {chat.ROWID: chat})
 
-        self.assertEqual(maxUpdate, 1593473316)
+        self.assertEqual(maxUpdate, 1596330123)
         self.assertListEqual(chats, [82, 85, 86, 87, 1])
         self.assertFalse(chat.localUpdate)

@@ -11,6 +11,12 @@ class TestAttachmentMethods(unittest.TestCase):
         self.assertEqual(attachment.filename, '')
         self.assertEqual(attachment.uti, '')
 
+    def test_default_properties(self):
+        attachment = api.Attachment(ROWID=1)
+
+        self.assertEqual(attachment.rowid, 1)
+        self.assertDictEqual(attachment.reactions, {})
+
     def test_missing_rowid(self):
         with self.assertRaises(api.AttachmentNoIdException):
             api.Attachment()

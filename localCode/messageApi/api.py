@@ -1,4 +1,5 @@
 import sqlite3
+import re
 import os
 import json
 import time
@@ -115,10 +116,6 @@ class MessageList(dict):
         return self.mostRecentMessage
 
 
-class AttachmentNoIdException(Exception):
-    pass
-
-
 @dataclass
 class Attachment:
 
@@ -134,14 +131,6 @@ class Attachment:
     @property
     def rowid(self) -> int:
         return self.ROWID
-
-
-class ReceivedNoIdException(Exception):
-    pass
-
-
-class ReactionNoAssociatedIdException(Exception):
-    pass
 
 
 @dataclass
@@ -168,9 +157,10 @@ class Received(ABC):
     group_action_type: int = 0
     associated_message_guid: str = None
     associated_message_type: int = 0
-    attachment_id: str = None
     message_update_date: int = 0
     error: int = 0
+    associated_message_range_location: int = 0
+    associated_message_range_length: int = 0
 
     def __post_init__(self):
 
@@ -179,11 +169,11 @@ class Received(ABC):
 
         # tkinter only supports some unicode characters.
         # This removes unsupported ones.
-        text = self.text
-        if self.text is not None:
-            self.text = ''.join([text[t] for t in range(
-                len(text)) if ord(text[t]) in range(65536)])
-        self._handleName = ''
+#         text = self.text
+#         if self.text is not None:
+#             self.text = ''.join([text[t] for t in range(
+# len(text)) if ord(text[t]) in range(65536) and ord(text[t]) != 65532])
+        self._handleName = 'Me' if self.is_from_me == 1 else ''
         self.removedTempId = 0
 
     @property
@@ -268,29 +258,116 @@ class Received(ABC):
                 return True
             return False
 
+    def getText(self) -> str:
+        return self.text
+
 
 class Message(Received):
 
     def __post_init__(self):
         super().__post_init__()
+        messageRegex = '[^￼]+|￼'
         self._reactions = {}
-        self._attachment = None
+        self._messageParts = []
+        self._imageCount = 0
+
+        text = self.text or ''
+        messageParts = re.findall(messageRegex, text)
+
+        currentLocation = 0
+        hadText = False
+        for part in messageParts:
+            if part == '￼':
+                # this is an attachment message part
+                i = ImagePart(startLocation=currentLocation)
+                self._messageParts.append(i)
+                currentLocation += 2 if hadText else 1
+                self._imageCount += 1
+            else:
+                # this is a text message part
+                t = TextPart(startLocation=currentLocation, text=part)
+                self._messageParts.append(t)
+                currentLocation += len(part)
+                hadText = True
+
+        if len(messageParts) == 0:
+            self._messageParts.append(TextPart(text=''))
+
+        if self.text is not None:
+            self.text = ''.join([text[t] for t in range(len(text))
+                                 if (ord(text[t]) in range(65536)
+                                     and ord(text[t]) != 65532)])
 
     @property
     def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
         return self._reactions
 
-    @property
-    def attachment(self) -> Optional['Attachment']:
-        return self._attachment
-
-    @attachment.setter
-    def attachment(self, attachment: 'Attachment') -> None:
-        self._attachment = attachment
+    def addAttachment(self, attachment: 'Attachment', ind: int) -> None:
+        if attachment is not None:
+            for i in range(len(self._messageParts)):
+                if self._messageParts[i].kind == 'image':
+                    if ind == 0:
+                        self._messageParts[i].attachment = attachment
+                    else:
+                        ind -= 1
 
     @property
     def isReaction(self) -> bool:
         return False
+
+    def getText(self) -> str:
+        if self._imageCount >= 1:
+            return '{} attachments'.format(len(self.messageParts))
+        elif self.text != '':
+            return self.text
+        else:
+            return ''
+
+    @property
+    def messageParts(self) -> List['MessagePart']:
+        return self._messageParts
+
+    def addReaction(self, reaction: 'Reaction') -> None:
+
+        ind = reaction.associated_message_range_location
+        for part in self.messageParts:
+            if part.startLocation == ind:
+                part.addReaction(reaction)
+                break
+
+    def update(self, updatedMessage: 'Message') -> None:
+        self.date = updatedMessage.date
+        self.date_read = updatedMessage.date_read
+        self.date_delivered = updatedMessage.date_delivered
+        self.is_delivered = updatedMessage.is_delivered
+        self.is_finished = updatedMessage.is_finished
+        self.is_read = updatedMessage.is_read
+        self.is_sent = updatedMessage.is_sent
+        self.message_update_date = updatedMessage.message_update_date
+        self.service = updatedMessage.service
+        self.removedTempId = (updatedMessage.removedTempId if
+                              self.removedTempId == 0 else self.removedTempId)
+
+
+@dataclass
+class MessagePart(ABC):
+    _kind: str = None
+    startLocation: int = 0
+
+    def __post_init__(self):
+        self._reactions = {}
+
+    @property
+    def kind(self):
+        return self._kind
+
+    @kind.setter
+    def kind(self, _):
+        raise CannotChangeKindException
+
+    @property
+    def reactions(self) -> Dict[int, Dict[int, 'Reaction']]:
+        return self._reactions
 
     def addReaction(self, reaction: 'Reaction') -> None:
         # If the handle sending the reaction has not reacted to this message,
@@ -310,31 +387,60 @@ class Message(Received):
         elif reactionVal not in handleReactions:
             self.reactions[reaction.handleId][reactionVal] = reaction
 
-    def update(self, updatedMessage: 'Message') -> None:
-        self.date = updatedMessage.date
-        self.date_read = updatedMessage.date_read
-        self.date_delivered = updatedMessage.date_delivered
-        self.is_delivered = updatedMessage.is_delivered
-        self.is_finished = updatedMessage.is_finished
-        self.is_read = updatedMessage.is_read
-        self.is_sent = updatedMessage.is_sent
-        self.message_update_date = updatedMessage.message_update_date
-        self.service = updatedMessage.service
-        self.removedTempId = (updatedMessage.removedTempId if
-                              self.removedTempId == 0 else self.removedTempId)
 
-        if updatedMessage.attachment:
-            self.attachment = updatedMessage.attachment
+@dataclass
+class TextPart(MessagePart):
+    text: str = ''
+
+    def __post_init__(self):
+        super().__post_init__()
+        self._kind = 'text'
+        text = self.text
+        if self.text is not None:
+            self.text = ''.join([text[t] for t in range(len(text))
+                                 if (ord(text[t]) in range(65536)
+                                     and ord(text[t]) != 65532)])
+
+    def getText(self) -> str:
+        return self.text
+
+
+@dataclass
+class ImagePart(MessagePart):
+
+    def __post_init__(self):
+        super().__post_init__()
+        self._kind = 'image'
+
+    @property
+    def attachment(self) -> 'Attachment':
+        return self._attachment
+
+    @attachment.setter
+    def attachment(self, attachment: 'Attachment') -> None:
+        self._attachment = attachment
+
+    def getText(self) -> None:
+        return None
 
 
 @dataclass
 class Reaction(Received):
     associated_message_id: int = None
+    attachmentIndex: int = 0
 
     def __post_init__(self):
         super().__post_init__()
         if self.associated_message_id is None:
             raise ReactionNoAssociatedIdException
+        if self.attachmentIndex is None:
+            raise ReactionNoAttachmentIndexException
+
+        text = self.text
+        if self.text is not None:
+            self.text = ''.join([text[t] for t in range(len(text))
+                                 if (ord(text[t]) in range(65536)
+                                     and ord(text[t]) != 65532)])
 
     @property
     def isAddition(self) -> bool:
@@ -352,13 +458,8 @@ class Reaction(Received):
     def isReaction(self) -> bool:
         return True
 
-
-class ChatDeletedException(Exception):
-    pass
-
-
-class ChatNoIdException(Exception):
-    pass
+    def getText(self):
+        return super().getText()
 
 
 class DummyChat:
@@ -564,14 +665,8 @@ class MessageDatabase:
         message = None
         # If there are no associated messages
         if not row['associated_message_guid']:
-            attachment = None
-            if 'attachment_id' in row.keys(
-            ) and row['attachment_id'] is not None:
-                a = self.conn.execute(sqlcommands.ATTACHMENT_SQL,
-                                      (row['attachment_id'], )).fetchone()
-                attachment = Attachment(**a)
             message = Message(**row)
-            message.attachment = attachment
+            self._getAttachments(message)
 
         else:
             assocMessageId = (self.conn
@@ -580,10 +675,29 @@ class MessageDatabase:
                                            [-36:], )).fetchone())
             if assocMessageId:
                 assocMessageId = assocMessageId[0]
-                message = Reaction(
-                    associated_message_id=assocMessageId, **row)
+                ind = self._getAttachmentIndex(row['associated_message_guid'])
+
+                message = Reaction(associated_message_id=assocMessageId,
+                                   attachmentIndex=ind, **row)
 
         return message
+
+    def _getAttachmentIndex(self, associatedMessageGuid: str) -> int:
+        match = re.match(r'[\w]+:((\d+)/)?.*', associatedMessageGuid)
+        ind = int(match.group(2)) if match.group(2) is not None else None
+        if ind is None:
+            ind = 0
+        return ind
+
+    def _getAttachments(self, message: 'Received') -> None:
+        cursor = self.conn.execute(
+            sqlcommands.ATTACHMENTS_SQL, (message.rowid, ))
+        count = 0
+        for row in cursor:
+            attachment = Attachment(**row)
+            if attachment is not None:
+                message.addAttachment(attachment, count)
+                count += 1
 
     def _getHandleName(self, handleId: int) -> str:
         handleName = self.conn.execute(sqlcommands.HANDLE_SQL,
@@ -604,8 +718,10 @@ class MessageDatabase:
                                 'cache_roomnames', 'item_type',
                                 'other_handle', 'group_title',
                                 'group_action_type', 'associated_message_guid',
-                                'associated_message_type', 'attachment_id',
-                                'message_update_date']
+                                'associated_message_type',
+                                'message_update_date',
+                                'associated_message_range_location',
+                                'associated_message_range_length']
         columns = ', '.join(neededColumnsMessage)
         return columns
 
@@ -738,6 +854,34 @@ def _ping() -> bool:
         return True
     except subprocess.CalledProcessError as e:
         return False
+
+
+class ReceivedNoIdException(Exception):
+    pass
+
+
+class ReactionNoAssociatedIdException(Exception):
+    pass
+
+
+class AttachmentNoIdException(Exception):
+    pass
+
+
+class ChatDeletedException(Exception):
+    pass
+
+
+class ChatNoIdException(Exception):
+    pass
+
+
+class ReactionNoAttachmentIndexException(Exception):
+    pass
+
+
+class CannotChangeKindException(Exception):
+    pass
 
 
 def _useTestDatabase(dbName: str) -> None:

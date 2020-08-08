@@ -9,6 +9,8 @@ from PIL import Image, ImageTk
 from verticalscrolledframe import VerticalScrolledFrame
 from constants import LINUX, MACOS
 
+dirname = os.path.dirname(__file__)
+
 
 def getTimeText(timeStamp):
     currentTime = datetime.now(tz=datetime.now().astimezone().tzinfo)
@@ -26,9 +28,8 @@ def getTimeText(timeStamp):
 # The part of the right half where messages are displayed
 class MessageFrame(VerticalScrolledFrame):
 
-    def __init__(self, parent, minHeight, minWidth, mp, *args, **kw):
-        VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth,
-                                       *args, **kw)
+    def __init__(self, parent, minHeight, minWidth, mp, messageDatabase):
+        VerticalScrolledFrame.__init__(self, parent, minHeight, minWidth)
         self.messageBubbles = {}
         self.canvas.bind('<Configure>', self._configure_messages_canvas)
         self.lock = threading.Lock()
@@ -41,7 +42,17 @@ class MessageFrame(VerticalScrolledFrame):
 
         self.readReceiptMessageId = None
         self.mp = mp
+        self.messageDatabase = messageDatabase
         self.reactionWindow = None
+        self._currentChat = None
+
+    @property
+    def currentChat(self):
+        return self._currentChat
+
+    @currentChat.setter
+    def currentChat(self, chat: 'api.Chat'):
+        self._currentChat = chat
 
     # This probably has some nasty race conditions.
     # This also has unfortunate recursion issues that should be fixed
@@ -55,7 +66,7 @@ class MessageFrame(VerticalScrolledFrame):
             for widget in self.interior.winfo_children():
                 widget.destroy()
             self.messageBubbles = {}
-            hitLimit = self.addMessages(self.master.currentChat)
+            hitLimit = self.addMessages(self.currentChat)
             self._configure_message_scrollbars()
             self.addedMessages = not hitLimit
             newHeight = self.interior.winfo_reqheight()
@@ -73,6 +84,7 @@ class MessageFrame(VerticalScrolledFrame):
     # However, this probably needs to follow restricting chats to their first x
     # messages without scrolling up to avoid consuming too much memory.
     def changeChat(self, chat):
+        self.currentChat = chat
         self.addedMessages = False
         for widget in self.interior.winfo_children():
             widget.destroy()
@@ -183,14 +195,12 @@ class MessageFrame(VerticalScrolledFrame):
         return False
 
     def removeOldReadReceipt(self):
-        if (self.readReceiptMessageId is not None and
-                self.readReceiptMessageId in self.messageBubbles):
-            self.messageBubbles[self.readReceiptMessageId].removeReadReceipt()
+        readReceiptId = self.readReceiptMessageId
+        if (readReceiptId is not None and
+                readReceiptId in self.messageBubbles):
+            self.messageBubbles[readReceiptId][-1].removeReadReceipt()
 
     def addMessage(self, chat, i, message, prevMessage, lastFromMeId):
-
-        allowedTypes = ['public.jpeg', 'public.png', 'public.gif',
-                        'com.compuserve.gif']
 
         addLabel = self.needSenderLabel(chat, message, prevMessage)
 
@@ -200,26 +210,42 @@ class MessageFrame(VerticalScrolledFrame):
         addReceipt = self.needReadReceipt(chat, message, lastFromMeId)
         if addReceipt:
             self.removeOldReadReceipt()
-            self.readReceiptMessageId = message.rowid
+            self.readReceiptMessageId = message.guid
 
-        if (message.attachment is not None and
-                message.attachment.uti in allowedTypes):
-            msg = ImageMessageBubble(self.interior, message.rowid, chat,
-                                     i, addLabel, addReceipt)
-        else:
-            msg = TextMessageBubble(self.interior, message.rowid, chat, i,
-                                    addLabel, addReceipt)
-        if message.isFromMe:
-            msg.pack(anchor=tk.E, expand=tk.FALSE)
-        else:
-            msg.pack(anchor=tk.W, expand=tk.FALSE)
+        messageParts = []
+        allowedTypes = ['public.jpeg', 'public.png', 'public.gif',
+                        'com.compuserve.gif']
+        for i in range(len(message.messageParts)):
+            messagePart = message.messageParts[i]
+            lastPart = (i == len(message.messageParts) - 1)
+            firstPart = i == 0
+            if messagePart.kind == 'image':
+                if messagePart.attachment.uti in allowedTypes:
+                    bubble = ImageMessageBubble(self.interior, message.rowid,
+                                                chat, i,
+                                                addLabel and firstPart,
+                                                addReceipt and lastPart,
+                                                messagePart)
+                    messageParts.append(bubble)
+            else:
+                bubble = TextMessageBubble(self.interior, message.rowid, chat,
+                                           i, addLabel and firstPart,
+                                           addReceipt and lastPart,
+                                           messagePart)
+                messageParts.append(bubble)
+
+        for msg in messageParts:
+            if message.isFromMe:
+                msg.pack(anchor=tk.E, expand=tk.FALSE)
+            else:
+                msg.pack(anchor=tk.W, expand=tk.FALSE)
         # If this message is replacing a temporary message,
         # get rid of that old message.
         if (message.removedTempId < 0 and message.removedTempId in
                 self.messageBubbles):
             self.messageBubbles[message.removedTempId].destroy()
             del self.messageBubbles[message.removedTempId]
-        self.messageBubbles[message.rowid] = msg
+        self.messageBubbles[message.rowid] = messageParts
 
     # Add the chat's messages to the MessageFrame as MessageBubbles
     # A lock is required here since both changing the chat and the constant
@@ -227,11 +253,11 @@ class MessageFrame(VerticalScrolledFrame):
     # This can result in two copies of certain messages appearing.
     def addMessages(self, chat):
         self.lock.acquire()
-        if chat.chatId != self.master.currentChat.chatId:
+        if chat.chatId != self.currentChat.chatId:
             self.lock.release()
             return None
 
-        db = self.master.api.MessageDatabase()
+        db = self.messageDatabase()
         messageList, lastAccessTime = db.getMessagesForChat(
             chat.chatId, chat.lastAccessTime)
         chat.addMessages(messageList, lastAccessTime)
@@ -241,7 +267,7 @@ class MessageFrame(VerticalScrolledFrame):
         # For each message in messageDict
         # Update the message bubble if it exists
         # Add a new one if it does not exist
-        subList = list(messageDict.keys())[-self.messageLimit:]
+        subList = self.getMessagesUpToLimit(messageDict, self.messageLimit)
 
         lastFromMeId = -1
         for i in reversed(subList):
@@ -249,7 +275,11 @@ class MessageFrame(VerticalScrolledFrame):
                 lastFromMeId = messageDict[i].rowid
                 break
 
-        (top, bottom) = self.vscrollbar.get()
+        # val is grabbed and then assigned to top/bottom since this gives a
+        # 4-tuple in testing.
+        val = self.vscrollbar.get()
+        (top, bottom) = (val[0], val[1])
+
         for i in range(len(subList)):
             messageId = subList[i]
             if messageId not in self.messageBubbles:
@@ -258,7 +288,8 @@ class MessageFrame(VerticalScrolledFrame):
                 self.addMessage(chat, i, messageDict[messageId], prevMessage,
                                 lastFromMeId)
             else:
-                self.messageBubbles[messageId].update()
+                for bubble in self.messageBubbles[messageId]:
+                    bubble.update()
         self.lock.release()
         if bottom >= 0.99:
             self.canvas.update()
@@ -266,6 +297,17 @@ class MessageFrame(VerticalScrolledFrame):
         if self.messageLimit > len(list(messageDict.keys())):
             return True
         return False
+
+    # Iterate backwards through the list and chop off when there are more
+    # message parts than messageLimit.
+    def getMessagesUpToLimit(self, messageDict, messageLimit):
+        subList = list(messageDict.keys())[-self.messageLimit:]
+        messagePartCount = 0
+        for i in range(len(subList) - 1, -1, -1):
+            messagePartCount += len(messageDict[subList[i]].messageParts)
+            if messagePartCount >= messageLimit:
+                return subList[min(len(subList), (i + 1)):]
+        return subList
 
     # This function fixes the scrollbar for the message frame
     # VSF _configure_scrollbars just adds or removes them based on how
@@ -276,6 +318,7 @@ class MessageFrame(VerticalScrolledFrame):
     # The interior is updated to get the new winfo_reqheight set.
     # Scrollbars are then moved to the bottom of the canvas so that the
     # most recent messages are showing.
+
     def _configure_message_scrollbars(self):
         # self.canvas.yview_moveto(0)
         self._configure_scrollbars()
@@ -287,27 +330,35 @@ class MessageFrame(VerticalScrolledFrame):
     def _configure_messages_canvas(self, event):
         (top, bottom) = self.vscrollbar.get()
         for messageBubble in self.messageBubbles:
-            self.messageBubbles[messageBubble].resize(event)
+            for bubble in self.messageBubbles[messageBubble]:
+                bubble.resize(event)
         self._configure_canvas(event)
         if bottom == 1.0:
             self.canvas.yview_moveto(bottom)
         else:
             self.vscrollbar.set(top, bottom)
 
-    def _showReactionWindow(self, message):
+    def _showReactionWindow(self, message, messagePart):
         # Create a new window with a text box and submit button
-        if message.reactions == {}:
+        if messagePart.reactions == {}:
             return
 
+        # In order to guarantee uniqueness of the bubble, I either need to make
+        # reactionWindow store the startLocation of message parts or give each
+        # bubble its own unique id. Note that message ids/guids can't be used
+        # since message parts of the same message all share these.
         if (self.reactionWindow is not None
-                and self.reactionWindow.messageId != message.rowid):
+                and (self.reactionWindow.messageId != message.rowid
+                     or (self.reactionWindow.startLocation !=
+                         messagePart.startLocation))):
             self._destroyReactionWindow()
 
         if not self.reactionWindow or not self.reactionWindow.winfo_exists():
             self.reactionWindow = tk.Toplevel(self, bg='black')
             self.reactionWindow.messageId = message.rowid
+            self.reactionWindow.startLocation = messagePart.startLocation
             self.reactionWindow.grid_propagate(True)
-            reactionsByType = self._reactionsByTypeDict(message.reactions)
+            reactionsByType = self._reactionsByTypeDict(messagePart.reactions)
             i = 0
             for reactionType in reactionsByType:
                 if reactionsByType[reactionType] != []:
@@ -362,7 +413,7 @@ class MessageMenu(tk.Menu):
 class MessageBubble(tk.Frame):
 
     def __init__(self, parent, messageId, chat, addLabel, addReadReceipt,
-                 *args, **kw):
+                 messagePart, *args, **kw):
         tk.Frame.__init__(self, parent, padx=4, pady=4, *args, **kw)
 
         self.senderLabel = None
@@ -376,6 +427,7 @@ class MessageBubble(tk.Frame):
         self.messageId = messageId
         self.chat = chat
         self.reactionCount = 0
+        self.messagePart = messagePart
 
         self.readReceipt = None
         if addReadReceipt:
@@ -417,8 +469,11 @@ class MessageBubble(tk.Frame):
             messageMenu.add_command(
                 label='Reactions',
                 command=lambda: (self.master
-                                 .master.master._showReactionWindow(message)))
+                                 .master.master
+                                 ._showReactionWindow(message,
+                                                      self.messagePart)))
         messageMenu.add_command(label=getTimeText(message.date))
+        messageMenu.add_command(label=message.guid)
         messageMenu.add_command(label="Love", command=react(2000))
         messageMenu.add_command(label="Like", command=react(2001))
         messageMenu.add_command(label="Dislike", command=react(2002))
@@ -449,7 +504,7 @@ class MessageBubble(tk.Frame):
         # Text probably won't change but this is nice for initially populating.
         message = self.chat.getMessages()[self.messageId]
         if message.text is not None:
-            self.body.configure(text=message.text)
+            self.body.configure(text=self.messagePart.getText())
 
         if self.readReceipt:
             if message.dateRead != 0:
@@ -461,11 +516,11 @@ class MessageBubble(tk.Frame):
                 self.readReceipt.configure(text='Sending...')
         # Handle reactions
         self.reactionCount = 0
-        for handle in message.reactions:
+        for handle in self.messagePart.reactions:
             if handle not in self.reactions:
                 self.reactions[handle] = {}
-            for reactionId in message.reactions[handle]:
-                reaction = message.reactions[handle][reactionId]
+            for reactionId in self.messagePart.reactions[handle]:
+                reaction = self.messagePart.reactions[handle][reactionId]
                 reactionBubble = (self.reactions[handle][reactionId] if
                                   reactionId in self.reactions[handle] else
                                   None)
@@ -481,6 +536,10 @@ class MessageBubble(tk.Frame):
         pass
 
 
+class ReactionBubbleBadMessageTypeException(Exception):
+    pass
+
+
 class ReactionBubble(tk.Label):
     def __init__(self, parent, associatedMessageType, *args, **kw):
         tk.Label.__init__(self, parent, *args, **kw)
@@ -493,16 +552,20 @@ class ReactionBubble(tk.Label):
             2004: 'emphasizeReact.png',
             2005: 'questionReact.png'
         }
-        self.original = Image.open(imageDictionary[associatedMessageType])
+        if associatedMessageType not in imageDictionary:
+            raise ReactionBubbleBadMessageTypeException
+
+        self.original = Image.open(
+            '{}/{}'.format(dirname, imageDictionary[associatedMessageType]))
         self.original.image = ImageTk.PhotoImage(self.original)
         self.configure(image=self.original.image)
 
 
 class TextMessageBubble(MessageBubble):
     def __init__(self, parent, messageId, chat, index, addLabel,
-                 addReadReceipt, *args, **kw):
+                 addReadReceipt, messagePart, *args, **kw):
         MessageBubble.__init__(self, parent, messageId, chat, addLabel,
-                               addReadReceipt, *args, **kw)
+                               addReadReceipt, messagePart, *args, **kw)
         maxWidth = 3 * self.master.master.winfo_width() // 5
         # Could make color a gradient depending on index later but it will
         # add a lot of dumb code.
@@ -521,9 +584,10 @@ class TextMessageBubble(MessageBubble):
 
 class ImageMessageBubble(MessageBubble):
     def __init__(self, parent, messageId, chat, index, addLabel,
-                 addReadReceipt, *args, **kw):
+                 addReadReceipt, messagePart, *args, **kw):
         MessageBubble.__init__(self, parent, messageId, chat,
-                               addLabel, addReadReceipt, *args, **kw)
+                               addLabel, addReadReceipt, messagePart,
+                               *args, **kw)
         self.messageInterior.columnconfigure(0, weight=1)
         self.messageInterior.rowconfigure(0, weight=1)
         self.display = tk.Canvas(self.messageInterior, bd=0,
@@ -532,9 +596,8 @@ class ImageMessageBubble(MessageBubble):
         self.body = tk.Label(self.display)
         try:
             self.body.original = Image.open(os.path
-                                            .expanduser(chat.getMessages()
-                                                        [messageId].attachment
-                                                        .filename))
+                                            .expanduser(messagePart
+                                                        .attachment.filename))
             newSize = self.getNewSize(self.body.original,
                                       self.master.master.winfo_width(),
                                       self.master.master.winfo_height())
@@ -544,12 +607,13 @@ class ImageMessageBubble(MessageBubble):
             self.body.configure(image=self.body.image)
             self.display.configure(width=newSize[0], height=newSize[1])
 
+            self.body.grid(row=0, sticky='nsew')
+            self.initBody()
+
         except FileNotFoundError as e:
             print(e)
             self.body.original = None
             self.body.configure(text='Image not found')
-        self.body.grid(row=0, sticky='nsew')
-        self.initBody()
 
     def getNewSize(self, im, winWidth, winHeight):
         maxWidth = 3 * winWidth // 4
