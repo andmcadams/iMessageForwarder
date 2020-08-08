@@ -226,7 +226,7 @@ class MessageFrame(VerticalScrolledFrame):
                                                 addLabel and firstPart,
                                                 addReceipt and lastPart,
                                                 messagePart)
-                messageParts.append(bubble)
+                    messageParts.append(bubble)
             else:
                 bubble = TextMessageBubble(self.interior, message.rowid, chat,
                                            i, addLabel and firstPart,
