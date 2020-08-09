@@ -243,7 +243,8 @@ class MessageFrame(VerticalScrolledFrame):
         # get rid of that old message.
         if (message.removedTempId < 0 and message.removedTempId in
                 self.messageBubbles):
-            self.messageBubbles[message.removedTempId].destroy()
+            for bubble in self.messageBubbles[message.removedTempId]:
+                    bubble.destroy()
             del self.messageBubbles[message.removedTempId]
         self.messageBubbles[message.rowid] = messageParts
 
