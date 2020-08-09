@@ -244,7 +244,7 @@ class MessageFrame(VerticalScrolledFrame):
         if (message.removedTempId < 0 and message.removedTempId in
                 self.messageBubbles):
             for bubble in self.messageBubbles[message.removedTempId]:
-                    bubble.destroy()
+                bubble.destroy()
             del self.messageBubbles[message.removedTempId]
         self.messageBubbles[message.rowid] = messageParts
 
