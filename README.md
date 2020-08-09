@@ -32,9 +32,9 @@ The GUI is split into two main parts. The left half is called a ChatFrame (it su
 
 Many colors are simply placeholder/debug colors that will be removed later in development.
 
-<img src="iMessageImages/conversationExample.png" width="100%">
+<img src="iMessageImages/conversationExample.png" width="80%">
 A view of a typical group conversation. Numbers and emails have been blacked out.
 
-<img src="iMessageImages/reactionWindowExample.png" width="100%">
+<img src="iMessageImages/reactionWindowExample.png" width="80%">
 A view of a "reaction window" where the user can clearly see which numbers are associated with which reactions on a given message.
 Note that this window is only available in group chats, and can be accessed by right-clicking a message and selecting "Reactions".
