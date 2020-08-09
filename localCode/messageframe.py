@@ -210,7 +210,7 @@ class MessageFrame(VerticalScrolledFrame):
         addReceipt = self.needReadReceipt(chat, message, lastFromMeId)
         if addReceipt:
             self.removeOldReadReceipt()
-            self.readReceiptMessageId = message.guid
+            self.readReceiptMessageId = message.rowid
 
         messageParts = []
         allowedTypes = ['public.jpeg', 'public.png', 'public.gif',
