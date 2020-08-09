@@ -306,7 +306,7 @@ class MessageFrame(VerticalScrolledFrame):
         messagePartCount = 0
         for i in range(len(subList) - 1, -1, -1):
             messagePartCount += len(messageDict[subList[i]].messageParts)
-            if messagePartCount >= messageLimit:
+            if messagePartCount > messageLimit:
                 return subList[min(len(subList), (i + 1)):]
         return subList
 
