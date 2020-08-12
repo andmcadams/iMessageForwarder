@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import threading
 import os
-from playsound import playsound
+import simpleaudio as sa
 from responseframe import ResponseFrame
 from chatframe import LeftFrame
 import messageApi.api as api
@@ -58,7 +58,7 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
 
     if newMessageFlag and lastSoundTime == 0:
         lastSoundTime = 5
-        threading.Thread(target=lambda: playsound('bing.wav')).start()
+        threading.Thread(target=lambda: soundObject.play().wait_done()).start()
 
     chatFrame.lock.release()
 
@@ -98,6 +98,8 @@ def runGui(DEBUG, currentThread):
     root.columnconfigure(1, weight=1)
     root.rowconfigure(0, weight=1)
 
+    global soundObject
+    soundObject = sa.WaveObject.from_wave_file('bing.wav')
     updateFrames(chatFrame, responseFrame, 0, 0, currentThread)
 
     while True:
