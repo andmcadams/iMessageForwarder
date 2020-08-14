@@ -13,10 +13,10 @@ function main {
 	SSHSUCCESS=$?
 	if [ $SSHSUCCESS -ne 0 ]
 	then
-	# If it is not reachable (!= 0), ask if you want to continue.
+	# If it is not reachable, ask if you want to continue.
 		echo "Failed to login as ${USERNAME} on the machine ${IPADDR}"
 	else
-	# If it is (== 0), continue with installation.
+	# If it is, continue with installation.
 		echo "Succeeded logging in as ${USERNAME} on the machine ${IPADDR}"
 		echo "Creating a database at ${DBNAME} for incoming messages..."
 		create_database
@@ -24,7 +24,55 @@ function main {
 		get_homedir_expansion
 		find_message_db
 		install_scripts
+		update_macbook_chatdb
+		create_incoming_message_db
+		create_remote_config
+		create_secrets_json
 	fi
+}
+
+function create_secrets_json {
+	cat << END_DOCUMENT > secretsTest.json
+{
+	"user": "${USERNAME}",
+	"ip": "${IPADDR}",
+	"scriptPath": "${HOMEDIR_EXPANSION}/Applications/macbook/addOutgoing.py",
+	"retrieveScriptPath": "${HOMEDIR_EXPANSION}/Applications/macbook/getMessages.py"
+}
+END_DOCUMENT
+}
+
+function create_remote_config {
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+		cat << END_CAT > "${HOMEDIR_EXPANSION}"/Applications/macbook/config.json
+{
+        "queueLocation": "${HOMEDIR_EXPANSION}/Library/Messages2/msgqueue.db",
+        "chatLocation": "${HOMEDIR_EXPANSION}/Library/Messages2/chat.db"
+}
+
+END_DOCUMENT
+}
+
+function create_incoming_message_db {
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+		sqlite3 "${HOMEDIR_EXPANSION}"/Library/Messages2/msgqueue.db << END_SQL
+			CREATE TABLE IF NOT EXISTS outgoing ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, text text, chatId INTEGER, assocGUID text, assocType INTEGER, messageCode INTEGER );
+END_SQL
+	exit \$?
+END_DOCUMENT
+
+}
+
+function update_macbook_chatdb {
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+		sqlite3 "${HOMEDIR_EXPANSION}"/Library/Messages2/chat.db << END_SQL
+			CREATE TABLE IF NOT EXISTS message_update_date_join (message_id INTEGER REFERENCES message (ROWID) ON DELETE CASCADE, message_update_date INTEGER DEFAULT 0, PRIMARY KEY (message_id, message_update_date));
+			CREATE TRIGGER IF NOT EXISTS insert_last_update_date AFTER INSERT ON message BEGIN INSERT INTO message_update_date_join (message_id, message_update_date) VALUES ( NEW.ROWID, strftime('%s','now') ); END;
+			CREATE TRIGGER IF NOT EXISTS update_last_update_date AFTER UPDATE ON message BEGIN UPDATE message_update_date_join SET message_update_date = strftime('%s','now') WHERE message_id = OLD.ROWID; END;
+END_SQL
+	exit \$?
+END_DOCUMENT
+
 }
 
 function install_scripts {
