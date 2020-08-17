@@ -6,7 +6,7 @@ function main {
 	read -p $'\033[1;37mIP address of Apple machine:\033[0m\n' IPADDR
 
 	# Make this input later.
-	DBNAME="sms.db"
+	DBNAME="./localCode/sms.db"
 
 	CREATED_LOCAL_DB=0
 	INSTALLED_SCRIPTS=0
@@ -170,7 +170,7 @@ function get_homedir_expansion {
 function create_database {
 	begin "Creating a database at ${DBNAME} for incoming messages on local machine..."
 
-	sqlite3 ./sms.db << END_DOCUMENT
+	sqlite3 ./localCode/sms.db << END_DOCUMENT
 CREATE TABLE IF NOT EXISTS _SqliteDatabaseProperties (key TEXT, value TEXT, UNIQUE(key));
 CREATE TABLE IF NOT EXISTS handle (ROWID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE, id TEXT NOT NULL, country TEXT, service TEXT NOT NULL, uncanonicalized_id TEXT, UNIQUE (id, service) );
 CREATE TABLE IF NOT EXISTS deleted_messages (ROWID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE, guid TEXT NOT NULL);
