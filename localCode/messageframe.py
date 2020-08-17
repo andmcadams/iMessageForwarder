@@ -210,7 +210,7 @@ class MessageFrame(VerticalScrolledFrame):
         addReceipt = self.needReadReceipt(chat, message, lastFromMeId)
         if addReceipt:
             self.removeOldReadReceipt()
-            self.readReceiptMessageId = message.guid
+            self.readReceiptMessageId = message.rowid
 
         messageParts = []
         allowedTypes = ['public.jpeg', 'public.png', 'public.gif',
@@ -243,7 +243,8 @@ class MessageFrame(VerticalScrolledFrame):
         # get rid of that old message.
         if (message.removedTempId < 0 and message.removedTempId in
                 self.messageBubbles):
-            self.messageBubbles[message.removedTempId].destroy()
+            for bubble in self.messageBubbles[message.removedTempId]:
+                bubble.destroy()
             del self.messageBubbles[message.removedTempId]
         self.messageBubbles[message.rowid] = messageParts
 
@@ -305,7 +306,7 @@ class MessageFrame(VerticalScrolledFrame):
         messagePartCount = 0
         for i in range(len(subList) - 1, -1, -1):
             messagePartCount += len(messageDict[subList[i]].messageParts)
-            if messagePartCount >= messageLimit:
+            if messagePartCount > messageLimit:
                 return subList[min(len(subList), (i + 1)):]
         return subList
 
