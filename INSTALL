@@ -2,37 +2,43 @@
 
 function main {
 	# Prompt for info
-	read -p $'Username to ssh into on Apple machine:\n' USERNAME
-	read -p $'IP address of Apple machine:\n' IPADDR
+	read -p $'\033[1;37mUsername to ssh into on Apple machine:\033[0m\n' USERNAME
+	read -p $'\033[1;37mIP address of Apple machine:\033[0m\n' IPADDR
 
 	# Make this input later.
-	DBNAME="smsTest.db"
+	DBNAME="sms.db"
 
-	# Check that USERNAME@IPADDR is reachable.
-	ssh -q "${USERNAME}"@"${IPADDR}" exit
-	SSHSUCCESS=$?
-	if [ $SSHSUCCESS -ne 0 ]
-	then
-	# If it is not reachable, ask if you want to continue.
-		echo "Failed to login as ${USERNAME} on the machine ${IPADDR}"
-	else
-	# If it is, continue with installation.
-		echo "Succeeded logging in as ${USERNAME} on the machine ${IPADDR}"
-		echo "Creating a database at ${DBNAME} for incoming messages..."
-		create_database
-		echo "Done creating ${DBNAME}."
-		get_homedir_expansion
-		find_message_db
-		install_scripts
-		update_macbook_chatdb
-		create_incoming_message_db
-		create_remote_config
-		create_secrets_json
-	fi
+	CREATED_LOCAL_DB=0
+	INSTALLED_SCRIPTS=0
+	UPDATED_CHATDB=0
+	CREATED_MSGQUEUEDB=0
+	CREATED_REMOTE_CONFIG=0
+	CREATED_LOCAL_SECRETS=0
+
+	test_ssh
+
+	create_database
+
+	get_homedir_expansion
+
+	find_message_db
+
+	install_scripts
+
+	update_macbook_chatdb
+
+	create_incoming_message_db
+
+	create_remote_config
+
+	create_secrets_json
+
 }
 
 function create_secrets_json {
-	cat << END_DOCUMENT > secretsTest.json
+	begin "Creating secrets.json on local machine..."
+
+	cat << END_DOCUMENT > localCode/secrets.json
 {
 	"user": "${USERNAME}",
 	"ip": "${IPADDR}",
@@ -40,32 +46,60 @@ function create_secrets_json {
 	"retrieveScriptPath": "${HOMEDIR_EXPANSION}/Applications/macbook/getMessages.py"
 }
 END_DOCUMENT
+
+	pass "Created secrets.json at $(pwd)/localCode/secrets.json"
+	CREATED_LOCAL_SECRETS=1
 }
 
 function create_remote_config {
+	begin "Creating config.json on Apple machine..."
+
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 		cat << END_CAT > "${HOMEDIR_EXPANSION}"/Applications/macbook/config.json
 {
-        "queueLocation": "${HOMEDIR_EXPANSION}/Library/Messages2/msgqueue.db",
-        "chatLocation": "${HOMEDIR_EXPANSION}/Library/Messages2/chat.db"
+        "queueLocation": "${HOMEDIR_EXPANSION}/Library/Messages/msgqueue.db",
+        "chatLocation": "${HOMEDIR_EXPANSION}/Library/Messages/chat.db"
 }
-
 END_DOCUMENT
+	
+	OUTPUT=$?
+
+	if [ $OUTPUT -ne 0 ]
+	then
+		fail "Could not create config.json at ${HOMEDIR_EXPANSION}/Applications/macbook/config.json"
+	else
+		pass "Created config.json at ${HOMEDIR_EXPANSION}/Applications/macbook/config.json"
+		CREATED_REMOTE_CONFIG=1
+	fi
 }
 
 function create_incoming_message_db {
+	begin "Creating msgqueue.db on Apple machine..."
+
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
-		sqlite3 "${HOMEDIR_EXPANSION}"/Library/Messages2/msgqueue.db << END_SQL
+		sqlite3 "${HOMEDIR_EXPANSION}"/Library/Messages/msgqueue.db << END_SQL
 			CREATE TABLE IF NOT EXISTS outgoing ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, text text, chatId INTEGER, assocGUID text, assocType INTEGER, messageCode INTEGER );
 END_SQL
 	exit \$?
 END_DOCUMENT
+	
+	OUTPUT=$?
 
+	if [ $OUTPUT -ne 0 ]
+	then
+		fail "Could not create msgqueue.db on Apple machine."
+	else
+		pass "Created msgqueue.db at ${HOMEDIR_EXPANSION}/Library/Messages/msgqueue.db"
+		CREATED_MSGQUEUEDB=1
+	fi
 }
 
 function update_macbook_chatdb {
+	begin "Updating chat.db for ${USERNAME} on Apple machine..."
+
+
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
-		sqlite3 "${HOMEDIR_EXPANSION}"/Library/Messages2/chat.db << END_SQL
+		sqlite3 "${HOMEDIR_EXPANSION}"/Library/Messages/chat.db << END_SQL
 			CREATE TABLE IF NOT EXISTS message_update_date_join (message_id INTEGER REFERENCES message (ROWID) ON DELETE CASCADE, message_update_date INTEGER DEFAULT 0, PRIMARY KEY (message_id, message_update_date));
 			CREATE TRIGGER IF NOT EXISTS insert_last_update_date AFTER INSERT ON message BEGIN INSERT INTO message_update_date_join (message_id, message_update_date) VALUES ( NEW.ROWID, strftime('%s','now') ); END;
 			CREATE TRIGGER IF NOT EXISTS update_last_update_date AFTER UPDATE ON message BEGIN UPDATE message_update_date_join SET message_update_date = strftime('%s','now') WHERE message_id = OLD.ROWID; END;
@@ -73,20 +107,35 @@ END_SQL
 	exit \$?
 END_DOCUMENT
 
+	OUTPUT=$?
+
+	if [ $OUTPUT -ne 0 ]
+	then
+		fail "Could not update chat.db at ${CHATDB_LOCATION}"
+	else
+		pass "Updated chat.db at ${CHATDB_LOCATION}"
+		UPDATED_CHATDB=1
+	fi
 }
 
 function install_scripts {
+	begin "Installing python scripts on Apple machine..."
+
+	INSTALL_LOCATION="${HOMEDIR_EXPANSION}/Applications/macbook"
 	scp -q -r $(pwd)/remoteCode/macbook "${USERNAME}"@"${IPADDR}":~/Applications
 	OUTPUT=$?
 	if [ $OUTPUT -ne 0 ]
 	then
-		echo "Error encountered transferring files to ${USERNAME}@${IPADDR}."
+		fail "Error encountered transferring files to ${USERNAME}@${IPADDR}."
 	else
-		echo "Transferred remote code to macbook."
+		pass "Transferred remote code to macbook."
+		INSTALLED_SCRIPTS=1
 	fi
 }
 
 function find_message_db {
+	begin "Finding chat.db on Apple machine..."
+
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 test -f ${HOMEDIR_EXPANSION}/Library/Messages/chat.db
 exit \$?
@@ -96,19 +145,32 @@ END_DOCUMENT
 
 	if [ $OUTPUT -ne 0 ]
 	then
-		echo "Could not find message database."
+		fail "Could not find message database."
 	else
 		CHATDB_LOCATION="${HOMEDIR_EXPANSION}/Library/Messages/chat.db"
-		echo "Found chat.db at ${CHATDB_LOCATION}."
+		pass "Found chat.db at ${CHATDB_LOCATION}."
 	fi
 }
 
 function get_homedir_expansion {
+	begin "Finding the home directory for ${USERNAME} on Apple machine..."
+
 	HOMEDIR_EXPANSION=$(ssh "${USERNAME}"@"${IPADDR}" echo '$HOME';)
+
+	OUTPUT=$?
+
+	if [ $OUTPUT -ne 0 ]
+	then
+		fail "Could not find the home directory for ${USERNAME} on Apple machine..."
+	else
+		pass "Found home directory at ${HOMEDIR_EXPANSION}"
+	fi
 }
 
 function create_database {
-	sqlite3 ./smsTest.db << END_DOCUMENT
+	begin "Creating a database at ${DBNAME} for incoming messages on local machine..."
+
+	sqlite3 ./sms.db << END_DOCUMENT
 CREATE TABLE IF NOT EXISTS _SqliteDatabaseProperties (key TEXT, value TEXT, UNIQUE(key));
 CREATE TABLE IF NOT EXISTS handle (ROWID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE, id TEXT NOT NULL, country TEXT, service TEXT NOT NULL, uncanonicalized_id TEXT, UNIQUE (id, service) );
 CREATE TABLE IF NOT EXISTS deleted_messages (ROWID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE, guid TEXT NOT NULL);
@@ -152,6 +214,42 @@ CREATE TABLE IF NOT EXISTS message_update_date_join (message_id INTEGER REFERENC
 CREATE TRIGGER IF NOT EXISTS insert_last_update_date AFTER INSERT ON message BEGIN INSERT INTO message_update_date_join (message_id, message_update_date) VALUES ( NEW.ROWID, strftime('%s','now') ); END;
 CREATE TRIGGER IF NOT EXISTS update_last_update_date AFTER UPDATE ON message BEGIN UPDATE message_update_date_join SET message_update_date = strftime('%s','now') WHERE message_id = OLD.ROWID; END;
 END_DOCUMENT
+	
+	OUTPUT=$?
+
+	if [ $OUTPUT -ne 0 ]
+	then
+		fail "Failed to create a database at ${DBNAME} on the local machine."
+	else
+		pass "Done creating a database at ${DBNAME}."
+		CREATED_LOCAL_DB=1
+	fi
+}
+
+function test_ssh {
+	# Check that USERNAME@IPADDR is reachable.
+	ssh -q -o ConnectTimeout=10 "${USERNAME}"@"${IPADDR}" exit
+	OUTPUT=$?
+	if [ $OUTPUT -ne 0 ]
+	then
+	# If it is not reachable, ask if you want to continue.
+		fail "Failed to login as ${USERNAME} on the machine ${IPADDR}."
+	else
+	# If it is, continue with installation.
+		pass "Successfully logged in as ${USERNAME} on the machine ${IPADDR}"
+	fi
+}
+
+function begin {
+	echo -e "\033[1;37m$1\033[0m"
+}
+
+function fail {
+	echo -e "\033[1;31m$1\033[0m"
+}
+
+function pass {
+	echo -e "\033[1;32m$1\033[0m"
 }
 
 main
