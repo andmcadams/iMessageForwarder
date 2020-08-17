@@ -6,6 +6,12 @@
 - Port forwarding may be required if your Mac and Linux box are not on the same network
 
 ## Installation
+The INSTALL script relies on the fact that you can connect to your Macbook. This may mean that you need to have already set up port forwarding.
+
+It is **highly recommended** that you set up ssh keys before using this program. Failing to do so could mean that you need to type in your password every time the program attempts to ssh into the Macbook (which it does to retrieve messages). Setting up ssh keys in the INSTALL script is something that is currently being investigated.
+
+If you are using Linux, you may be able to use the INSTALL script located in the top level directory in order to set up the forwarder. You will be prompted for the username of your account on the Macbook as well as the IP address of the Macbook.
+Note that this installation script HAS NOT been tested on a wide variety of MacOS versions. It has only been tested with macOS Catalina version 10.15.3. If using a different version, feel free to open an issue to work through getting an INSTALL script for your version.
 
 ## Essential Parts
 This project is split into three distinct parts.
