@@ -6,7 +6,7 @@
 - Port forwarding may be required if your Mac and Linux box are not on the same network
 
 ## Installation
-The INSTALL script relies on the fact that you can connect to your Macbook. This may mean that you need to have already set up port forwarding.
+The INSTALL script relies on the fact that you can connect to your Macbook via SSH. This may mean that you need to have already set up port forwarding.
 
 It is **highly recommended** that you set up ssh keys before using this program. Failing to do so could mean that you need to type in your password every time the program attempts to ssh into the Macbook (which it does to retrieve messages). Setting up ssh keys in the INSTALL script is something that is currently being investigated.
 
