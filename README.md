@@ -13,6 +13,22 @@ It is **highly recommended** that you set up ssh keys before using this program.
 If you are using Linux, you may be able to use the INSTALL script located in the top level directory in order to set up the forwarder. You will be prompted for the username of your account on the Macbook as well as the IP address of the Macbook.
 Note that this installation script HAS NOT been tested on a wide variety of MacOS versions. It has only been tested with macOS Catalina version 10.15.3. If using a different version, feel free to open an issue to work through getting an INSTALL script for your version.
 
+## Usage
+Using this software involves running both the local code and remote code. In typical usage, you would want to leave the remote code running at all times. The local GUI may be used without the remote code running on the Macbook, however, messages will not be sent until the remote code runs.
+
+Starting the remote code:
+```bash
+cd ~/Applications/macbook
+python3 autoMessage.py
+```
+Make sure to open the Messages application on your Macbook and set it to fullscreen.
+
+Starting the local code:
+```bash
+cd <iMessageForwarder folder>/localCode
+python3.8 startup.py
+```
+
 ## TO-DO
 If you feel that something should be added to the TO-DO list, please open an issue.
 
