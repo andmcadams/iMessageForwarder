@@ -13,6 +13,20 @@ It is **highly recommended** that you set up ssh keys before using this program.
 If you are using Linux, you may be able to use the INSTALL script located in the top level directory in order to set up the forwarder. You will be prompted for the username of your account on the Macbook as well as the IP address of the Macbook.
 Note that this installation script HAS NOT been tested on a wide variety of MacOS versions. It has only been tested with macOS Catalina version 10.15.3. If using a different version, feel free to open an issue to work through getting an INSTALL script for your version.
 
+## TO-DO
+If you feel that something should be added to the TO-DO list, please open an issue.
+
+Shorter term goals include:
+- Clean up autoMessage.py
+- Optimize communication protocol between remote and local code
+- Test on Windows
+- Get a stable implementation of attachment sending in master
+
+Longer term goals include:
+- Translating the GUI and API to cpp
+- Making the message API a standalone project
+- Supporting more devices and OSes
+
 ## Essential Parts
 This project is split into three distinct parts.
 
