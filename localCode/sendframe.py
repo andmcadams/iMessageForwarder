@@ -48,10 +48,20 @@ class SendFrame(tk.Frame):
         self.sendButton.grid(row=0, column=1)
         self.isConnected = False
         self.hasText = False
+        self.consecutiveMissedPings = 0
 
     # Sets the status of isConnected and updates the send button accordingly.
+    # consecutiveMissedPings counted may not be thread safe. This is a fairly
+    # small issue that may need to be addressed in the future.
     def setIsConnected(self, isConnected):
-        self.isConnected = isConnected
+        if isConnected:
+            self.consecutiveMissedPings = 0
+            self.isConnected = True
+        else:
+            self.consecutiveMissedPings += 1
+            if self.consecutiveMissedPings > 3:
+                self.isConnected = False
+
         if self.isConnected:
             self.sendButton.configure(text='Send')
         else:
