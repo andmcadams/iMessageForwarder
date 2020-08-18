@@ -277,14 +277,12 @@ while True:
 						cursor = conn.execute('delete from outgoing where ROWID = ?', (rowId, ))
 						conn.commit()
 						break
-					print(attempts)
 					if attempts >= 3:
 						print('Uh oh!')
 						tapoffXVal = getXVal(isFromMe, isFromGroup)
 						tapoffXVal = tapoffXVal + 20 if isFromMe == 1 else tapoffXVal - 20
 						moveToAndClick(tapoffXVal, p, click=LEFT_CLICK, startDelay=1, endDelay=1.5)
 						lastPixels = pixels
-						print(pixels)
 						pyautogui.scroll(1)
 						time.sleep(4)
 						continue
