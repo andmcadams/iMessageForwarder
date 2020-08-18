@@ -27,20 +27,25 @@ isFromMeDict = {
 	1: (2560-40)
 }
 
+isGroupDict = {
+	False: 0,
+	True: 60
+}
+
 class NewMessageException(Exception):
-  def __init__(self, message, messageId):
+	def __init__(self, message, messageId):
 
-    # Call the base class constructor with the parameters it needs
-    super(NewMessageException, self).__init__(message)
+		# Call the base class constructor with the parameters it needs
+		super(NewMessageException, self).__init__(message)
 
-    # Now for your custom code...
-    self.messageId = messageId
+		# Now for your custom code...
+		self.messageId = messageId
 
 # It seems that Catalina doesn't like when clicks last for a very short amount of time
 # These are really just pyautogui functions that I have added a "duration" to
 def _sendMouseEvent(ev, x, y, button):
-    mouseEvent = Quartz.CGEventCreateMouseEvent(None, ev, (x, y), button)
-    Quartz.CGEventPost(Quartz.kCGHIDEventTap, mouseEvent)
+		mouseEvent = Quartz.CGEventCreateMouseEvent(None, ev, (x, y), button)
+		Quartz.CGEventPost(Quartz.kCGHIDEventTap, mouseEvent)
 
 def click(x, y, duration=0.5):
 	x = int(x/2)
@@ -113,8 +118,17 @@ def newRecipients(groupName):
 	time.sleep(0.1)
 	pyautogui.press('enter')
 
-def getLocationsToCheck(isFromMe):
-	im = pyautogui.screenshot('longStrip.png', region=(isFromMeDict[isFromMe],100, 1, 1600-185))
+def getXVal(isFromMe, isFromGroup):
+	xVal = isFromMeDict[isFromMe]
+	if isFromMe == 0:
+		xVal += isGroupDict[isFromGroup]
+
+	return xVal
+
+def getLocationsToCheck(isFromMe, isFromGroup):
+	xVal = getXVal(isFromMe, isFromGroup)
+
+	im = pyautogui.screenshot('longStrip.png', region=(xVal, 100, 1, 1600-185))
 	onRun = False
 	pixels = []
 	for i in range(im.height):
@@ -139,8 +153,8 @@ def wrapLocateCenterOnScreen(filename, confidence=1.0):
 	return loc[0], loc[1]
 
 
-def checkText(p, isFromMe):
-	moveToAndClick(isFromMeDict[isFromMe], p, click=RIGHT_CLICK, endDelay=1.5)
+def checkText(p, xVal):
+	moveToAndClick(xVal, p, click=RIGHT_CLICK, endDelay=1.5)
 	x, y = wrapLocateCenterOnScreen('darkmode/copy.png', confidence=0.97)
 	if x == None:
 		return False
@@ -152,8 +166,8 @@ def checkText(p, isFromMe):
 		return False
 	return True
 
-def hitReact(p, isFromMe):
-	moveToAndClick(isFromMeDict[isFromMe], p, click=RIGHT_CLICK, endDelay=1.5)
+def hitReact(p, xVal):
+	moveToAndClick(xVal, p, click=RIGHT_CLICK, endDelay=1.5)
 
 	x, y = wrapLocateCenterOnScreen('darkmode/tapback.png', confidence=0.97)
 	if x == None:
@@ -206,8 +220,13 @@ while True:
 			# Type message
 			# Send message
 		# Reaction
+		def getIsGroup(chatId, conn):
+			chatCursor = conn.execute('select style from chat where ROWID = ?', (chatId, ))
+			style = chatCursor.fetchone()[0]
+			return style == 43
+
 		def lastMessageId(chatId, conn):
-			chatCursor = chatConn.execute('select message_id, max(message_date) from chat_message_join where chat_id = ?', (chatId, ))
+			chatCursor = conn.execute('select message_id, max(message_date) from chat_message_join where chat_id = ?', (chatId, ))
 			newId, _ = chatCursor.fetchone()
 			return newId
 
@@ -218,6 +237,8 @@ while True:
 
 		if messageCode == 1:
 			chatConn = sqlite3.connect(CHAT_DB_PATH)
+			isFromGroup = getIsGroup(chatId, chatConn)
+
 			chatCursor = chatConn.execute('select text, is_from_me from message where ROWID = ?', (assocGUID, ))
 			r = chatCursor.fetchone()
 			textToMatch = r[0]
@@ -229,7 +250,7 @@ while True:
 			lastPixels = []
 			found = False
 			while not found:
-				pixels = getLocationsToCheck(isFromMe)
+				pixels = getLocationsToCheck(isFromMe, isFromGroup)
 				# This is obviously less than ideal
 				if lastPixels == pixels:
 					break
@@ -238,26 +259,35 @@ while True:
 						newMessage(lastId, chatId, chatConn)
 						# Check to make sure there aren't any new messages in the chat.
 						# If there are, we need to relocate the pixels
-						if checkText(p, isFromMe) == False:
+						if checkText(p, getXVal(isFromMe, isFromGroup)) == False:
 							continue
 
 						newMessage(lastId, chatId, chatConn)
 
 						# Might want to make this a decorator
 						attempts = 0
-						while hitReact(p, isFromMe) == False and attempts < 3:
+						while hitReact(p, getXVal(isFromMe, isFromGroup)) == False and attempts < 3:
 							attempts += 1
 							newMessage(lastId, chatId, chatConn)
 
-						if attempts == 3:
-							print('Uh oh!')
-							exit(1)
-
+						if attempts >= 3:
+							break
 
 						found = True
 						cursor = conn.execute('delete from outgoing where ROWID = ?', (rowId, ))
 						conn.commit()
 						break
+					print(attempts)
+					if attempts >= 3:
+						print('Uh oh!')
+						tapoffXVal = getXVal(isFromMe, isFromGroup)
+						tapoffXVal = tapoffXVal + 20 if isFromMe == 1 else tapoffXVal - 20
+						moveToAndClick(tapoffXVal, p, click=LEFT_CLICK, startDelay=1, endDelay=1.5)
+						lastPixels = pixels
+						print(pixels)
+						pyautogui.scroll(1)
+						time.sleep(4)
+						continue
 					if found:
 						break
 					lastPixels = pixels
