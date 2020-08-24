@@ -12,7 +12,7 @@ class ResponseFrame(tk.Frame):
         self.mp = api.SshMessagePasser(0)
         self.messageFrame = MessageFrame(self, 0, minWidth,
                                          self.mp, api.MessageDatabase)
-        self.messageFrame.grid(row=1, column=0, sticky='nsew')
+        self.messageFrame.grid(row=1, column=0, sticky='nsew', pady=(1, 0))
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
@@ -26,6 +26,8 @@ class ResponseFrame(tk.Frame):
         # Hold a dummy chat with an invalid id initially
         self.currentChat = api.DummyChat(-1)
         self.api = api
+
+        self.configure(bg='black')
 
     def changeChat(self, chat):
         if chat.chatId != self.currentChat.chatId:
