@@ -82,7 +82,7 @@ class ChatButton(tk.Frame):
         self.configure(bg='black')
         self.picture = tk.Label(self, height=1, width=1, text='picture')
         self.number = tk.Label(self, height=1, width=1, anchor='nw',
-                               justify='left', font=("helvetica", 10),
+                               justify='left', font=("helvetica", 10, 'bold'),
                                wraplength=0)
         self.lastMessage = tk.Label(self, height=2, width=1, anchor='nw',
                                     justify='left', font=("helvetica", 10),
