@@ -72,7 +72,7 @@ def updateFrames(chatFrame, responseFrame, lastAccessTime,
                                      lastSoundTime, currentThread)).start()
 
 
-def runGui(DEBUG, currentThread):
+def runGui(debug, currentThread):
     root = tk.Tk()
     root.title("Messages")
     root.configure(background="gray99")
@@ -94,6 +94,7 @@ def runGui(DEBUG, currentThread):
     responseFrame.grid(row=0, column=1, sticky='nsew')
     leftFrame = LeftFrame(root, 0, minWidthChatFrame, responseFrame, api)
     chatFrame = leftFrame.chatFrame
+    chatFrame.setDebug(debug)
     leftFrame.grid(row=0, column=0, sticky='nsew')
     root.columnconfigure(1, weight=1)
     root.rowconfigure(0, weight=1)
@@ -112,18 +113,19 @@ def runGui(DEBUG, currentThread):
 
 class GuiThread(threading.Thread):
 
-    def __init__(self, name='GuiThread'):
+    def __init__(self, debug=False, name='GuiThread'):
         self._stopevent = threading.Event()
         threading.Thread.__init__(self, name=name)
 
         dirname = os.path.dirname(__file__)
 
+        self.debug = debug
         secretsPath = os.path.join(dirname, 'secrets.json')
         dbPath = os.path.join(dirname, 'sms.db')
         api.initialize(dbPath, secretsPath)
 
     def run(self):
-        runGui(0, self)
+        runGui(self.debug, self)
 
     def stopThread(self):
         self._stopevent.set()

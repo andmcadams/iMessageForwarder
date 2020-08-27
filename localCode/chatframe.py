@@ -44,6 +44,10 @@ class ChatFrame(VerticalScrolledFrame):
         self.lock = threading.Lock()
         self.configure(bg='black', pady=1)
         self.interior.configure(bg='black')
+        self.debug = False
+
+    def setDebug(self, debug):
+        self.debug = debug
 
     def addChat(self, chat, responseFrame):
         # btn.pack(fill=tk.X, side=tk.TOP, pady=1)
@@ -93,11 +97,11 @@ class ChatButton(tk.Frame):
         self.update()
 
         # For debugging purposes, recolor the backgrounds of each label
-#         self.picture.configure(bg='red')
-#         self.number.configure(bg='blue')
-#         self.lastMessage.configure(bg='green')
-#         self.lastMessageTime.configure(bg='yellow')
-        # This can be removed at any time.
+        if self.master.master.master.debug:
+            self.picture.configure(bg='red')
+            self.number.configure(bg='blue')
+            self.lastMessage.configure(bg='green')
+            self.lastMessageTime.configure(bg='yellow')
 
         self.picture.grid(row=0, column=0, rowspan=2, padx=(0, 1), sticky='nsew')
         self.number.grid(row=0, column=1, sticky='nsew')
