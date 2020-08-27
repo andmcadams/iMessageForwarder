@@ -109,7 +109,7 @@ def newRecipients(groupName):
 
 	# Add recips
 	print('Writing groupName: {}'.format(groupName))
-	pyautogui.write(groupName, interval=0.05)
+	pyautogui.write(groupName, interval=0.1)
 	pyautogui.press('space')
 	time.sleep(0.5)
 	pyautogui.press('backspace')
@@ -208,7 +208,13 @@ while True:
 		# Simple Text
 		if messageCode == 0:
 			print('Printing chatId: {}'.format(chatId))
-			pyautogui.write(text, interval=0.0001)
+			lines = text.splitlines()
+			for i in range(len(lines)):
+				line = lines[i]
+				pyautogui.write(line, interval=0.0001)
+				if i != len(lines) - 1:
+						pyautogui.hotkey('ctrl', 'enter')
+
 			time.sleep(0.2)
 			pyautogui.press('enter')
 			cursor = conn.execute('delete from outgoing where ROWID = ?', (rowId, ))
