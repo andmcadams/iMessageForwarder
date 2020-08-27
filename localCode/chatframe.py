@@ -42,11 +42,17 @@ class ChatFrame(VerticalScrolledFrame):
         self.chatButtons = []
         self.chats = {}
         self.lock = threading.Lock()
+        self.configure(bg='black', pady=1)
+        self.interior.configure(bg='black')
+        self.debug = False
+
+    def setDebug(self, debug):
+        self.debug = debug
 
     def addChat(self, chat, responseFrame):
         # btn.pack(fill=tk.X, side=tk.TOP, pady=1)
         if not self.isLoaded(chat):
-            btn = ChatButton(self.interior, chat, responseFrame, bg='orange')
+            btn = ChatButton(self.interior, chat, responseFrame)
             self.chatButtons.append(btn)
             self.chats[chat.chatId] = chat
             # self._configure_scrollbars()
@@ -62,7 +68,7 @@ class ChatFrame(VerticalScrolledFrame):
             chatButton.pack_forget()
             chatButton.isVisible = False
         for chatButton in self.chatButtons:
-            chatButton.pack(fill=tk.X, side=tk.TOP, pady=1)
+            chatButton.pack(fill=tk.X, side=tk.TOP, pady=(0, 1))
             chatButton.isVisible = True
         self._configure_scrollbars()
 
@@ -77,9 +83,10 @@ class ChatButton(tk.Frame):
         self.lastMessageTimeValue = self.chat.getMostRecentMessage().date
         self.isVisible = False
 
+        self.configure(bg='black')
         self.picture = tk.Label(self, height=1, width=1, text='picture')
         self.number = tk.Label(self, height=1, width=1, anchor='nw',
-                               justify='left', font=("helvetica", 10),
+                               justify='left', font=("helvetica", 10, 'bold'),
                                wraplength=0)
         self.lastMessage = tk.Label(self, height=2, width=1, anchor='nw',
                                     justify='left', font=("helvetica", 10),
@@ -90,13 +97,13 @@ class ChatButton(tk.Frame):
         self.update()
 
         # For debugging purposes, recolor the backgrounds of each label
-        self.picture.configure(bg='red')
-        self.number.configure(bg='blue')
-        self.lastMessage.configure(bg='green')
-        self.lastMessageTime.configure(bg='yellow')
-        # This can be removed at any time.
+        if self.master.master.master.debug:
+            self.picture.configure(bg='red')
+            self.number.configure(bg='blue')
+            self.lastMessage.configure(bg='green')
+            self.lastMessageTime.configure(bg='yellow')
 
-        self.picture.grid(row=0, column=0, rowspan=2, sticky='nsew')
+        self.picture.grid(row=0, column=0, rowspan=2, padx=(0, 1), sticky='nsew')
         self.number.grid(row=0, column=1, sticky='nsew')
         self.lastMessage.grid(row=1, column=1, columnspan=2, sticky='nsew')
         self.lastMessageTime.grid(row=0, column=2, sticky='nsew')

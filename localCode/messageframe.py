@@ -494,12 +494,12 @@ class MessageBubble(tk.Frame):
                     reactionBubble.grid(row=1, padx=5 * self.reactionCount,
                                         sticky='e')
                 self.reactionCount += 1 if self.reactionCount < 10 else 0
-                self.body.configure(bg='red')
+                # self.body.configure(bg='red')
         elif not reaction.isAddition:
             if reactionBubble is not None:
                 reactionBubble.destroy()
                 del reactionBubble
-                self.body.configure(bg='green')
+                # self.body.configure(bg='green')
 
     def update(self):
         # Text probably won't change but this is nice for initially populating.
@@ -556,6 +556,8 @@ class ReactionBubble(tk.Label):
         if associatedMessageType not in imageDictionary:
             raise ReactionBubbleBadMessageTypeException
 
+        # This is very silly and could probably be done using a Flyweight pattern
+        # Should look into how much memory this would save.
         self.original = Image.open(
             '{}/{}'.format(dirname, imageDictionary[associatedMessageType]))
         self.original.image = ImageTk.PhotoImage(self.original)
