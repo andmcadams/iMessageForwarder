@@ -87,7 +87,14 @@ def newRecipients(groupName):
 	loc = pyautogui.locateCenterOnScreen('darkmode/composeButton.png', confidence=0.98)
 	if not loc:
 		print('I couldn\'t find the compose button!')
-		exit(1)
+		print('Attempting to wake up by doing a dead click.')
+		moveToAndClick(20, 20, endDelay=0.5)
+		time.sleep(1)
+		print('Waited a second...')
+		loc = pyautogui.locateCenterOnScreen('darkmode/composeButton.png', confidence=0.98)
+		if not loc:
+			print('Still could not find the compose button after wake-up attempt.')
+			exit(1)
 
 	click(loc[0], loc[1])
 
