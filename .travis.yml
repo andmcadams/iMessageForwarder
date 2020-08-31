@@ -3,3 +3,6 @@ before_install:
 language: python
 python:
     - '3.8'
+
+script:
+    - coverage run -m unittest tests/*.py
