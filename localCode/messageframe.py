@@ -220,6 +220,7 @@ class MessageFrame(VerticalScrolledFrame):
             text = '{} named the conversation "{}".'.format(message.handleName, message.group_title)
             nameChange = MessageHeader(self.interior, text)
             nameChange.pack(fill=tk.X)
+            messageParts.append(nameChange)
 
         for i in range(len(message.messageParts)):
             messagePart = message.messageParts[i]
@@ -427,6 +428,12 @@ class MessageHeader(tk.Frame):
         self.label = tk.Message(self, width=parent.winfo_reqwidth(), text=text, justify=tk.CENTER, font=('Dosis', 8))
 
         self.label.pack(fill=tk.X, expand=tk.TRUE)
+
+    def update(self):
+        pass
+
+    def resize(self, event):
+        self.label.configure(width=event.width)
 
 
 class MessageBubble(tk.Frame):
