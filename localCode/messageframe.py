@@ -215,6 +215,12 @@ class MessageFrame(VerticalScrolledFrame):
         messageParts = []
         allowedTypes = ['public.jpeg', 'public.png', 'public.gif',
                         'com.compuserve.gif']
+        # If the message is for a group rename
+        if message.item_type == 2:
+            text = '{} named the conversation "{}".'.format(message.handleName, message.group_title)
+            nameChange = MessageHeader(self.interior, text)
+            nameChange.pack(fill=tk.X)
+
         for i in range(len(message.messageParts)):
             messagePart = message.messageParts[i]
             lastPart = (i == len(message.messageParts) - 1)
@@ -409,6 +415,18 @@ class MessageMenu(tk.Menu):
         respFrame = self.master.master.master.master.master
         respFrame.currentChat.sendReaction(respFrame.mp, messageId,
                                            reactionValue)
+
+
+class MessageHeader(tk.Frame):
+
+    def __init__(self, parent, text, *args, **kw):
+        tk.Frame.__init__(self, parent, *args, **kw)
+
+        # Store a pointer to message object, so when this object is updated
+        # we can just call self.update()
+        self.label = tk.Message(self, width=parent.winfo_reqwidth(), text=text, justify=tk.CENTER, font=('Dosis', 8))
+
+        self.label.pack(fill=tk.X, expand=tk.TRUE)
 
 
 class MessageBubble(tk.Frame):
