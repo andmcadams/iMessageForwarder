@@ -7,7 +7,7 @@ python:
     - '3.8'
 
 before_script:
-    - "sh -e /etc/init.d/cvfb start"
+    - "sh -e /etc/init.d/xvfb start"
     - sleep 3
 script:
     - export PYTHONPATH=$PYTHONPATH:/home/travis/build/andmcadams/iMessageForwarder/localCode
