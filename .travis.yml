@@ -1,5 +1,7 @@
 env:
     - DISPLAY=:99.0
+git:
+    depth: false
 before_install:
     - sudo apt-get install -y python3-dev libasound2-dev
 language: python
