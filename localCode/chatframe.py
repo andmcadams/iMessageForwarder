@@ -103,7 +103,8 @@ class ChatButton(tk.Frame):
             self.lastMessage.configure(bg='green')
             self.lastMessageTime.configure(bg='yellow')
 
-        self.picture.grid(row=0, column=0, rowspan=2, padx=(0, 1), sticky='nsew')
+        self.picture.grid(row=0, column=0, rowspan=2, padx=(0, 1),
+                          sticky='nsew')
         self.number.grid(row=0, column=1, sticky='nsew')
         self.lastMessage.grid(row=1, column=1, columnspan=2, sticky='nsew')
         self.lastMessageTime.grid(row=0, column=2, sticky='nsew')
