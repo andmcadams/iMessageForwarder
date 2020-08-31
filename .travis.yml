@@ -5,11 +5,8 @@ before_install:
 language: python
 python:
     - '3.8'
-
 services:
     - xvfb
-before_script:
-    - sleep 3
 script:
     - export PYTHONPATH=$PYTHONPATH:/home/travis/build/andmcadams/iMessageForwarder/localCode
     - coverage run -m unittest tests/*.py
