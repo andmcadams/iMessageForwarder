@@ -13,3 +13,5 @@ before_script:
 script:
     - export PYTHONPATH=$PYTHONPATH:/home/travis/build/andmcadams/iMessageForwarder/localCode
     - coverage run -m unittest tests/*.py
+    - cd localCode
+    - ./runTests.sh
