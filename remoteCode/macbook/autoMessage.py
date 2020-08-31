@@ -87,7 +87,14 @@ def newRecipients(groupName):
 	loc = pyautogui.locateCenterOnScreen('darkmode/composeButton.png', confidence=0.98)
 	if not loc:
 		print('I couldn\'t find the compose button!')
-		exit(1)
+		print('Attempting to wake up by doing a dead click.')
+		moveToAndClick(20, 20, endDelay=0.5)
+		time.sleep(1)
+		print('Waited a second...')
+		loc = pyautogui.locateCenterOnScreen('darkmode/composeButton.png', confidence=0.98)
+		if not loc:
+			print('Still could not find the compose button after wake-up attempt.')
+			exit(1)
 
 	click(loc[0], loc[1])
 
@@ -109,7 +116,7 @@ def newRecipients(groupName):
 
 	# Add recips
 	print('Writing groupName: {}'.format(groupName))
-	pyautogui.write(groupName, interval=0.05)
+	pyautogui.write(groupName, interval=0.1)
 	pyautogui.press('space')
 	time.sleep(0.5)
 	pyautogui.press('backspace')
@@ -208,7 +215,13 @@ while True:
 		# Simple Text
 		if messageCode == 0:
 			print('Printing chatId: {}'.format(chatId))
-			pyautogui.write(text, interval=0.0001)
+			lines = text.splitlines()
+			for i in range(len(lines)):
+				line = lines[i]
+				pyautogui.write(line, interval=0.0001)
+				if i != len(lines) - 1:
+						pyautogui.hotkey('ctrl', 'enter')
+
 			time.sleep(0.2)
 			pyautogui.press('enter')
 			cursor = conn.execute('delete from outgoing where ROWID = ?', (rowId, ))

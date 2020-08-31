@@ -271,6 +271,8 @@ class Message(Received):
         self._messageParts = []
         self._imageCount = 0
 
+        if self.text is not None:
+            self.text = self.text.replace(' ', '\n')
         text = self.text or ''
         messageParts = re.findall(messageRegex, text)
 
