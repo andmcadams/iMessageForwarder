@@ -217,7 +217,9 @@ class MessageFrame(VerticalScrolledFrame):
                         'com.compuserve.gif']
         # If the message is for a group rename
         if message.item_type == 2:
-            text = '{} named the conversation "{}".'.format(message.handleName, message.group_title)
+            newName = message.group_title
+            text = '{} named the conversation "{}".'.format(message.handleName,
+                                                            newName)
             nameChange = MessageHeader(self.interior, text)
             nameChange.pack(fill=tk.X)
             messageParts.append(nameChange)
@@ -425,7 +427,8 @@ class MessageHeader(tk.Frame):
 
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
-        self.label = tk.Message(self, width=parent.winfo_reqwidth(), text=text, justify=tk.CENTER, font=('Dosis', 8))
+        self.label = tk.Message(self, width=parent.winfo_reqwidth(), text=text,
+                                justify=tk.CENTER, font=('Dosis', 8))
 
         self.label.pack(fill=tk.X, expand=tk.TRUE)
 
