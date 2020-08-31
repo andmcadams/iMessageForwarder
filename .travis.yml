@@ -1,0 +1,16 @@
+env:
+    - DISPLAY=:99.0
+git:
+    depth: false
+before_install:
+    - sudo apt-get install -y python3-dev libasound2-dev
+language: python
+python:
+    - '3.8'
+services:
+    - xvfb
+script:
+    - export PYTHONPATH=$PYTHONPATH:/home/travis/build/andmcadams/iMessageForwarder/localCode
+    - coverage run -m unittest tests/*.py
+    - cd localCode
+    - ./runtests.sh

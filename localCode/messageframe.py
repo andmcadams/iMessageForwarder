@@ -556,8 +556,8 @@ class ReactionBubble(tk.Label):
         if associatedMessageType not in imageDictionary:
             raise ReactionBubbleBadMessageTypeException
 
-        # This is very silly and could probably be done using a Flyweight pattern
-        # Should look into how much memory this would save.
+        # This is very silly and could probably be done using a Flyweight
+        # pattern. Should look into how much memory this would save.
         self.original = Image.open(
             '{}/{}'.format(dirname, imageDictionary[associatedMessageType]))
         self.original.image = ImageTk.PhotoImage(self.original)
