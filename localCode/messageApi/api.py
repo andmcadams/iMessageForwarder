@@ -295,6 +295,9 @@ class Message(Received):
         if len(messageParts) == 0:
             self._messageParts.append(TextPart(text=''))
 
+        if self.item_type == 2:
+            self._messageParts = []
+
         if self.text is not None:
             self.text = ''.join([text[t] for t in range(len(text))
                                  if (ord(text[t]) in range(65536)
