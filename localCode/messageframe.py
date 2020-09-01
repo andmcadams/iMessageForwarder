@@ -219,9 +219,7 @@ class MessageFrame(VerticalScrolledFrame):
                         'com.compuserve.gif']
         # If the message is for a group rename
         if message.item_type == 2:
-            newName = message.group_title
-            text = '{} named the conversation "{}".'.format(message.handleName,
-                                                            newName)
+            text = message.getText()
             nameChange = MessageHeader(self.interior, text)
             nameChange.pack(fill=tk.X)
             messageParts.append(nameChange)
