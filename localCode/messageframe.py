@@ -606,10 +606,12 @@ class TextMessageBubble(MessageBubble):
         self.messageInterior.configure(style="RoundedFrame")
         if messageId >= 0:
             self.body = tk.Message(self.messageInterior, padx=0, pady=3,
-                                   bg='#01cdfe', width=maxWidth, font="helvetica")
+                                   bg='#01cdfe', width=maxWidth,
+                                   font="helvetica")
         else:
             self.body = tk.Message(self.messageInterior, padx=0, pady=3,
-                                   bg='#01ffff', width=maxWidth, font="helvetica")
+                                   bg='#01ffff', width=maxWidth,
+                                   font="helvetica")
         self.initBody()
 
     def resize(self, event):
