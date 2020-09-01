@@ -157,9 +157,10 @@ class MessageFrame(VerticalScrolledFrame):
         return False
 
     def createTimeLabel(self, messageDate):
-        timeLabel = tk.Label(self.interior,
-                             text=getTimeText(messageDate))
-        timeLabel.pack()
+        timeLabel = MessageHeader(self.interior,
+                                  getTimeText(messageDate))
+        timeLabel.pack(fill=tk.X)
+        return timeLabel
 
     def needReadReceipt(self, chat, message, lastFromMeId):
         """Return whether or not a read receipt needs to be added to the
@@ -204,15 +205,16 @@ class MessageFrame(VerticalScrolledFrame):
 
         addLabel = self.needSenderLabel(chat, message, prevMessage)
 
+        messageParts = []
         if (self.needTimeLabel(message, prevMessage)):
-            self.createTimeLabel(message.date)
+            timeLabel = self.createTimeLabel(message.date)
+            messageParts.append(timeLabel)
 
         addReceipt = self.needReadReceipt(chat, message, lastFromMeId)
         if addReceipt:
             self.removeOldReadReceipt()
             self.readReceiptMessageId = message.rowid
 
-        messageParts = []
         allowedTypes = ['public.jpeg', 'public.png', 'public.gif',
                         'com.compuserve.gif']
         # If the message is for a group rename
