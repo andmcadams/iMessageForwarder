@@ -429,8 +429,8 @@ class MessageHeader(tk.Frame):
 
         # Store a pointer to message object, so when this object is updated
         # we can just call self.update()
-        self.label = tk.Message(self, width=parent.winfo_reqwidth(), text=text,
-                                justify=tk.CENTER, font=('Dosis', 8))
+        self.label = tk.Message(self, width=parent.winfo_width(), text=text,
+                                justify=tk.CENTER, font=('helvetica', 8))
 
         self.label.pack(fill=tk.X, expand=tk.TRUE)
 
@@ -450,7 +450,8 @@ class MessageBubble(tk.Frame):
         self.senderLabel = None
         if addLabel is True:
             senderName = chat.getMessages()[messageId].handleName
-            self.senderLabel = tk.Label(self, height=1, text=senderName)
+            self.senderLabel = tk.Label(self, height=1, text=senderName,
+                                        font=('helvetica', 8))
         self.messageInterior = ttk.Frame(self, padding=6)
         self.reactions = {}
         # Store a pointer to message object, so when this object is updated
@@ -605,10 +606,10 @@ class TextMessageBubble(MessageBubble):
         self.messageInterior.configure(style="RoundedFrame")
         if messageId >= 0:
             self.body = tk.Message(self.messageInterior, padx=0, pady=3,
-                                   bg='#01cdfe', width=maxWidth, font="Dosis")
+                                   bg='#01cdfe', width=maxWidth, font="helvetica")
         else:
             self.body = tk.Message(self.messageInterior, padx=0, pady=3,
-                                   bg='#01ffff', width=maxWidth, font="Dosis")
+                                   bg='#01ffff', width=maxWidth, font="helvetica")
         self.initBody()
 
     def resize(self, event):
