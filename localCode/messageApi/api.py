@@ -321,6 +321,11 @@ class Message(Received):
         return False
 
     def getText(self) -> str:
+        if self.item_type == 2:
+            handleName = self.handleName if self.handle_id != 0 else "You"
+            newName = self.group_title
+            return '{} named the conversation "{}".'.format(handleName,
+                                                            newName)
         if self._imageCount >= 1:
             return '{} attachments'.format(len(self.messageParts))
         elif self.text != '':
