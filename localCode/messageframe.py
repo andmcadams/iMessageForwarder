@@ -157,9 +157,10 @@ class MessageFrame(VerticalScrolledFrame):
         return False
 
     def createTimeLabel(self, messageDate):
-        timeLabel = tk.Label(self.interior,
-                             text=getTimeText(messageDate))
-        timeLabel.pack()
+        timeLabel = MessageHeader(self.interior,
+                                  getTimeText(messageDate))
+        timeLabel.pack(fill=tk.X)
+        return timeLabel
 
     def needReadReceipt(self, chat, message, lastFromMeId):
         """Return whether or not a read receipt needs to be added to the
@@ -204,17 +205,25 @@ class MessageFrame(VerticalScrolledFrame):
 
         addLabel = self.needSenderLabel(chat, message, prevMessage)
 
+        messageParts = []
         if (self.needTimeLabel(message, prevMessage)):
-            self.createTimeLabel(message.date)
+            timeLabel = self.createTimeLabel(message.date)
+            messageParts.append(timeLabel)
 
         addReceipt = self.needReadReceipt(chat, message, lastFromMeId)
         if addReceipt:
             self.removeOldReadReceipt()
             self.readReceiptMessageId = message.rowid
 
-        messageParts = []
         allowedTypes = ['public.jpeg', 'public.png', 'public.gif',
                         'com.compuserve.gif']
+        # If the message is for a group rename
+        if message.item_type == 2:
+            text = message.getText()
+            nameChange = MessageHeader(self.interior, text)
+            nameChange.pack(fill=tk.X)
+            messageParts.append(nameChange)
+
         for i in range(len(message.messageParts)):
             messagePart = message.messageParts[i]
             lastPart = (i == len(message.messageParts) - 1)
@@ -411,6 +420,25 @@ class MessageMenu(tk.Menu):
                                            reactionValue)
 
 
+class MessageHeader(tk.Frame):
+
+    def __init__(self, parent, text, *args, **kw):
+        tk.Frame.__init__(self, parent, *args, **kw)
+
+        # Store a pointer to message object, so when this object is updated
+        # we can just call self.update()
+        self.label = tk.Message(self, width=parent.winfo_width(), text=text,
+                                justify=tk.CENTER, font=('helvetica', 8))
+
+        self.label.pack(fill=tk.X, expand=tk.TRUE)
+
+    def update(self):
+        pass
+
+    def resize(self, event):
+        self.label.configure(width=event.width)
+
+
 class MessageBubble(tk.Frame):
 
     def __init__(self, parent, messageId, chat, addLabel, addReadReceipt,
@@ -420,7 +448,8 @@ class MessageBubble(tk.Frame):
         self.senderLabel = None
         if addLabel is True:
             senderName = chat.getMessages()[messageId].handleName
-            self.senderLabel = tk.Label(self, height=1, text=senderName)
+            self.senderLabel = tk.Label(self, height=1, text=senderName,
+                                        font=('helvetica', 8))
         self.messageInterior = ttk.Frame(self, padding=6)
         self.reactions = {}
         # Store a pointer to message object, so when this object is updated
@@ -575,10 +604,12 @@ class TextMessageBubble(MessageBubble):
         self.messageInterior.configure(style="RoundedFrame")
         if messageId >= 0:
             self.body = tk.Message(self.messageInterior, padx=0, pady=3,
-                                   bg='#01cdfe', width=maxWidth, font="Dosis")
+                                   bg='#01cdfe', width=maxWidth,
+                                   font="helvetica")
         else:
             self.body = tk.Message(self.messageInterior, padx=0, pady=3,
-                                   bg='#01ffff', width=maxWidth, font="Dosis")
+                                   bg='#01ffff', width=maxWidth,
+                                   font="helvetica")
         self.initBody()
 
     def resize(self, event):

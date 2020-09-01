@@ -295,6 +295,9 @@ class Message(Received):
         if len(messageParts) == 0:
             self._messageParts.append(TextPart(text=''))
 
+        if self.item_type == 2:
+            self._messageParts = []
+
         if self.text is not None:
             self.text = ''.join([text[t] for t in range(len(text))
                                  if (ord(text[t]) in range(65536)
@@ -318,6 +321,11 @@ class Message(Received):
         return False
 
     def getText(self) -> str:
+        if self.item_type == 2:
+            handleName = self.handleName if self.handle_id != 0 else "You"
+            newName = self.group_title
+            return '{} named the conversation "{}".'.format(handleName,
+                                                            newName)
         if self._imageCount >= 1:
             return '{} attachments'.format(len(self.messageParts))
         elif self.text != '':
