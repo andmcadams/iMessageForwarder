@@ -138,32 +138,32 @@ class TestMessageFrameMethods(unittest.TestCase):
     def test_create_time_label_today(self):
         t = datetime.now() - timedelta(hours=2)
         correctText = mf.getTimeText(t.timestamp())
-        self.messageFrame.createTimeLabel(t.timestamp())
 
+        timeLabel = self.messageFrame.createTimeLabel(t.timestamp())
         children = self.messageFrame.interior.winfo_children()
 
         self.assertEqual(len(children), 1)
-        self.assertEqual(children[0].cget('text'), correctText)
+        self.assertEqual(timeLabel.label.cget('text'), correctText)
 
     def test_create_time_label_yesterday(self):
         t = datetime.now() - timedelta(days=1)
         correctText = mf.getTimeText(t.timestamp())
-        self.messageFrame.createTimeLabel(t.timestamp())
 
+        timeLabel = self.messageFrame.createTimeLabel(t.timestamp())
         children = self.messageFrame.interior.winfo_children()
 
         self.assertEqual(len(children), 1)
-        self.assertEqual(children[0].cget('text'), correctText)
+        self.assertEqual(timeLabel.label.cget('text'), correctText)
 
     def test_create_time_label_multiple_days_back(self):
         t = datetime.now() - timedelta(days=10)
         correctText = mf.getTimeText(t.timestamp())
-        self.messageFrame.createTimeLabel(t.timestamp())
 
+        timeLabel = self.messageFrame.createTimeLabel(t.timestamp())
         children = self.messageFrame.interior.winfo_children()
 
         self.assertEqual(len(children), 1)
-        self.assertEqual(children[0].cget('text'), correctText)
+        self.assertEqual(timeLabel.label.cget('text'), correctText)
 
     def test_need_read_receipt_temporary_from_me(self):
         msg = api.Message(ROWID=-1, is_from_me=1)
@@ -295,7 +295,7 @@ class TestMessageFrameMethods(unittest.TestCase):
         self.messageFrame.addMessage(chat, i, message, prevMessage, lastFromMeId)
 
         self.assertIn(message.rowid, self.messageFrame.messageBubbles)
-        self.assertEqual(len(self.messageFrame.messageBubbles[message.rowid]), 2)
+        self.assertEqual(len(self.messageFrame.messageBubbles[message.rowid]), 3)
         for bubble in self.messageFrame.messageBubbles[message.rowid]:
             self.assertEqual(bubble.pack_info()['anchor'], 'w')
 
@@ -312,7 +312,7 @@ class TestMessageFrameMethods(unittest.TestCase):
         self.messageFrame.addMessage(chat, i, message, prevMessage, lastFromMeId)
 
         self.assertIn(message.rowid, self.messageFrame.messageBubbles)
-        self.assertEqual(len(self.messageFrame.messageBubbles[message.rowid]), 2)
+        self.assertEqual(len(self.messageFrame.messageBubbles[message.rowid]), 3)
         for bubble in self.messageFrame.messageBubbles[message.rowid]:
             self.assertEqual(bubble.pack_info()['anchor'], 'e')
 
