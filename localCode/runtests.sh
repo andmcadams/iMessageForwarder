@@ -7,5 +7,5 @@ for filename in ${FILES[@]}; do
 		EXITSTATUS=1
 	fi
 done
-echo "Exiting with status " $EXITSTATUS
+echo "Exiting with status" $EXITSTATUS
 exit $EXITSTATUS
