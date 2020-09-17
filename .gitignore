@@ -7,3 +7,4 @@
 localCode/sms.db
 localCode/secrets.json
 remoteCode/macbook/config.json
+remoteCode/node-server/node_modules
