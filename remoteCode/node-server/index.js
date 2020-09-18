@@ -121,11 +121,11 @@ app.post('/rename', (req, res) => {
 })
 
 app.post('/attachment', (req, res) => {
-  res.send('Hello World!')
+  res.send('Not implemented')
 })
 
 app.get('/all', (req, res) => {
-  res.send('Hello World!')
+  res.send('Not implemented')
 })
 
 app.listen(port, () => {
