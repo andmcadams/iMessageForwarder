@@ -61,7 +61,7 @@ app.post('/message', (req, res) => {
 
 app.post('/reaction', (req, res) => {
   if (req.body.chat_id == null || req.body.associated_guid == null || req.body.associated_type == null) {
-	// Missing either of these means the request is malformed.
+	// Missing any of these means the request is malformed.
 	return res.status(400).send({
 		status: 400,
 		error: 'Missing "chat_id", "associated_guid", or "associated_type" keys in request body.'
@@ -91,7 +91,33 @@ app.post('/reaction', (req, res) => {
 })
 
 app.post('/rename', (req, res) => {
-  res.send('Hello World!')
+  if (req.body.chat_id == null || req.body.group_title == null) {
+	// Missing either of these means the request is malformed.
+	return res.status(400).send({
+		status: 400,
+		error: 'Missing "chat_id" or "group_title" keys in request body.'
+	})
+  }
+  else {
+	let chat_id = parseId(req.body.chat_id)
+	let group_title = req.body.group_title
+	if (isNaN(chat_id))
+		return handleBadId(res)
+	let db = new sqlite.Database(dbPath)
+	db.run('INSERT INTO message (chat_id, group_title) VALUES (?, ?)', chat_id, group_title, function(err) {
+		if (err == null)
+			return res.send({
+				status: 200,
+				ROWID: this.lastID
+			})
+		else
+			return res.send({
+				status: 400,
+				error: err
+			})
+	})
+	db.close()
+  }
 })
 
 app.post('/attachment', (req, res) => {
