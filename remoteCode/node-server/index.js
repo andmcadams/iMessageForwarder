@@ -24,7 +24,6 @@ function parseId(value) {
 
 function handleBadId(res) {
 	return res.status(400).send({
-		status: 400,
 		error: '"chat_id" value must be an integer.'
 	})
 }
@@ -33,7 +32,6 @@ app.post('/message', (req, res) => {
   if (req.body.chat_id == null || req.body.text == null) {
 	// Missing either of these means the request is malformed.
 	return res.status(400).send({
-		status: 400,
 		error: 'Missing "chat_id" or "text" keys in request body.'
 	})
   }
@@ -44,26 +42,27 @@ app.post('/message', (req, res) => {
 		return handleBadId(res)
 	let db = new sqlite.Database(dbPath)
 	db.run('INSERT INTO message (chat_id, text) VALUES (?, ?)', chat_id, text, function(err) {
-		if (err == null)
-			return res.send({
-				status: 200,
+		if (err == null) {
+			res.set({'Location': '/message/' + this.lastID})
+			return res.status(201).send({
 				ROWID: this.lastID
 			})
-		else
-			return res.send({
-				status: 400,
+		}
+		else {
+			return res.status(400).send({
 				error: err
 			})
+		}
 	})
 	db.close()
   }
 })
 
+
 app.post('/reaction', (req, res) => {
   if (req.body.chat_id == null || req.body.associated_guid == null || req.body.associated_type == null) {
 	// Missing any of these means the request is malformed.
 	return res.status(400).send({
-		status: 400,
 		error: 'Missing "chat_id", "associated_guid", or "associated_type" keys in request body.'
 	})
   }
@@ -75,16 +74,18 @@ app.post('/reaction', (req, res) => {
 		return handleBadId(res)
 	let db = new sqlite.Database(dbPath)
 	db.run('INSERT INTO reaction (chat_id, associated_guid, associated_type) VALUES (?, ?, ?)', chat_id, associated_guid, associated_type, function(err) {
-		if (err == null)
-			return res.send({
-				status: 200,
+		if (err == null) {
+			res.set({'Location': '/reaction/' + this.lastID})
+			return res.status(201).send({
 				ROWID: this.lastID
 			})
-		else
+		}
+		else {
+			res.statusCode = 400
 			return res.send({
-				status: 400,
 				error: err
 			})
+		}
 	})
 	db.close()
   }
@@ -94,7 +95,6 @@ app.post('/rename', (req, res) => {
   if (req.body.chat_id == null || req.body.group_title == null) {
 	// Missing either of these means the request is malformed.
 	return res.status(400).send({
-		status: 400,
 		error: 'Missing "chat_id" or "group_title" keys in request body.'
 	})
   }
@@ -104,20 +104,51 @@ app.post('/rename', (req, res) => {
 	if (isNaN(chat_id))
 		return handleBadId(res)
 	let db = new sqlite.Database(dbPath)
-	db.run('INSERT INTO message (chat_id, group_title) VALUES (?, ?)', chat_id, group_title, function(err) {
-		if (err == null)
-			return res.send({
-				status: 200,
+	db.run('INSERT INTO rename (chat_id, group_title) VALUES (?, ?)', chat_id, group_title, function(err) {
+		if (err == null) {
+			res.set({'Location': '/rename/' + this.lastID})
+			return res.status(201).send({
 				ROWID: this.lastID
 			})
-		else
+		}
+		else {
+			res.statusCode = 400
 			return res.send({
-				status: 400,
 				error: err
 			})
+		}
 	})
 	db.close()
   }
+})
+
+app.get('/:table/:id', (req, res) => {
+  var table = req.params.table
+  var id = parseId(req.params.id)
+  if (isNaN(id))
+	return handleBadId(res) 
+  if (table === 'message' || table === 'reaction' || table === 'rename') {
+	  let db = new sqlite.Database(dbPath)
+	  // Note that table name cannot use parameterization.
+	  db.get('SELECT * FROM ' + table + ' WHERE ROWID = ?', id, function(err, row) {
+		if (err == null) {
+			hasSent = row == null
+			return res.send({
+				sent: hasSent,
+				row: row
+			})
+		}
+		else
+			return res.status(400).send({
+				error: err
+			})
+	  })
+	  db.close()
+  }
+  else
+	res.status(400).send({
+		error: 'Table must be one of {message, reaction, rename}.'
+	})
 })
 
 app.post('/attachment', (req, res) => {
