@@ -87,7 +87,7 @@ class SendFrame(tk.Frame):
         return self.master.currentChat.recipientList != []
 
     def sendMessage(self, mp, chat):
-        recipientString = (str(chat.recipientList) if chat.isTemporaryChat is
+        recipientString = (', '.join(chat.recipientList) if chat.isTemporaryChat is
                            True else '')
         chat.sendMessage(mp, self.text.get('1.0', 'end-1c'), recipientString)
         self.text.delete('1.0', 'end')
