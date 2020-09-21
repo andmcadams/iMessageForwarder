@@ -9,10 +9,6 @@ const dbPath = './testDb.db'
 
 app.use(bodyParser.json())
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
-
 // value - A string
 // returns the integer represented by the string or a NaN if no such integer exists.
 function parseId(value) {
