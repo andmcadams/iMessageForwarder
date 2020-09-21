@@ -177,6 +177,12 @@ app.get('/:table/:id', (req, res) => {
 	})
 })
 
+app.get('/ping', (req, res) => {
+	return res.status(200).send({
+		name: 'iMessageForwarder'
+	})
+})
+
 app.post('/attachment', (req, res) => {
   res.send('Not implemented')
 })
