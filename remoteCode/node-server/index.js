@@ -126,7 +126,10 @@ app.get('/:table/:id', (req, res) => {
   var table = req.params.table
   var id = parseId(req.params.id)
   if (isNaN(id))
-	return handleBadId(res) 
+	return res.status(400).send({
+		error: '"ROWID" value must be an integer.'
+	})
+
   if (table === 'message' || table === 'reaction' || table === 'rename') {
 	  let db = new sqlite.Database(dbPath)
 	  // Note that table name cannot use parameterization.
