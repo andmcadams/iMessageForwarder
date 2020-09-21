@@ -786,6 +786,53 @@ class MessagePasser(ABC):
         pass
 
 
+class HttpMessagePasser():
+
+    class __HttpMessagePasser(MessagePasser):  
+        
+        def sendMessage(self, chatId: int, messageText: str):
+            data = {
+                'chat_id': chatId,
+                'text': messageText
+            }
+            r = requests.post('http://localhost:3000/message', data)
+
+        def sendChat(self, recipient_string: str, text: str):
+            data = {
+                'chat_id': chatId,
+                'recipient_string': recipient_string,
+                'text': text
+            }
+            r = requests.post('http://localhost:3000/chat', data)
+
+        def sendReaction(self, chatId: int, associated_guid: str, associated_type: int):
+            data = {
+                'chat_id': chatId,
+                'associated_guid': associated_guid,
+                'associated_type': associated_type
+            }
+            r = requests.post('http://localhost:3000/reaction', data)
+
+        def sendRename(self, chatId: int, group_title: str):
+            data = {
+                'chat_id': chatId,
+                'group_title': group_title
+            }
+            r = requests.post('http://localhost:3000/rename', data)
+
+        def ping(self) -> bool:
+            r = requests.get('http://localhost:3000/ping')
+            return r.status_code == 200
+
+    instance = None
+
+    def __init__(self):
+        if HttpMessagePasser.instance is None:
+            HttpMessagePasser.instance = HttpMessagePasser.__HttpMessagePasser()
+
+    def __getattr__(self, name):
+        return getattr(self.instance, name)
+
 class SshMessagePasser():
 
     class __SshMessagePasser(MessagePasser):
