@@ -58,6 +58,33 @@ app.post('/message', (req, res) => {
   }
 })
 
+app.post('/chat', (req, res) => {
+  if (req.body.recipient_string == null || req.body.text == null) {
+	// Missing either of these means the request is malformed.
+	return res.status(400).send({
+		error: 'Missing "recipient_string" or "text" keys in request body.'
+	})
+  }
+  else {
+	let recipient_string = req.body.recipient_string
+	let text = req.body.text
+	let db = new sqlite.Database(dbPath)
+	db.run('INSERT INTO chat (recipient_string, text) VALUES (?, ?)', recipient_string, text, function(err) {
+		if (err == null) {
+			res.set({'Location': '/chat/' + this.lastID})
+			return res.status(201).send({
+				ROWID: this.lastID
+			})
+		}
+		else {
+			return res.status(400).send({
+				error: err
+			})
+		}
+	})
+	db.close()
+  }
+})
 
 app.post('/reaction', (req, res) => {
   if (req.body.chat_id == null || req.body.associated_guid == null || req.body.associated_type == null) {
@@ -130,7 +157,7 @@ app.get('/:table/:id', (req, res) => {
 		error: '"ROWID" value must be an integer.'
 	})
 
-  if (table === 'message' || table === 'reaction' || table === 'rename') {
+  if (table === 'message' || table === 'chat' || table === 'reaction' || table === 'rename') {
 	  let db = new sqlite.Database(dbPath)
 	  // Note that table name cannot use parameterization.
 	  db.get('SELECT * FROM ' + table + ' WHERE ROWID = ?', id, function(err, row) {
@@ -150,7 +177,7 @@ app.get('/:table/:id', (req, res) => {
   }
   else
 	res.status(400).send({
-		error: 'Table must be one of {message, reaction, rename}.'
+		error: 'Table must be one of {message, chat, reaction, rename}.'
 	})
 })
 
