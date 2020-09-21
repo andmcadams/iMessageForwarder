@@ -5,6 +5,7 @@ import json
 import time
 import subprocess
 import threading
+import requests
 from . import sqlcommands
 from typing import List, Type, Dict, Any, Optional, Tuple
 from abc import ABC, abstractmethod
@@ -610,7 +611,10 @@ class Chat:
             mp: 'MessagePasser',
             messageText: str,
             recipientString: str) -> None:
-        mp.sendMessage(self.chatId, messageText, recipientString)
+        if recipientString == '' or recipientString is None:
+            mp.sendMessage(self.chatId, messageText)
+        else:
+            mp.sendChat(recipientString, messageText)
         msg = Message(**{'ROWID': self.messagePreviewId,
                          'text': messageText, 'date':
                          int(time.time()), 'date_read': 0,
@@ -795,15 +799,15 @@ class HttpMessagePasser():
                 'chat_id': chatId,
                 'text': messageText
             }
-            r = requests.post('http://localhost:3000/message', data)
+            r = requests.post('http://localhost:3000/message', json=data)
+            print('sent message')
 
         def sendChat(self, recipient_string: str, text: str):
             data = {
-                'chat_id': chatId,
                 'recipient_string': recipient_string,
                 'text': text
             }
-            r = requests.post('http://localhost:3000/chat', data)
+            r = requests.post('http://localhost:3000/chat', json=data)
 
         def sendReaction(self, chatId: int, associated_guid: str, associated_type: int):
             data = {
@@ -811,18 +815,21 @@ class HttpMessagePasser():
                 'associated_guid': associated_guid,
                 'associated_type': associated_type
             }
-            r = requests.post('http://localhost:3000/reaction', data)
+            r = requests.post('http://localhost:3000/reaction', json=data)
 
         def sendRename(self, chatId: int, group_title: str):
             data = {
                 'chat_id': chatId,
                 'group_title': group_title
             }
-            r = requests.post('http://localhost:3000/rename', data)
+            r = requests.post('http://localhost:3000/rename', json=data)
 
         def ping(self) -> bool:
-            r = requests.get('http://localhost:3000/ping')
-            return r.status_code == 200
+            try:
+                r = requests.get('http://localhost:3000/ping')
+                return r.status_code == 200
+            except requests.exceptions.ConnectionError as e:
+                return False
 
     instance = None
 
