@@ -6,6 +6,7 @@ import time
 import subprocess
 import threading
 import requests
+import functools
 from . import sqlcommands
 from typing import List, Type, Dict, Any, Optional, Tuple
 from abc import ABC, abstractmethod
@@ -794,6 +795,16 @@ class HttpMessagePasser():
 
     class __HttpMessagePasser(MessagePasser):  
         
+        def connectionErrorDecorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                try:
+                    return func(*args, **kwargs)
+                except requests.exceptions.ConnectionError as e:
+                    return False
+            return wrapper
+
+        @connectionErrorDecorator
         def sendMessage(self, chatId: int, messageText: str):
             data = {
                 'chat_id': chatId,
@@ -802,6 +813,7 @@ class HttpMessagePasser():
             r = requests.post('http://localhost:3000/message', json=data)
             print('sent message')
 
+        @connectionErrorDecorator
         def sendChat(self, recipient_string: str, text: str):
             data = {
                 'recipient_string': recipient_string,
@@ -809,6 +821,7 @@ class HttpMessagePasser():
             }
             r = requests.post('http://localhost:3000/chat', json=data)
 
+        @connectionErrorDecorator
         def sendReaction(self, chatId: int, associated_guid: str, associated_type: int):
             data = {
                 'chat_id': chatId,
@@ -817,6 +830,7 @@ class HttpMessagePasser():
             }
             r = requests.post('http://localhost:3000/reaction', json=data)
 
+        @connectionErrorDecorator
         def sendRename(self, chatId: int, group_title: str):
             data = {
                 'chat_id': chatId,
@@ -824,12 +838,10 @@ class HttpMessagePasser():
             }
             r = requests.post('http://localhost:3000/rename', json=data)
 
+        @connectionErrorDecorator
         def ping(self) -> bool:
-            try:
-                r = requests.get('http://localhost:3000/ping')
-                return r.status_code == 200
-            except requests.exceptions.ConnectionError as e:
-                return False
+            r = requests.get('http://localhost:3000/ping')
+            return r.status_code == 200
 
     instance = None
 
