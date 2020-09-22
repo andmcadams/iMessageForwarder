@@ -810,7 +810,7 @@ class HttpMessagePasser():
                 'chat_id': chatId,
                 'text': messageText
             }
-            r = requests.post('http://localhost:3000/message', json=data)
+            r = requests.post('http://{}:3000/message'.format(ip), json=data)
             print('sent message')
 
         @connectionErrorDecorator
@@ -819,7 +819,7 @@ class HttpMessagePasser():
                 'recipient_string': recipient_string,
                 'text': text
             }
-            r = requests.post('http://localhost:3000/chat', json=data)
+            r = requests.post('http://{}:3000/chat'.format(ip), json=data)
 
         @connectionErrorDecorator
         def sendReaction(self, chatId: int, associated_guid: str, associated_type: int):
@@ -828,7 +828,7 @@ class HttpMessagePasser():
                 'associated_guid': associated_guid,
                 'associated_type': associated_type
             }
-            r = requests.post('http://localhost:3000/reaction', json=data)
+            r = requests.post('http://{}:3000/reaction'.format(ip), json=data)
 
         @connectionErrorDecorator
         def sendRename(self, chatId: int, group_title: str):
@@ -836,11 +836,11 @@ class HttpMessagePasser():
                 'chat_id': chatId,
                 'group_title': group_title
             }
-            r = requests.post('http://localhost:3000/rename', json=data)
+            r = requests.post('http://{}:3000/rename'.format(ip), json=data)
 
         @connectionErrorDecorator
         def ping(self) -> bool:
-            r = requests.get('http://localhost:3000/ping')
+            r = requests.get('http://{}:3000/ping'.format(ip))
             return r.status_code == 200
 
     instance = None
