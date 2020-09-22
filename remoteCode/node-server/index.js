@@ -1,6 +1,7 @@
 const express = require('express')
 const sqlite = require('sqlite3')
 const bodyParser = require('body-parser')
+const spawn = require("child_process").spawn;
 
 const app = express()
 const port = 3000
@@ -187,8 +188,16 @@ app.post('/attachment', (req, res) => {
   res.send('Not implemented')
 })
 
-app.get('/all', (req, res) => {
-  res.send('Not implemented')
+app.get('/update', (req, res) => {
+	var last_update_time = req.last_update_time
+	if (last_update_time == null)
+		last_update_time = 0
+  const pythonProcess = spawn('python', ["./getMessages.py", last_update_time]);
+  pythonProcess.stdout.on('data', (data) => {
+      res.write(data);
+      if (data == null)
+      	res.end('end');
+  });
 })
 
 app.listen(port, () => {
