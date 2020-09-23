@@ -195,9 +195,10 @@ app.get('/update', (req, res) => {
   const pythonProcess = spawn('python', ["./getMessages.py", last_update_time]);
   pythonProcess.stdout.on('data', (data) => {
       res.write(data);
-      if (data == null)
-      	res.end('end');
   });
+  pythonProcess.stdout.on('end', () => {
+  	res.end()
+  })
 })
 
 app.listen(port, () => {
