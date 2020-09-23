@@ -14,13 +14,12 @@ from dataclasses import dataclass
 
 
 def initialize(pathToDb, secretsFile):
-    global dbPath, user, ip, scriptPath
+    global dbPath, user, ip
 
     dbPath = pathToDb
     secrets = json.load(open(secretsFile))
     user = secrets['user']
     ip = secrets['ip']
-    scriptPath = secrets['scriptPath']
 
 
 class MessageList(dict):
@@ -865,76 +864,6 @@ class HttpMessagePasser():
 
     def __getattr__(self, name):
         return getattr(self.instance, name)
-
-
-"""SshMessagePasser is deprecated. Do not use it!"""
-
-
-class SshMessagePasser():
-
-    class __SshMessagePasser(MessagePasser):
-
-        def __init__(self, timeout):
-            self.__timeout = timeout
-
-        @property
-        def timeout(self):
-            return self.__timeout
-
-        @timeout.setter
-        def timeout(self, timeout):
-            self.__timeout = timeout
-
-        def sendMessage(self, chatId: int, messageText: str,
-                        recipientString: str) -> None:
-            text = messageText.replace("'", "\\'")
-            recipients = recipientString.replace('\'', '\\\'')
-            self.sendData(messageCode=0, chatId=chatId, messageText=text,
-                          recipientString=recipients)
-
-        def sendReaction(
-                self,
-                chatId: int,
-                messageId: int,
-                reactionType: int) -> None:
-            self.sendData(messageCode=1, chatId=chatId, messageId=messageId,
-                          reactionType=reactionType)
-
-        def sendData(
-                self,
-                messageCode: int,
-                chatId: int,
-                messageText: str = '',
-                messageId: int = 0,
-                reactionType: int = 0,
-                recipientString: str = '') -> None:
-            cmd = [
-                "ssh",
-                "{}@{}".format(
-                    user,
-                    ip),
-                "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(
-                    scriptPath,
-                    messageText,
-                    chatId,
-                    messageCode,
-                    messageId,
-                    reactionType,
-                    recipientString)]
-            subprocess.run(cmd, stderr=subprocess.DEVNULL)
-
-    instance = None
-
-    def __init__(self, timeout):
-        if SshMessagePasser.instance is None:
-            SshMessagePasser.instance = SshMessagePasser.__SshMessagePasser(
-                timeout)
-        else:
-            SshMessagePasser.instance.timeout = timeout
-
-    def __getattr__(self, name):
-        return getattr(self.instance, name)
-
 
 def createNewChat(chatId: int) -> 'Chat':
     chat = Chat(**{'ROWID': chatId})
