@@ -328,10 +328,16 @@ class TestChatMethods(unittest.TestCase):
 
     class StubMessagePasser(api.MessagePasser):
 
-        def sendMessage(self, chatId, messageText, recipientString):
+        def sendMessage(self, chatId: int, messageText: str):
             pass
 
-        def sendReaction(self, chatId, messageId, reactionType):
+        def sendChat(self, recipient_string: str, text: str):
+            pass
+
+        def sendReaction(self, chatId: int, associated_guid: str, associated_type: int):
+            pass
+
+        def sendRename(self, chatId: int, group_title: str):
             pass
 
     def test_send_message(self):
