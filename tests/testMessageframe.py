@@ -8,7 +8,7 @@ from localCode import messageframe as mf
 class TestMessageFrameMethods(unittest.TestCase):
 
     def setUp(self):
-        self.mp = api.SshMessagePasser(0)
+        self.mp = api.HttpMessagePasser()
         self.messageFrame = mf.MessageFrame(None, 0, 0, self.mp, api.MessageDatabase)
 
     def test_basic_creation(self):
