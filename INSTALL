@@ -42,8 +42,8 @@ function create_secrets_json {
 {
 	"user": "${USERNAME}",
 	"ip": "${IPADDR}",
-	"scriptPath": "${HOMEDIR_EXPANSION}/Applications/macbook/addOutgoing.py",
-	"retrieveScriptPath": "${HOMEDIR_EXPANSION}/Applications/macbook/getMessages.py"
+	"scriptPath": "${HOMEDIR_EXPANSION}/Applications/node-server/addOutgoing.py",
+	"retrieveScriptPath": "${HOMEDIR_EXPANSION}/Applications/node-server/getMessages.py"
 }
 END_DOCUMENT
 
@@ -55,7 +55,7 @@ function create_remote_config {
 	begin "Creating config.json on Apple machine..."
 
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
-		cat << END_CAT > "${HOMEDIR_EXPANSION}"/Applications/macbook/config.json
+		cat << END_CAT > "${HOMEDIR_EXPANSION}"/Applications/node-server/config.json
 {
         "queueLocation": "${HOMEDIR_EXPANSION}/Library/Messages/msgqueue.db",
         "chatLocation": "${HOMEDIR_EXPANSION}/Library/Messages/chat.db"
@@ -66,9 +66,9 @@ END_DOCUMENT
 
 	if [ $OUTPUT -ne 0 ]
 	then
-		fail "Could not create config.json at ${HOMEDIR_EXPANSION}/Applications/macbook/config.json"
+		fail "Could not create config.json at ${HOMEDIR_EXPANSION}/Applications/node-server/config.json"
 	else
-		pass "Created config.json at ${HOMEDIR_EXPANSION}/Applications/macbook/config.json"
+		pass "Created config.json at ${HOMEDIR_EXPANSION}/Applications/node-server/config.json"
 		CREATED_REMOTE_CONFIG=1
 	fi
 }
@@ -78,7 +78,10 @@ function create_incoming_message_db {
 
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 		sqlite3 "${HOMEDIR_EXPANSION}"/Library/Messages/msgqueue.db << END_SQL
-			CREATE TABLE IF NOT EXISTS outgoing ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, text text, chatId INTEGER, assocGUID text, assocType INTEGER, messageCode INTEGER );
+CREATE TABLE message ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, text TEXT );
+CREATE TABLE reaction ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, associated_guid TEXT, associated_type INTEGER );
+CREATE TABLE rename ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, group_title TEXT );
+CREATE TABLE chat ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, recipient_string TEXT, text TEXT );
 END_SQL
 	exit \$?
 END_DOCUMENT
@@ -121,8 +124,8 @@ END_DOCUMENT
 function install_scripts {
 	begin "Installing python scripts on Apple machine..."
 
-	INSTALL_LOCATION="${HOMEDIR_EXPANSION}/Applications/macbook"
-	scp -q -r $(pwd)/remoteCode/macbook "${USERNAME}"@"${IPADDR}":~/Applications
+	INSTALL_LOCATION="${HOMEDIR_EXPANSION}/Applications/node-server"
+	scp -q -r $(pwd)/remoteCode/node-server "${USERNAME}"@"${IPADDR}":~/Applications
 	OUTPUT=$?
 	if [ $OUTPUT -ne 0 ]
 	then
