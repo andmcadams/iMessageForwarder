@@ -225,7 +225,7 @@ app.post('/attachment', (req, res) => {
 })
 
 app.get('/update', (req, res) => {
-	var last_update_time = req.last_update_time
+	var last_update_time = req.body.last_update_time
 	if (last_update_time == null)
 		last_update_time = 0
   const pythonProcess = spawn('python', ["./getMessages.py", last_update_time]);
