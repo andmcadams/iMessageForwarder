@@ -1,6 +1,5 @@
 import threading
 import json
-import subprocess
 import time
 import sqlite3
 import os
@@ -93,10 +92,6 @@ def retrieveUpdates():
         conn.commit()
         conn.close()
         updateLastAccess(tempLastAccess)
-    except subprocess.CalledProcessError as e:
-        if e.returncode == -2:
-            print('Updater ssh call interrupted by SIGINT...')
-        print('Failed to connect via ssh...')
     except requests.exceptions.ConnectionError as e:
         print('Failed to hit update endpoint...')
         pass
