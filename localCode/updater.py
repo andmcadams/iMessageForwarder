@@ -4,6 +4,7 @@ import subprocess
 import time
 import sqlite3
 import os
+import requests
 
 dirname = os.path.dirname(__file__)
 secretsFile = os.path.join(dirname, 'secrets.json')
@@ -60,12 +61,8 @@ def retrieveUpdates():
     # missing messages that come in at the same time.
     tempLastAccess = int(time.time()) - 10
     try:
-        cmd = ["ssh {}@{} \"python {} {}\"".format(user, ip,
-                                                   retrieveScriptPath,
-                                                   lastAccess)]
-        output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL, check=True)
-        output = json.loads(output.stdout)
+        resp = requests.get('http://{}:3000/update'.format(ip), json={'last_update_time': lastAccess})
+        output = resp.json()
         attachmentPre = './attachments/{}'
         for attachment in output['attachment']:
             if not attachment['filename']:
@@ -75,10 +72,12 @@ def retrieveUpdates():
                 if not os.path.isdir(attachmentPre.format(rightFolder)):
                     os.mkdir(attachmentPre.format(rightFolder))
             if not os.path.isfile(attachmentPre.format(rightPath)):
-                cmd = ["scp {}@{}:\"{}\" ./attachments/{}".format(user, ip,
-                       escapeSpecialShell(attachment['filename']),
-                       escapeSpecialShell(rightPath))]
-                subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL)
+                attachmentResp = requests.get('http://{}:3000/attachment/{}'.format(
+                    ip, attachment['ROWID']))
+                if attachmentResp.status_code == 200:
+                    file = open(attachmentPre.format(rightPath), 'wb+')
+                    file.write(attachmentResp.content)
+                    file.close()
             attachment['filename'] = attachmentPre.format(rightPath)
 
         conn = sqlite3.connect('sms.db')
@@ -98,6 +97,9 @@ def retrieveUpdates():
         if e.returncode == -2:
             print('Updater ssh call interrupted by SIGINT...')
         print('Failed to connect via ssh...')
+    except requests.exceptions.ConnectionError as e:
+        print('Failed to hit update endpoint...')
+        pass
 
 
 class UpdaterThread(threading.Thread):
