@@ -864,6 +864,7 @@ class HttpMessagePasser():
     def __getattr__(self, name):
         return getattr(self.instance, name)
 
+
 class SshMessagePasser():
 
     class __SshMessagePasser(MessagePasser):
@@ -933,15 +934,6 @@ class SshMessagePasser():
 def createNewChat(chatId: int) -> 'Chat':
     chat = Chat(**{'ROWID': chatId})
     return chat
-
-
-def _ping() -> bool:
-    try:
-        output = subprocess.run(['nc', '-vz', '-w 1', ip, '22'],
-                                stderr=subprocess.DEVNULL, check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        return False
 
 
 class ReceivedNoIdException(Exception):
