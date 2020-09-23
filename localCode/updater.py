@@ -49,11 +49,6 @@ def translatePath(filename):
         rightPath = '{}/{}'.format(rightFolder, rightPath)
     return (rightFolder, rightPath)
 
-
-def escapeSpecialShell(pathname):
-    return pathname.replace(' ', '\\ ').replace('(', '\\(').replace(')', '\\)')
-
-
 def retrieveUpdates():
     oldTime = lastAccess
     # Sub 10 seconds (likely too much) to account for possibility of
