@@ -791,7 +791,8 @@ class MessagePasser(ABC):
         pass
 
     @abstractmethod
-    def sendReaction(self, chatId: int, associated_guid: str, associated_type: int) -> None:
+    def sendReaction(self, chatId: int, associated_guid: str,
+                     associated_type: int) -> None:
         pass
 
     @abstractmethod
@@ -801,8 +802,8 @@ class MessagePasser(ABC):
 
 class HttpMessagePasser():
 
-    class __HttpMessagePasser(MessagePasser):  
-        
+    class __HttpMessagePasser(MessagePasser):
+
         def connectionErrorDecorator(func):
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
@@ -821,7 +822,6 @@ class HttpMessagePasser():
             r = requests.post('http://{}:3000/message'.format(ip), json=data)
             return r
 
-
         @connectionErrorDecorator
         def sendChat(self, recipient_string: str, text: str):
             data = {
@@ -832,7 +832,8 @@ class HttpMessagePasser():
             return r
 
         @connectionErrorDecorator
-        def sendReaction(self, chatId: int, associated_guid: str, associated_type: int):
+        def sendReaction(self, chatId: int, associated_guid: str,
+                         associated_type: int):
             data = {
                 'chat_id': chatId,
                 'associated_guid': associated_guid,
@@ -859,10 +860,14 @@ class HttpMessagePasser():
 
     def __init__(self):
         if HttpMessagePasser.instance is None:
-            HttpMessagePasser.instance = HttpMessagePasser.__HttpMessagePasser()
+            HttpMessagePasser.instance = (HttpMessagePasser
+                                          .__HttpMessagePasser())
 
     def __getattr__(self, name):
         return getattr(self.instance, name)
+
+
+"""SshMessagePasser is deprecated. Do not use it!"""
 
 
 class SshMessagePasser():

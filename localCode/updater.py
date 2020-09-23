@@ -49,13 +49,17 @@ def translatePath(filename):
         rightPath = '{}/{}'.format(rightFolder, rightPath)
     return (rightFolder, rightPath)
 
+
 def retrieveUpdates():
     oldTime = lastAccess
     # Sub 10 seconds (likely too much) to account for possibility of
     # missing messages that come in at the same time.
     tempLastAccess = int(time.time()) - 10
     try:
-        resp = requests.get('http://{}:3000/update'.format(ip), json={'last_update_time': lastAccess})
+        resp = requests.get(
+            'http://{}:3000/update'.format(ip),
+            json={
+                'last_update_time': lastAccess})
         output = resp.json()
         attachmentPre = './attachments/{}'
         for attachment in output['attachment']:
@@ -66,8 +70,8 @@ def retrieveUpdates():
                 if not os.path.isdir(attachmentPre.format(rightFolder)):
                     os.mkdir(attachmentPre.format(rightFolder))
             if not os.path.isfile(attachmentPre.format(rightPath)):
-                attachmentResp = requests.get('http://{}:3000/attachment/{}'.format(
-                    ip, attachment['ROWID']))
+                attachmentResp = requests.get('http://{}:3000/attachment/{}'
+                                              .format(ip, attachment['ROWID']))
                 if attachmentResp.status_code == 200:
                     file = open(attachmentPre.format(rightPath), 'wb+')
                     file.write(attachmentResp.content)
