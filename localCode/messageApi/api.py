@@ -783,11 +783,19 @@ class MessageDatabase:
 class MessagePasser(ABC):
 
     @abstractmethod
-    def sendMessage(self) -> None:
+    def sendMessage(self, chatId: int, messageText: str) -> None:
         pass
 
     @abstractmethod
-    def sendReaction(self) -> None:
+    def sendChat(self, recipient_string: str, text: str) -> None:
+        pass
+
+    @abstractmethod
+    def sendReaction(self, chatId: int, associated_guid: str, associated_type: int) -> None:
+        pass
+
+    @abstractmethod
+    def sendRename(self, chatId: int, group_title: str) -> None:
         pass
 
 
@@ -811,7 +819,8 @@ class HttpMessagePasser():
                 'text': messageText
             }
             r = requests.post('http://{}:3000/message'.format(ip), json=data)
-            print('sent message')
+            return r
+
 
         @connectionErrorDecorator
         def sendChat(self, recipient_string: str, text: str):
@@ -820,6 +829,7 @@ class HttpMessagePasser():
                 'text': text
             }
             r = requests.post('http://{}:3000/chat'.format(ip), json=data)
+            return r
 
         @connectionErrorDecorator
         def sendReaction(self, chatId: int, associated_guid: str, associated_type: int):
@@ -829,6 +839,7 @@ class HttpMessagePasser():
                 'associated_type': associated_type
             }
             r = requests.post('http://{}:3000/reaction'.format(ip), json=data)
+            return r
 
         @connectionErrorDecorator
         def sendRename(self, chatId: int, group_title: str):
@@ -837,6 +848,7 @@ class HttpMessagePasser():
                 'group_title': group_title
             }
             r = requests.post('http://{}:3000/rename'.format(ip), json=data)
+            return r
 
         @connectionErrorDecorator
         def ping(self) -> bool:
