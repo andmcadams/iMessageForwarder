@@ -8,7 +8,7 @@ configData = require('./config.json')
 const app = express()
 const port = 3000
 
-const dbPath = './testDb.db'
+const dbPath = configData.queueLocation 
 const messageDbPath = configData.chatLocation
 
 app.use(bodyParser.json())
