@@ -2,11 +2,14 @@ const express = require('express')
 const sqlite = require('sqlite3')
 const bodyParser = require('body-parser')
 const spawn = require("child_process").spawn;
+const path = require('path');
+configData = require('./config.json')
 
 const app = express()
 const port = 3000
 
 const dbPath = './testDb.db'
+const messageDbPath = configData.chatLocation
 
 app.use(bodyParser.json())
 
@@ -144,6 +147,39 @@ app.post('/rename', (req, res) => {
 	})
 	db.close()
   }
+})
+
+app.get('/attachment/:id', (req, res) => {
+	var rowId = parseId(req.params.id)
+	if (isNaN(rowId))
+		return handleBadId(res)
+
+	let db = new sqlite.Database(messageDbPath)
+	db.get('SELECT filename FROM attachment WHERE ROWID = ?', rowId, function(err, row) {
+		if (err == null) {
+			if (row == null) {
+				return res.status(400).send({
+					error: 'No file could be found for ROWID ' + rowId
+				})
+			}
+			else {
+				filename = row.filename
+				if (filename[0] === '~')
+					filename = path.join(process.env.HOME, filename.slice(1));
+				res.sendFile(filename, (err) => {
+					if (err)
+						return res.status(400).send({
+							error: err
+						})
+				})
+			}
+		}
+		else
+			return res.status(400).send({
+				error: err
+			})
+	  })
+	  db.close()
 })
 
 app.get('/:table/:id', (req, res) => {
