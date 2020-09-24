@@ -865,6 +865,7 @@ class HttpMessagePasser():
     def __getattr__(self, name):
         return getattr(self.instance, name)
 
+
 def createNewChat(chatId: int) -> 'Chat':
     chat = Chat(**{'ROWID': chatId})
     return chat
