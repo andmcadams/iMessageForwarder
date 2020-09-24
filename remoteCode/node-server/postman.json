@@ -1,0 +1,1228 @@
+{
+	"info": {
+		"_postman_id": "de35e88b-93b7-4a5b-8988-264320163a6f",
+		"name": "iMessageForwarder",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "POST",
+			"item": [
+				{
+					"name": "message",
+					"item": [
+						{
+							"name": "Valid request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "01de5daf-2b31-4885-b7bc-3f08a8026de2",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Location header points to ROWID\", function() {",
+											"  pm.expect(pm.response.headers.get('Location')).to.eql('/message/' + pm.response.json().ROWID);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"chat_id\": 1,\n    \"text\": \"This is text.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/message",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"message"
+									]
+								},
+								"description": "A basic request."
+							},
+							"response": []
+						},
+						{
+							"name": "Missing chat_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4b29c591-406b-4ee1-a42b-7ccb96952658",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for missing keys\", function () {",
+											"    pm.response.json().error === 'Missing \"chat_id\" or \"text\" keys in request body.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"text\": \"This is text.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/message",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"message"
+									]
+								},
+								"description": "Request with a missing chat_id key in the body."
+							},
+							"response": []
+						},
+						{
+							"name": "Float chat_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "10be07c1-5927-419a-8b0d-8ff1b87500bd",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for invalid chat_id\", function () {",
+											"    pm.response.json().error === '\"chat_id\" value must be an integer.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"chat_id\": \"1.2\",\n    \"text\": \"This is text.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/message",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"message"
+									]
+								},
+								"description": "Request with a float chat_id value."
+							},
+							"response": []
+						},
+						{
+							"name": "String chat_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "70dd1ed1-3f16-467b-bb87-33ae39e35e75",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for invalid chat_id\", function () {",
+											"    pm.response.json().error === '\"chat_id\" value must be an integer.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"chat_id\": \"1malformed input\",\n    \"text\": \"This is text.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/message",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"message"
+									]
+								},
+								"description": "Request with a string chat_id value."
+							},
+							"response": []
+						}
+					],
+					"description": "Requests to message endpoint.",
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "chat",
+					"item": [
+						{
+							"name": "Valid request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "00f8cec6-1346-4e2a-b07f-3f8930e630e2",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Location header points to ROWID\", function() {",
+											"  pm.expect(pm.response.headers.get('Location')).to.eql('/chat/' + pm.response.json().ROWID);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"recipient_string\": \"+15127913058\",\n    \"text\": \"This is text.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/chat",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"chat"
+									]
+								},
+								"description": "A basic request."
+							},
+							"response": []
+						},
+						{
+							"name": "Missing recipient_string",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "ac643cef-bf38-4030-a5f1-d1bfe266a3f8",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for missing keys\", function () {",
+											"    pm.response.json().error === 'Missing \"recipient_string\" or \"text\" keys in request body.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"text\": \"This is text.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/chat",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"chat"
+									]
+								},
+								"description": "Request with a missing recipient_string key in the body."
+							},
+							"response": []
+						}
+					],
+					"description": "Requests to message endpoint.",
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "reaction",
+					"item": [
+						{
+							"name": "Valid request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bbd77b6a-9257-4881-83de-00316dfd2fdc",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Location header points to ROWID\", function() {",
+											"  pm.expect(pm.response.headers.get('Location')).to.eql('/reaction/' + pm.response.json().ROWID);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"chat_id\": 1,\n    \"associated_guid\": \"ABCD-1234-EF01-5678\",\n    \"associated_type\": 2000\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/reaction",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"reaction"
+									]
+								},
+								"description": "A basic request."
+							},
+							"response": []
+						},
+						{
+							"name": "Missing chat_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "570f1923-3aa8-47f0-b23d-fe6b39ec89f4",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for missing keys\", function () {",
+											"    pm.response.json().error === 'Missing \"chat_id\", \"associated_guid\", or \"associated_type\" keys in request body.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"associated_guid\": \"ABCD-1234-EF01-5678\",\n    \"associated_type\": 2000\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/reaction",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"reaction"
+									]
+								},
+								"description": "Request with a missing chat_id key in the body."
+							},
+							"response": []
+						},
+						{
+							"name": "Float chat_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "3b28ce28-6c79-4908-a43b-28847be5aa41",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for invalid chat_id\", function () {",
+											"    pm.response.json().error === '\"chat_id\" value must be an integer.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"chat_id\": \"1.2\",\n    \"associated_guid\": \"ABCD-1234-EF01-5678\",\n    \"associated_type\": 2000\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/reaction",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"reaction"
+									]
+								},
+								"description": "Request with a float chat_id value."
+							},
+							"response": []
+						},
+						{
+							"name": "String chat_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "70929aa3-c401-4c64-9fee-7677ca9fb94b",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for invalid chat_id\", function () {",
+											"    pm.response.json().error === '\"chat_id\" value must be an integer.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"chat_id\": \"1malformed input\",\n    \"associated_guid\": \"ABCD-1234-EF01-5678\",\n    \"associated_type\": 2000\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/reaction",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"reaction"
+									]
+								},
+								"description": "Request with a string chat_id value."
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "rename",
+					"item": [
+						{
+							"name": "Valid request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4b8f704f-a92b-4e02-aa6e-dfa44810885a",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Location header points to ROWID\", function() {",
+											"  pm.expect(pm.response.headers.get('Location')).to.eql('/rename/' + pm.response.json().ROWID);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"chat_id\": 1,\n    \"group_title\": \"New name\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/rename",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"rename"
+									]
+								},
+								"description": "A basic request."
+							},
+							"response": []
+						},
+						{
+							"name": "Missing chat_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "d4ae8626-50ba-4b5a-8305-2c6f4eec1396",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for missing keys\", function () {",
+											"    pm.response.json().error === 'Missing \"chat_id\", \"associated_guid\", or \"associated_type\" keys in request body.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"group_title\": \"New name\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/rename",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"rename"
+									]
+								},
+								"description": "Request with a missing chat_id key in the body."
+							},
+							"response": []
+						},
+						{
+							"name": "Float chat_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "852d9968-1b76-4a3e-8b5e-1ab0c767fd1c",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for invalid chat_id\", function () {",
+											"    pm.response.json().error === '\"chat_id\" value must be an integer.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"chat_id\": \"1.2\",\n    \"group_title\": \"New name\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/rename",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"rename"
+									]
+								},
+								"description": "Request with a float chat_id value."
+							},
+							"response": []
+						},
+						{
+							"name": "String chat_id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "9fb1aee0-1d69-448c-a70b-21012dd4b6b1",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for invalid chat_id\", function () {",
+											"    pm.response.json().error === '\"chat_id\" value must be an integer.';",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"chat_id\": \"1malformed input\",\n    \"group_title\": \"New name\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/rename",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"rename"
+									]
+								},
+								"description": "Request with a string chat_id value."
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "GET",
+			"item": [
+				{
+					"name": "message",
+					"item": [
+						{
+							"name": "Valid request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "11675624-36ad-4bfc-b209-5bdfff28fac7",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Correct data received\", function () {",
+											"    jsonTest = {",
+											"        \"sent\": false,",
+											"        \"row\": {",
+											"            \"ROWID\": 1,",
+											"            \"chat_id\": 1,",
+											"            \"text\": \"Test message, do not delete.\"",
+											"        }",
+											"    }",
+											"    pm.expect(pm.response.json()).to.eql(jsonTest);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/message/1",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"message",
+										"1"
+									]
+								},
+								"description": "A basic request."
+							},
+							"response": []
+						},
+						{
+							"name": "Bad ROWID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "efedff7a-7a5d-4f37-b1de-7aaba76668ee",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for malformed ROWID\", function () {",
+											"    pm.expect(pm.response.json().error).to.eql('\"ROWID\" value must be an integer.');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/message/1notId",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"message",
+										"1notId"
+									]
+								},
+								"description": "Request with a missing chat_id key in the body."
+							},
+							"response": []
+						}
+					],
+					"description": "Requests to message endpoint.",
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "chat",
+					"item": [
+						{
+							"name": "Valid request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "214feddd-caa3-415c-a08b-85dcc66d79dc",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Correct data received\", function () {",
+											"    jsonTest = {",
+											"        \"sent\": false,",
+											"        \"row\": {",
+											"            \"ROWID\": 1,",
+											"            \"recipient_string\": \"Test groupstring\",",
+											"            \"text\": \"Test message, do not delete.\"",
+											"        }",
+											"    }",
+											"    pm.expect(pm.response.json()).to.eql(jsonTest);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/chat/1",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"chat",
+										"1"
+									]
+								},
+								"description": "A basic request."
+							},
+							"response": []
+						},
+						{
+							"name": "Bad ROWID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bd9581cc-6472-4f11-b9f7-d1320001b829",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for malformed ROWID\", function () {",
+											"    pm.expect(pm.response.json().error).to.eql('\"ROWID\" value must be an integer.');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/chat/1notId",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"chat",
+										"1notId"
+									]
+								},
+								"description": "Request with a missing chat_id key in the body."
+							},
+							"response": []
+						}
+					],
+					"description": "Requests to message endpoint.",
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "reaction",
+					"item": [
+						{
+							"name": "Valid request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "b804aeb3-f22d-43cc-8076-f69c1697fd10",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Correct data received\", function () {",
+											"    jsonTest = {",
+											"        \"sent\": false,",
+											"        \"row\": {",
+											"            \"ROWID\": 1,",
+											"            \"chat_id\": 1,",
+											"            \"associated_guid\": \"TEST-MESS-AGE1\",",
+											"            \"associated_type\": 2000",
+											"        }",
+											"    }",
+											"    pm.expect(pm.response.json()).to.eql(jsonTest);",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/reaction/1",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"reaction",
+										"1"
+									]
+								},
+								"description": "A basic request."
+							},
+							"response": []
+						},
+						{
+							"name": "Bad ROWID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "203991f8-aeb4-4f4f-9aea-672ada8a0304",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for malformed ROWID\", function () {",
+											"    pm.expect(pm.response.json().error).to.eql('\"ROWID\" value must be an integer.');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/reaction/1notId",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"reaction",
+										"1notId"
+									]
+								},
+								"description": "Request with a missing chat_id key in the body."
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "rename",
+					"item": [
+						{
+							"name": "Valid request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd253b75-f2f6-40b4-8cb4-8493d9cdf082",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Correct data received\", function () {",
+											"    jsonTest = {",
+											"        \"sent\": false,",
+											"        \"row\": {",
+											"            \"ROWID\": 1,",
+											"            \"chat_id\": 1,",
+											"            \"group_title\": \"Test groupname\"",
+											"        }",
+											"    }",
+											"    pm.expect(pm.response.json()).to.eql(jsonTest);",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/rename/1",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"rename",
+										"1"
+									]
+								},
+								"description": "A basic request."
+							},
+							"response": []
+						},
+						{
+							"name": "Bad ROWID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "30f55603-4b2c-4c54-afab-90f886e76872",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message is for malformed ROWID\", function () {",
+											"    pm.expect(pm.response.json().error).to.eql('\"ROWID\" value must be an integer.');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3000/rename/1notId",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"rename",
+										"1notId"
+									]
+								},
+								"description": "Request with a missing chat_id key in the body."
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ping",
+					"item": [
+						{
+							"name": "Ping",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "95738561-f1f9-4fa5-95b9-2d9d3b7cfd2b",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Correct data received\", function () {",
+											"    jsonTest = {",
+											"        \"name\": \"iMessageForwarder\",",
+											"    }",
+											"    pm.expect(pm.response.json()).to.eql(jsonTest);",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3000/ping",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3000",
+									"path": [
+										"ping"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				}
+			],
+			"protocolProfileBehavior": {}
+		}
+	],
+	"protocolProfileBehavior": {}
+}
