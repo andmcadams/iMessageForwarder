@@ -20,6 +20,8 @@ jobs:
       - name: Node tests
         language: node_js
         node_js: "12.18.3"
+        env:
+            - NODE_ENV=development QUEUE_PATH='./testDb.db' CHAT_PATH=''
         install:
             - cd remoteCode/node-server
             - npm install
