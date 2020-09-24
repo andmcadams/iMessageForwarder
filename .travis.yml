@@ -21,9 +21,9 @@ jobs:
         language: node_js
         node_js: "12.18.3"
         install:
+            - cd remoteCode/node-server
             - npm install
         before_script:
-            - cd remoteCode/node-server
             - node --version
             - npm --version
             - node_modules/.bin/newman --version
