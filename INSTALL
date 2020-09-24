@@ -125,7 +125,18 @@ function install_scripts {
 	begin "Installing python scripts on Apple machine..."
 
 	INSTALL_LOCATION="${HOMEDIR_EXPANSION}/Applications/node-server"
-	scp -q -r $(pwd)/remoteCode/node-server "${USERNAME}"@"${IPADDR}":~/Applications
+
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+mkdir "${INSTALL_LOCATION}" 
+END_DOCUMENT
+
+	SOURCE_LOCATION="$(pwd)/remoteCode/node-server"
+	scp -q "${SOURCE_LOCATION}"/autoMessage.py "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
+	scp -q "${SOURCE_LOCATION}"/getMessages.py "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
+	scp -q "${SOURCE_LOCATION}"/index.js "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
+	scp -q "${SOURCE_LOCATION}"/package.json "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
+	scp -q "${SOURCE_LOCATION}"/package-lock.json "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
+	scp -q "${SOURCE_LOCATION}"/testDb.db "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
 	OUTPUT=$?
 	if [ $OUTPUT -ne 0 ]
 	then
