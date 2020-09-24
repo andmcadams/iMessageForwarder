@@ -131,17 +131,22 @@ mkdir "${INSTALL_LOCATION}"
 END_DOCUMENT
 
 	SOURCE_LOCATION="$(pwd)/remoteCode/node-server"
-	scp -q "${SOURCE_LOCATION}"/autoMessage.py "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
-	scp -q "${SOURCE_LOCATION}"/getMessages.py "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
-	scp -q "${SOURCE_LOCATION}"/index.js "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
-	scp -q "${SOURCE_LOCATION}"/package.json "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
-	scp -q "${SOURCE_LOCATION}"/package-lock.json "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
-	scp -q "${SOURCE_LOCATION}"/testDb.db "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
-	OUTPUT=$?
-	if [ $OUTPUT -ne 0 ]
+	FAIL_FLAG=0
+	FILES=( 'autoMessage.py' 'getMessages.py' 'index.js' 'package.json' 'package-lock.json' 'testDb.db' )
+
+	for FILE in "${FILES[@]}"
+	do
+		scp -q "${SOURCE_LOCATION}"/"${FILE}" "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
+		OUTPUT=$?
+		if [ $OUTPUT -ne 0 ]
+		then
+			fail "Error encountered transferring files to ${USERNAME}@${IPADDR}."
+			FAIL_FLAG=1
+		fi
+	done
+
+	if [ "$FAIL_FLAG" -eq "0" ]
 	then
-		fail "Error encountered transferring files to ${USERNAME}@${IPADDR}."
-	else
 		pass "Transferred remote code to macbook."
 		INSTALLED_SCRIPTS=1
 	fi
