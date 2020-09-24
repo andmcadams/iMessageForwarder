@@ -1,16 +1,32 @@
-env:
-    - DISPLAY=:99.0
-git:
-    depth: false
-before_install:
-    - sudo apt-get install -y python3-dev libasound2-dev
-language: python
-python:
-    - '3.8'
-services:
-    - xvfb
-script:
-    - export PYTHONPATH=$PYTHONPATH:/home/travis/build/andmcadams/iMessageForwarder/localCode
-    - coverage run -m unittest tests/*.py
-    - cd localCode
-    - ./runtests.sh
+jobs:
+    include:
+      - name: Python tests
+        env:
+            - DISPLAY=:99.0
+        git:
+            depth: false
+        before_install:
+            - sudo apt-get install -y python3-dev libasound2-dev
+        language: python
+        python:
+            - '3.8'
+        services:
+            - xvfb
+        script:
+            - export PYTHONPATH=$PYTHONPATH:/home/travis/build/andmcadams/iMessageForwarder/localCode
+            - coverage run -m unittest tests/*.py
+            - cd localCode
+            - ./runtests.sh
+      - name: Node tests
+        language: node_js
+        node_js: "12.18.3"
+        install:
+            - npm install newman
+        before_script:
+            - cd remoteCode/node-server
+            - node --version
+            - npm --version
+            - node_modules/.bin/newman --version
+        script:
+            - node_modules/.bin/newman run ./postman.json
+
