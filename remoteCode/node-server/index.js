@@ -149,7 +149,7 @@ app.post('/rename', (req, res) => {
   }
 })
 
-app.get('/attachment/:id', (req, res) => {
+app.get('/sent/attachment/:id', (req, res) => {
 	var rowId = parseId(req.params.id)
 	if (isNaN(rowId))
 		return handleBadId(res)
