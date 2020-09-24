@@ -71,7 +71,7 @@ def retrieveUpdates():
                     os.mkdir(attachmentPre.format(rightFolder))
             if not os.path.isfile(attachmentPre.format(rightPath)):
                 attachResp = requests.get('http://{}:3000/sent/attachment/{}'
-                                              .format(ip, attachment['ROWID']))
+                                          .format(ip, attachment['ROWID']))
                 if attachResp .status_code == 200:
                     file = open(attachmentPre.format(rightPath), 'wb+')
                     file.write(attachResp.content)
