@@ -31,5 +31,8 @@ jobs:
             - node_modules/.bin/newman --version
         script:
             - node index.js &
+            - echo "Giving node some time to spin up..."
+            - sleep 5
+            - echo "Starting newman..."
             - node_modules/.bin/newman run ./postman.json
 
