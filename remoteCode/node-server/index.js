@@ -3,13 +3,21 @@ const sqlite = require('sqlite3')
 const bodyParser = require('body-parser')
 const spawn = require("child_process").spawn;
 const path = require('path');
-configData = require('./config.json')
+
+require('dotenv').config();
 
 const app = express()
 const port = 3000
 
-const dbPath = configData.queueLocation 
-const messageDbPath = configData.chatLocation
+const dbPath = process.env.QUEUE_PATH
+const messageDbPath = process.env.CHAT_PATH
+
+if (dbPath == null || messageDbPath == null) {
+	console.log('Missing required environment variables! Check .env for proper usage.')
+	console.log(`QUEUE_PATH=${dbPath}`)
+	console.log(`CHAT_PATH=${messageDbPath}`)
+	process.exit(1)
+}
 
 app.use(bodyParser.json())
 
