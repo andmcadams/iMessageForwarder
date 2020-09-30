@@ -31,9 +31,11 @@ jobs:
             - node_modules/.bin/newman --version
         script:
             - openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt -subj '/CN=localhost'
+            - openssl req -newkey rsa:2048 -keyout client.key -out client.csr -nodes -days 365 -subj "/CN=iMessageForwarderClient"
+            - openssl x509 -req -in client.csr -CA server.crt -CAkey server.key -out client.crt -set_serial 01 -days 365
             - node index.js &
             - echo "Giving node some time to spin up..."
             - sleep 5
             - echo "Starting newman..."
-            - node_modules/.bin/newman run ./postman.json --insecure
+            - node_modules/.bin/newman run ./postman.json --insecure --ssl-client-key client.key --ssl-client-cert client.crt
 
