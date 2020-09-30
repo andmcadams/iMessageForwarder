@@ -131,8 +131,17 @@ function create_certs {
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 cd "${INSTALL_LOCATION}"
 openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt -subj '/CN=localhost' -extensions SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=\"DNS:localhost, IP:${IPADDR}\""))
+openssl req -newkey rsa:2048 -keyout client.key -out client.csr -nodes -subj "/CN=iMessageForwarderClient"
+openssl x509 -req -in client.csr -CA server.crt -CAkey server.key -out client.crt -set_serial 01 -days 365
+rm client.csr
 END_DOCUMENT
 	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/server.crt ./remoteCode/node-server/server.crt
+	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.crt ./remoteCode/node-server/client.crt
+	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.key ./remoteCode/node-server/client.key
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+cd "${INSTALL_LOCATION}"
+rm client.key client.crt
+END_DOCUMENT
 }
 
 function install_scripts {
