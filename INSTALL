@@ -135,9 +135,9 @@ openssl req -newkey rsa:2048 -keyout client.key -out client.csr -nodes -subj "/C
 openssl x509 -req -in client.csr -CA server.crt -CAkey server.key -out client.crt -set_serial 01 -days 365
 rm client.csr
 END_DOCUMENT
-	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/server.crt ./remoteCode/node-server/server.crt
-	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.crt ./remoteCode/node-server/client.crt
-	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.key ./remoteCode/node-server/client.key
+	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/server.crt ./localCode/server.crt
+	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.crt ./localCode/client.crt
+	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.key ./localCode/client.key
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 cd "${INSTALL_LOCATION}"
 rm client.key client.crt
