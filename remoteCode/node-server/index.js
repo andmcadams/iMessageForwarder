@@ -252,7 +252,10 @@ var key = fs.readFileSync('./server.key', 'utf8')
 var cert = fs.readFileSync('./server.crt', 'utf8')
 var credentials = {
 	key: key,
-	cert: cert
+	cert: cert,
+	requestCert: true,
+	rejectUnauthorized: true,
+	ca: [cert]
 }
 
 var httpsServer = https.createServer(credentials, app);
