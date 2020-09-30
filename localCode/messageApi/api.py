@@ -14,12 +14,15 @@ from dataclasses import dataclass
 
 
 def initialize(pathToDb, secretsFile):
-    global dbPath, user, ip
+    global dbPath, user, ip, serverCrt, clientCrt, clientKey
 
     dbPath = pathToDb
     secrets = json.load(open(secretsFile))
     user = secrets['user']
     ip = secrets['ip']
+    serverCrt = secrets['serverCrt']
+    clientCrt = secrets['clientCrt']
+    clientKey = secrets['clientKey']
 
 
 class MessageList(dict):
@@ -818,7 +821,8 @@ class HttpMessagePasser():
                 'chat_id': chatId,
                 'text': messageText
             }
-            r = requests.post('http://{}:3000/message'.format(ip), json=data)
+            r = requests.post('https://{}:3000/message'.format(ip), json=data, verify=serverCrt,
+                              cert=(clientCrt, clientKey))
             return r
 
         @connectionErrorDecorator
@@ -827,7 +831,8 @@ class HttpMessagePasser():
                 'recipient_string': recipient_string,
                 'text': text
             }
-            r = requests.post('http://{}:3000/chat'.format(ip), json=data)
+            r = requests.post('https://{}:3000/chat'.format(ip), json=data, verify=serverCrt,
+                              cert=(clientCrt, clientKey))
             return r
 
         @connectionErrorDecorator
@@ -838,7 +843,8 @@ class HttpMessagePasser():
                 'associated_guid': associated_guid,
                 'associated_type': associated_type
             }
-            r = requests.post('http://{}:3000/reaction'.format(ip), json=data)
+            r = requests.post('https://{}:3000/reaction'.format(ip), json=data, verify=serverCrt,
+                              cert=(clientCrt, clientKey))
             return r
 
         @connectionErrorDecorator
@@ -847,12 +853,14 @@ class HttpMessagePasser():
                 'chat_id': chatId,
                 'group_title': group_title
             }
-            r = requests.post('http://{}:3000/rename'.format(ip), json=data)
+            r = requests.post('https://{}:3000/rename'.format(ip), json=data, verify=serverCrt,
+                              cert=(clientCrt, clientKey))
             return r
 
         @connectionErrorDecorator
         def ping(self) -> bool:
-            r = requests.get('http://{}:3000/ping'.format(ip))
+            r = requests.get('https://{}:3000/ping'.format(ip), verify=serverCrt,
+                              cert=(clientCrt, clientKey))
             return r.status_code == 200
 
     instance = None

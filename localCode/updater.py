@@ -13,7 +13,9 @@ user = secrets['user']
 ip = secrets['ip']
 scriptPath = secrets['scriptPath']
 retrieveScriptPath = secrets['retrieveScriptPath']
-
+serverCrt = secrets['serverCrt']
+clientCrt = secrets['clientCrt']
+clientKey = secrets['clientKey']
 
 def updateLastAccess(newTime):
     global lastAccess
@@ -57,9 +59,10 @@ def retrieveUpdates():
     tempLastAccess = int(time.time()) - 10
     try:
         resp = requests.get(
-            'http://{}:3000/update'.format(ip),
+            'https://{}:3000/update'.format(ip),
             json={
-                'last_update_time': lastAccess})
+                'last_update_time': lastAccess},
+            verify=serverCrt, cert=(clientCrt, clientKey))
         output = resp.json()
         attachmentPre = './attachments/{}'
         for attachment in output['attachment']:
@@ -70,8 +73,10 @@ def retrieveUpdates():
                 if not os.path.isdir(attachmentPre.format(rightFolder)):
                     os.mkdir(attachmentPre.format(rightFolder))
             if not os.path.isfile(attachmentPre.format(rightPath)):
-                attachResp = requests.get('http://{}:3000/sent/attachment/{}'
-                                          .format(ip, attachment['ROWID']))
+                attachResp = requests.get('https://{}:3000/sent/attachment/{}'
+                                          .format(ip, attachment['ROWID']),
+                                          verify=serverCrt,
+                                          cert=(clientCrt, clientKey))
                 if attachResp .status_code == 200:
                     file = open(attachmentPre.format(rightPath), 'wb+')
                     file.write(attachResp.content)
