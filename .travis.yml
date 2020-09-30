@@ -30,9 +30,10 @@ jobs:
             - npm --version
             - node_modules/.bin/newman --version
         script:
+            - openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt -subj '/CN=localhost'
             - node index.js &
             - echo "Giving node some time to spin up..."
             - sleep 5
             - echo "Starting newman..."
-            - node_modules/.bin/newman run ./postman.json
+            - node_modules/.bin/newman run ./postman.json --insecure
 
