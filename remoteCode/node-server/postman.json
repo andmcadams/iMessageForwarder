@@ -44,8 +44,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/message",
-									"protocol": "http",
+									"raw": "https://localhost:3000/message",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -91,8 +91,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/message",
-									"protocol": "http",
+									"raw": "https://localhost:3000/message",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -138,8 +138,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/message",
-									"protocol": "http",
+									"raw": "https://localhost:3000/message",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -185,8 +185,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/message",
-									"protocol": "http",
+									"raw": "https://localhost:3000/message",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -240,8 +240,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/chat",
-									"protocol": "http",
+									"raw": "https://localhost:3000/chat",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -287,8 +287,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/chat",
-									"protocol": "http",
+									"raw": "https://localhost:3000/chat",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -342,8 +342,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/reaction",
-									"protocol": "http",
+									"raw": "https://localhost:3000/reaction",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -389,8 +389,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/reaction",
-									"protocol": "http",
+									"raw": "https://localhost:3000/reaction",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -436,8 +436,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/reaction",
-									"protocol": "http",
+									"raw": "https://localhost:3000/reaction",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -483,8 +483,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/reaction",
-									"protocol": "http",
+									"raw": "https://localhost:3000/reaction",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -537,8 +537,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/rename",
-									"protocol": "http",
+									"raw": "https://localhost:3000/rename",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -584,8 +584,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/rename",
-									"protocol": "http",
+									"raw": "https://localhost:3000/rename",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -631,8 +631,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/rename",
-									"protocol": "http",
+									"raw": "https://localhost:3000/rename",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -678,8 +678,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/rename",
-									"protocol": "http",
+									"raw": "https://localhost:3000/rename",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -749,8 +749,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/message/1",
-									"protocol": "http",
+									"raw": "https://localhost:3000/message/1",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -800,8 +800,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/message/1notId",
-									"protocol": "http",
+									"raw": "https://localhost:3000/message/1notId",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -867,8 +867,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/chat/1",
-									"protocol": "http",
+									"raw": "https://localhost:3000/chat/1",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -918,8 +918,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/chat/1notId",
-									"protocol": "http",
+									"raw": "https://localhost:3000/chat/1notId",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -986,8 +986,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/reaction/1",
-									"protocol": "http",
+									"raw": "https://localhost:3000/reaction/1",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -1037,8 +1037,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/reaction/1notId",
-									"protocol": "http",
+									"raw": "https://localhost:3000/reaction/1notId",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -1103,8 +1103,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/rename/1",
-									"protocol": "http",
+									"raw": "https://localhost:3000/rename/1",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -1154,8 +1154,8 @@
 									}
 								},
 								"url": {
-									"raw": "http://localhost:3000/rename/1notId",
-									"protocol": "http",
+									"raw": "https://localhost:3000/rename/1notId",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
@@ -1203,8 +1203,8 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "http://localhost:3000/ping",
-									"protocol": "http",
+									"raw": "https://localhost:3000/ping",
+									"protocol": "https",
 									"host": [
 										"localhost"
 									],
