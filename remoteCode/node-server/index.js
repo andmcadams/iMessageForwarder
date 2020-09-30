@@ -3,6 +3,8 @@ const sqlite = require('sqlite3')
 const bodyParser = require('body-parser')
 const spawn = require("child_process").spawn;
 const path = require('path');
+const https = require('https')
+const fs = require('fs')
 
 require('dotenv').config();
 
@@ -245,7 +247,16 @@ app.get('/update', (req, res) => {
   })
 })
 
-app.listen(port, () => {
+
+var key = fs.readFileSync('./server.key', 'utf8')
+var cert = fs.readFileSync('./server.crt', 'utf8')
+var credentials = {
+	key: key,
+	cert: cert
+}
+
+var httpsServer = https.createServer(credentials, app);
+httpsServer.listen(port, () => {
   console.log(`iMessageForwarder listening at http://localhost:${port}`)
   console.log(`Path to queue:${dbPath}`)
   console.log(`Path to message database:${messageDbPath}`)
