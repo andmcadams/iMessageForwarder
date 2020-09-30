@@ -25,6 +25,8 @@ function main {
 
 	install_scripts
 
+	create_certs
+
 	update_macbook_chatdb
 
 	create_incoming_message_db
@@ -121,6 +123,18 @@ END_DOCUMENT
 	fi
 }
 
+function create_certs {
+	begin "Creating certificates for https..."
+
+	# Macs typically use libreSSL instead of openSSL. Older versions lack the -addext option for the req command.
+	# See https://github.com/libressl-portable/portable/issues/544
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+cd "${INSTALL_LOCATION}"
+openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt -subj '/CN=localhost' -extensions SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=\"DNS:localhost, IP:${IPADDR}\""))
+END_DOCUMENT
+	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/server.crt ./remoteCode/node-server/server.crt
+}
+
 function install_scripts {
 	begin "Installing python scripts on Apple machine..."
 
@@ -144,6 +158,10 @@ END_DOCUMENT
 			FAIL_FLAG=1
 		fi
 	done
+
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+cd "${INSTALL_LOCATION}" && npm install
+END_DOCUMENT
 
 	if [ "$FAIL_FLAG" -eq "0" ]
 	then
