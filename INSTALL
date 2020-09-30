@@ -45,7 +45,10 @@ function create_secrets_json {
 	"user": "${USERNAME}",
 	"ip": "${IPADDR}",
 	"scriptPath": "${HOMEDIR_EXPANSION}/Applications/node-server/addOutgoing.py",
-	"retrieveScriptPath": "${HOMEDIR_EXPANSION}/Applications/node-server/getMessages.py"
+	"retrieveScriptPath": "${HOMEDIR_EXPANSION}/Applications/node-server/getMessages.py",
+	"serverCrt": "./server.crt",
+	"clientCrt": "./client.crt",
+	"clientKey": "./client.key"
 }
 END_DOCUMENT
 
