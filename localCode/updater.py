@@ -17,6 +17,7 @@ serverCrt = secrets['serverCrt']
 clientCrt = secrets['clientCrt']
 clientKey = secrets['clientKey']
 
+
 def updateLastAccess(newTime):
     global lastAccess
     lastAccess = newTime
