@@ -5,6 +5,8 @@ import json
 import time
 import subprocess
 import threading
+import requests
+import functools
 from . import sqlcommands
 from typing import List, Type, Dict, Any, Optional, Tuple
 from abc import ABC, abstractmethod
@@ -12,13 +14,15 @@ from dataclasses import dataclass
 
 
 def initialize(pathToDb, secretsFile):
-    global dbPath, user, ip, scriptPath
+    global dbPath, user, ip, serverCrt, clientCrt, clientKey
 
     dbPath = pathToDb
     secrets = json.load(open(secretsFile))
     user = secrets['user']
     ip = secrets['ip']
-    scriptPath = secrets['scriptPath']
+    serverCrt = secrets['serverCrt']
+    clientCrt = secrets['clientCrt']
+    clientKey = secrets['clientKey']
 
 
 class MessageList(dict):
@@ -610,7 +614,10 @@ class Chat:
             mp: 'MessagePasser',
             messageText: str,
             recipientString: str) -> None:
-        mp.sendMessage(self.chatId, messageText, recipientString)
+        if recipientString == '' or recipientString is None:
+            mp.sendMessage(self.chatId, messageText)
+        else:
+            mp.sendChat(recipientString, messageText)
         msg = Message(**{'ROWID': self.messagePreviewId,
                          'text': messageText, 'date':
                          int(time.time()), 'date_read': 0,
@@ -778,75 +785,90 @@ class MessageDatabase:
 class MessagePasser(ABC):
 
     @abstractmethod
-    def sendMessage(self) -> None:
+    def sendMessage(self, chatId: int, messageText: str) -> None:
         pass
 
     @abstractmethod
-    def sendReaction(self) -> None:
+    def sendChat(self, recipient_string: str, text: str) -> None:
+        pass
+
+    @abstractmethod
+    def sendReaction(self, chatId: int, associated_guid: str,
+                     associated_type: int) -> None:
+        pass
+
+    @abstractmethod
+    def sendRename(self, chatId: int, group_title: str) -> None:
         pass
 
 
-class SshMessagePasser():
+class HttpMessagePasser():
 
-    class __SshMessagePasser(MessagePasser):
+    class __HttpMessagePasser(MessagePasser):
 
-        def __init__(self, timeout):
-            self.__timeout = timeout
+        def connectionErrorDecorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                try:
+                    return func(*args, **kwargs)
+                except requests.exceptions.ConnectionError as e:
+                    return False
+            return wrapper
 
-        @property
-        def timeout(self):
-            return self.__timeout
+        @connectionErrorDecorator
+        def sendMessage(self, chatId: int, messageText: str):
+            data = {
+                'chat_id': chatId,
+                'text': messageText
+            }
+            r = requests.post('https://{}:3000/message'.format(ip), json=data,
+                              verify=serverCrt, cert=(clientCrt, clientKey))
+            return r
 
-        @timeout.setter
-        def timeout(self, timeout):
-            self.__timeout = timeout
+        @connectionErrorDecorator
+        def sendChat(self, recipient_string: str, text: str):
+            data = {
+                'recipient_string': recipient_string,
+                'text': text
+            }
+            r = requests.post('https://{}:3000/chat'.format(ip), json=data,
+                              verify=serverCrt, cert=(clientCrt, clientKey))
+            return r
 
-        def sendMessage(self, chatId: int, messageText: str,
-                        recipientString: str) -> None:
-            text = messageText.replace("'", "\\'")
-            recipients = recipientString.replace('\'', '\\\'')
-            self.sendData(messageCode=0, chatId=chatId, messageText=text,
-                          recipientString=recipients)
+        @connectionErrorDecorator
+        def sendReaction(self, chatId: int, associated_guid: str,
+                         associated_type: int):
+            data = {
+                'chat_id': chatId,
+                'associated_guid': associated_guid,
+                'associated_type': associated_type
+            }
+            r = requests.post('https://{}:3000/reaction'.format(ip), json=data,
+                              verify=serverCrt, cert=(clientCrt, clientKey))
+            return r
 
-        def sendReaction(
-                self,
-                chatId: int,
-                messageId: int,
-                reactionType: int) -> None:
-            self.sendData(messageCode=1, chatId=chatId, messageId=messageId,
-                          reactionType=reactionType)
+        @connectionErrorDecorator
+        def sendRename(self, chatId: int, group_title: str):
+            data = {
+                'chat_id': chatId,
+                'group_title': group_title
+            }
+            r = requests.post('https://{}:3000/rename'.format(ip), json=data,
+                              verify=serverCrt, cert=(clientCrt, clientKey))
+            return r
 
-        def sendData(
-                self,
-                messageCode: int,
-                chatId: int,
-                messageText: str = '',
-                messageId: int = 0,
-                reactionType: int = 0,
-                recipientString: str = '') -> None:
-            cmd = [
-                "ssh",
-                "{}@{}".format(
-                    user,
-                    ip),
-                "python {} $\'{}\' \'{}\' \'{}\' \'{}\' \'{}\' $\'{}\'".format(
-                    scriptPath,
-                    messageText,
-                    chatId,
-                    messageCode,
-                    messageId,
-                    reactionType,
-                    recipientString)]
-            subprocess.run(cmd, stderr=subprocess.DEVNULL)
+        @connectionErrorDecorator
+        def ping(self) -> bool:
+            r = requests.get('https://{}:3000/ping'.format(ip),
+                             verify=serverCrt, cert=(clientCrt, clientKey))
+            return r.status_code == 200
 
     instance = None
 
-    def __init__(self, timeout):
-        if SshMessagePasser.instance is None:
-            SshMessagePasser.instance = SshMessagePasser.__SshMessagePasser(
-                timeout)
-        else:
-            SshMessagePasser.instance.timeout = timeout
+    def __init__(self):
+        if HttpMessagePasser.instance is None:
+            HttpMessagePasser.instance = (HttpMessagePasser
+                                          .__HttpMessagePasser())
 
     def __getattr__(self, name):
         return getattr(self.instance, name)
@@ -855,15 +877,6 @@ class SshMessagePasser():
 def createNewChat(chatId: int) -> 'Chat':
     chat = Chat(**{'ROWID': chatId})
     return chat
-
-
-def _ping() -> bool:
-    try:
-        output = subprocess.run(['nc', '-vz', '-w 1', ip, '22'],
-                                stderr=subprocess.DEVNULL, check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        return False
 
 
 class ReceivedNoIdException(Exception):

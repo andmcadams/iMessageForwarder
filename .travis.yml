@@ -1,16 +1,41 @@
-env:
-    - DISPLAY=:99.0
-git:
-    depth: false
-before_install:
-    - sudo apt-get install -y python3-dev libasound2-dev
-language: python
-python:
-    - '3.8'
-services:
-    - xvfb
-script:
-    - export PYTHONPATH=$PYTHONPATH:/home/travis/build/andmcadams/iMessageForwarder/localCode
-    - coverage run -m unittest tests/*.py
-    - cd localCode
-    - ./runtests.sh
+jobs:
+    include:
+      - name: Python tests
+        env:
+            - DISPLAY=:99.0
+        git:
+            depth: false
+        before_install:
+            - sudo apt-get install -y python3-dev libasound2-dev
+        language: python
+        python:
+            - '3.8'
+        services:
+            - xvfb
+        script:
+            - export PYTHONPATH=$PYTHONPATH:/home/travis/build/andmcadams/iMessageForwarder/localCode
+            - coverage run -m unittest tests/*.py
+            - cd localCode
+            - ./runtests.sh
+      - name: Node tests
+        language: node_js
+        node_js: "12.18.3"
+        env:
+            - NODE_ENV=development QUEUE_PATH='./testDb.db' CHAT_PATH=''
+        install:
+            - cd remoteCode/node-server
+            - npm install
+        before_script:
+            - node --version
+            - npm --version
+            - node_modules/.bin/newman --version
+        script:
+            - openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt -subj '/CN=localhost'
+            - openssl req -newkey rsa:2048 -keyout client.key -out client.csr -nodes -days 365 -subj "/CN=iMessageForwarderClient"
+            - openssl x509 -req -in client.csr -CA server.crt -CAkey server.key -out client.crt -set_serial 01 -days 365
+            - node index.js &
+            - echo "Giving node some time to spin up..."
+            - sleep 5
+            - echo "Starting newman..."
+            - node_modules/.bin/newman run ./postman.json --insecure --ssl-client-key client.key --ssl-client-cert client.crt
+

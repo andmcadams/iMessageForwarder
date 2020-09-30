@@ -25,6 +25,8 @@ function main {
 
 	install_scripts
 
+	create_certs
+
 	update_macbook_chatdb
 
 	create_incoming_message_db
@@ -42,8 +44,11 @@ function create_secrets_json {
 {
 	"user": "${USERNAME}",
 	"ip": "${IPADDR}",
-	"scriptPath": "${HOMEDIR_EXPANSION}/Applications/macbook/addOutgoing.py",
-	"retrieveScriptPath": "${HOMEDIR_EXPANSION}/Applications/macbook/getMessages.py"
+	"scriptPath": "${HOMEDIR_EXPANSION}/Applications/node-server/addOutgoing.py",
+	"retrieveScriptPath": "${HOMEDIR_EXPANSION}/Applications/node-server/getMessages.py",
+	"serverCrt": "./server.crt",
+	"clientCrt": "./client.crt",
+	"clientKey": "./client.key"
 }
 END_DOCUMENT
 
@@ -55,7 +60,7 @@ function create_remote_config {
 	begin "Creating config.json on Apple machine..."
 
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
-		cat << END_CAT > "${HOMEDIR_EXPANSION}"/Applications/macbook/config.json
+		cat << END_CAT > "${HOMEDIR_EXPANSION}"/Applications/node-server/config.json
 {
         "queueLocation": "${HOMEDIR_EXPANSION}/Library/Messages/msgqueue.db",
         "chatLocation": "${HOMEDIR_EXPANSION}/Library/Messages/chat.db"
@@ -66,9 +71,9 @@ END_DOCUMENT
 
 	if [ $OUTPUT -ne 0 ]
 	then
-		fail "Could not create config.json at ${HOMEDIR_EXPANSION}/Applications/macbook/config.json"
+		fail "Could not create config.json at ${HOMEDIR_EXPANSION}/Applications/node-server/config.json"
 	else
-		pass "Created config.json at ${HOMEDIR_EXPANSION}/Applications/macbook/config.json"
+		pass "Created config.json at ${HOMEDIR_EXPANSION}/Applications/node-server/config.json"
 		CREATED_REMOTE_CONFIG=1
 	fi
 }
@@ -78,7 +83,10 @@ function create_incoming_message_db {
 
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 		sqlite3 "${HOMEDIR_EXPANSION}"/Library/Messages/msgqueue.db << END_SQL
-			CREATE TABLE IF NOT EXISTS outgoing ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, text text, chatId INTEGER, assocGUID text, assocType INTEGER, messageCode INTEGER );
+CREATE TABLE IF NOT EXISTS message ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, text TEXT );
+CREATE TABLE IF NOT EXISTS reaction ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, associated_guid TEXT, associated_type INTEGER );
+CREATE TABLE IF NOT EXISTS rename ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, group_title TEXT );
+CREATE TABLE IF NOT EXISTS chat ( ROWID INTEGER PRIMARY KEY AUTOINCREMENT, recipient_string TEXT, text TEXT );
 END_SQL
 	exit \$?
 END_DOCUMENT
@@ -118,16 +126,57 @@ END_DOCUMENT
 	fi
 }
 
+function create_certs {
+	begin "Creating certificates for https..."
+
+	# Macs typically use libreSSL instead of openSSL. Older versions lack the -addext option for the req command.
+	# See https://github.com/libressl-portable/portable/issues/544
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+cd "${INSTALL_LOCATION}"
+openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt -subj '/CN=localhost' -extensions SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=\"DNS:localhost, IP:${IPADDR}\""))
+openssl req -newkey rsa:2048 -keyout client.key -out client.csr -nodes -subj "/CN=iMessageForwarderClient"
+openssl x509 -req -in client.csr -CA server.crt -CAkey server.key -out client.crt -set_serial 01 -days 365
+rm client.csr
+END_DOCUMENT
+	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/server.crt ./localCode/server.crt
+	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.crt ./localCode/client.crt
+	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.key ./localCode/client.key
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+cd "${INSTALL_LOCATION}"
+rm client.key client.crt
+END_DOCUMENT
+}
+
 function install_scripts {
 	begin "Installing python scripts on Apple machine..."
 
-	INSTALL_LOCATION="${HOMEDIR_EXPANSION}/Applications/macbook"
-	scp -q -r $(pwd)/remoteCode/macbook "${USERNAME}"@"${IPADDR}":~/Applications
-	OUTPUT=$?
-	if [ $OUTPUT -ne 0 ]
+	INSTALL_LOCATION="${HOMEDIR_EXPANSION}/Applications/node-server"
+
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+mkdir "${INSTALL_LOCATION}" 
+END_DOCUMENT
+
+	SOURCE_LOCATION="$(pwd)/remoteCode/node-server"
+	FAIL_FLAG=0
+	FILES=( 'autoMessage.py' 'getMessages.py' 'index.js' 'package.json' 'package-lock.json' 'testDb.db' )
+
+	for FILE in "${FILES[@]}"
+	do
+		scp -q "${SOURCE_LOCATION}"/"${FILE}" "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
+		OUTPUT=$?
+		if [ $OUTPUT -ne 0 ]
+		then
+			fail "Error encountered transferring files to ${USERNAME}@${IPADDR}."
+			FAIL_FLAG=1
+		fi
+	done
+
+	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
+cd "${INSTALL_LOCATION}" && npm install
+END_DOCUMENT
+
+	if [ "$FAIL_FLAG" -eq "0" ]
 	then
-		fail "Error encountered transferring files to ${USERNAME}@${IPADDR}."
-	else
 		pass "Transferred remote code to macbook."
 		INSTALLED_SCRIPTS=1
 	fi

@@ -1,9 +1,9 @@
 import threading
 import json
-import subprocess
 import time
 import sqlite3
 import os
+import requests
 
 dirname = os.path.dirname(__file__)
 secretsFile = os.path.join(dirname, 'secrets.json')
@@ -13,6 +13,9 @@ user = secrets['user']
 ip = secrets['ip']
 scriptPath = secrets['scriptPath']
 retrieveScriptPath = secrets['retrieveScriptPath']
+serverCrt = secrets['serverCrt']
+clientCrt = secrets['clientCrt']
+clientKey = secrets['clientKey']
 
 
 def updateLastAccess(newTime):
@@ -50,22 +53,18 @@ def translatePath(filename):
     return (rightFolder, rightPath)
 
 
-def escapeSpecialShell(pathname):
-    return pathname.replace(' ', '\\ ').replace('(', '\\(').replace(')', '\\)')
-
-
 def retrieveUpdates():
     oldTime = lastAccess
     # Sub 10 seconds (likely too much) to account for possibility of
     # missing messages that come in at the same time.
     tempLastAccess = int(time.time()) - 10
     try:
-        cmd = ["ssh {}@{} \"python {} {}\"".format(user, ip,
-                                                   retrieveScriptPath,
-                                                   lastAccess)]
-        output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL, check=True)
-        output = json.loads(output.stdout)
+        resp = requests.get(
+            'https://{}:3000/update'.format(ip),
+            json={
+                'last_update_time': lastAccess},
+            verify=serverCrt, cert=(clientCrt, clientKey))
+        output = resp.json()
         attachmentPre = './attachments/{}'
         for attachment in output['attachment']:
             if not attachment['filename']:
@@ -75,10 +74,14 @@ def retrieveUpdates():
                 if not os.path.isdir(attachmentPre.format(rightFolder)):
                     os.mkdir(attachmentPre.format(rightFolder))
             if not os.path.isfile(attachmentPre.format(rightPath)):
-                cmd = ["scp {}@{}:\"{}\" ./attachments/{}".format(user, ip,
-                       escapeSpecialShell(attachment['filename']),
-                       escapeSpecialShell(rightPath))]
-                subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL)
+                attachResp = requests.get('https://{}:3000/sent/attachment/{}'
+                                          .format(ip, attachment['ROWID']),
+                                          verify=serverCrt,
+                                          cert=(clientCrt, clientKey))
+                if attachResp .status_code == 200:
+                    file = open(attachmentPre.format(rightPath), 'wb+')
+                    file.write(attachResp.content)
+                    file.close()
             attachment['filename'] = attachmentPre.format(rightPath)
 
         conn = sqlite3.connect('sms.db')
@@ -94,10 +97,9 @@ def retrieveUpdates():
         conn.commit()
         conn.close()
         updateLastAccess(tempLastAccess)
-    except subprocess.CalledProcessError as e:
-        if e.returncode == -2:
-            print('Updater ssh call interrupted by SIGINT...')
-        print('Failed to connect via ssh...')
+    except requests.exceptions.ConnectionError as e:
+        print('Failed to hit update endpoint...')
+        pass
 
 
 class UpdaterThread(threading.Thread):

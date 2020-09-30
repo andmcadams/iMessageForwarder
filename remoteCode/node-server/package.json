@@ -1,0 +1,22 @@
+{
+  "name": "node-server",
+  "version": "1.0.0",
+  "description": "A web app for the iMessageForwarded",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Andrew McAdams",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "newman": "^5.2.0",
+    "nodemon": "^2.0.4",
+    "sqlite3": "^5.0.0"
+  },
+  "devDependencies": {
+    "standard": "^14.3.4"
+  }
+}
