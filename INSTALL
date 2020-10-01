@@ -60,11 +60,11 @@ function create_remote_config {
 	begin "Creating config.json on Apple machine..."
 
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
-		cat << END_CAT > "${HOMEDIR_EXPANSION}"/Applications/node-server/config.json
-{
-        "queueLocation": "${HOMEDIR_EXPANSION}/Library/Messages/msgqueue.db",
-        "chatLocation": "${HOMEDIR_EXPANSION}/Library/Messages/chat.db"
-}
+		cat << END_CAT > "${HOMEDIR_EXPANSION}"/Applications/node-server/.env
+QUEUE_LOCATION="${HOMEDIR_EXPANSION}/Library/Messages/msgqueue.db",
+CHAT_LOCATION="${HOMEDIR_EXPANSION}/Library/Messages/chat.db"
+END_CAT
+	exit \$?
 END_DOCUMENT
 	
 	OUTPUT=$?
@@ -138,9 +138,9 @@ openssl req -newkey rsa:2048 -keyout client.key -out client.csr -nodes -subj "/C
 openssl x509 -req -in client.csr -CA server.crt -CAkey server.key -out client.crt -set_serial 01 -days 365
 rm client.csr
 END_DOCUMENT
-	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/server.crt ./localCode/server.crt
-	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.crt ./localCode/client.crt
-	scp "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.key ./localCode/client.key
+	scp -q "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/server.crt ./localCode/server.crt
+	scp -q "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.crt ./localCode/client.crt
+	scp -q "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.key ./localCode/client.key
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 cd "${INSTALL_LOCATION}"
 rm client.key client.crt
@@ -171,8 +171,11 @@ END_DOCUMENT
 		fi
 	done
 
-	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
-cd "${INSTALL_LOCATION}" && npm install
+	ssh "${USERNAME}"@"${IPADDR}" << END_DOCUMENT
+/bin/bash << END_BASH
+cd "${INSTALL_LOCATION}"
+npm install
+END_BASH
 END_DOCUMENT
 
 	if [ "$FAIL_FLAG" -eq "0" ]
