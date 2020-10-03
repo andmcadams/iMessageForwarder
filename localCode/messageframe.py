@@ -492,7 +492,7 @@ class MessageBubble(tk.Frame):
         messageMenu = MessageMenu(self)
         message = self.chat.getMessages()[self.messageId]
 
-        react = sendReaction(messageMenu, self.messageId)
+        react = sendReaction(messageMenu, message.guid)
 
         messageMenu.add_command(label=self.messageId)
         if self.reactions != {} and self.chat.isGroup:

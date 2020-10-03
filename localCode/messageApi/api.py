@@ -631,9 +631,9 @@ class Chat:
     def sendReaction(
             self,
             mp: 'MessagePasser',
-            messageId: int,
-            reactionType: int) -> None:
-        mp.sendReaction(self.chatId, messageId, reactionType)
+            associated_guid: str,
+            associated_type: int) -> None:
+        mp.sendReaction(self.chatId, associated_guid, associated_type)
 
 
 class MessageDatabase:
