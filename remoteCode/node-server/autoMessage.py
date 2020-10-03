@@ -79,11 +79,10 @@ def getToChat(chatId):
 	newRecipients(groupName)
 
 def makeNewChat(recipientString):
-	groupName = ', '.join(ast.literal_eval(recipientString))
-	newRecipients(groupName)
+	newRecipients(recipientString)
 
 def newRecipients(groupName):
-		# Create a new message
+        # Create a new message
 	loc = pyautogui.locateCenterOnScreen('darkmode/composeButton.png', confidence=0.98)
 	if not loc:
 		print('I couldn\'t find the compose button!')
@@ -229,7 +228,6 @@ while True:
 		rowId, recipientString, text = row
 		makeNewChat(recipientString)
 		time.sleep(1.5)
-		print('Printing chatId: {}'.format(chatId))
 		lines = text.splitlines()
 		for i in range(len(lines)):
 			line = lines[i]
@@ -303,7 +301,7 @@ while True:
 						break
 
 					found = True
-					cursor = conn.execute('delete from chat where ROWID = ?', (rowId, ))
+					cursor = conn.execute('delete from reaction where ROWID = ?', (rowId, ))
 					conn.commit()
 					break
 				if attempts >= 3:
