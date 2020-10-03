@@ -61,8 +61,8 @@ function create_remote_config {
 
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 		cat << END_CAT > "${HOMEDIR_EXPANSION}"/Applications/node-server/.env
-QUEUE_LOCATION="${HOMEDIR_EXPANSION}/Library/Messages/msgqueue.db",
-CHAT_LOCATION="${HOMEDIR_EXPANSION}/Library/Messages/chat.db"
+QUEUE_PATH="${HOMEDIR_EXPANSION}/Library/Messages/msgqueue.db",
+CHAT_PATH="${HOMEDIR_EXPANSION}/Library/Messages/chat.db"
 END_CAT
 	exit \$?
 END_DOCUMENT
