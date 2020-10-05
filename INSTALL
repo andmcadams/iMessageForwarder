@@ -108,9 +108,9 @@ function update_macbook_chatdb {
 
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 		sqlite3 "${HOMEDIR_EXPANSION}"/Library/Messages/chat.db << END_SQL
-			CREATE TABLE IF NOT EXISTS message_update_date_join (message_id INTEGER REFERENCES message (ROWID) ON DELETE CASCADE, message_update_date INTEGER DEFAULT 0, PRIMARY KEY (message_id, message_update_date));
-			CREATE TRIGGER IF NOT EXISTS insert_last_update_date AFTER INSERT ON message BEGIN INSERT INTO message_update_date_join (message_id, message_update_date) VALUES ( NEW.ROWID, strftime('%s','now') ); END;
-			CREATE TRIGGER IF NOT EXISTS update_last_update_date AFTER UPDATE ON message BEGIN UPDATE message_update_date_join SET message_update_date = strftime('%s','now') WHERE message_id = OLD.ROWID; END;
+CREATE TABLE IF NOT EXISTS message_update_date_join (message_id INTEGER REFERENCES message (ROWID) ON DELETE CASCADE, message_update_date INTEGER DEFAULT 0, PRIMARY KEY (message_id, message_update_date));
+CREATE TRIGGER IF NOT EXISTS insert_last_update_date AFTER INSERT ON message BEGIN INSERT INTO message_update_date_join (message_id, message_update_date) VALUES ( NEW.ROWID, strftime('%s','now') ); END;
+CREATE TRIGGER IF NOT EXISTS update_last_update_date AFTER UPDATE ON message BEGIN UPDATE message_update_date_join SET message_update_date = strftime('%s','now') WHERE message_id = OLD.ROWID; END;
 END_SQL
 	exit \$?
 END_DOCUMENT
@@ -138,9 +138,15 @@ openssl req -newkey rsa:2048 -keyout client.key -out client.csr -nodes -subj "/C
 openssl x509 -req -in client.csr -CA server.crt -CAkey server.key -out client.crt -set_serial 01 -days 365
 rm client.csr
 END_DOCUMENT
-	scp -q "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/server.crt ./localCode/server.crt
-	scp -q "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.crt ./localCode/client.crt
-	scp -q "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/client.key ./localCode/client.key
+	FILES=( 'server.crt' 'client.crt' 'client.key' )
+	for FILE in "${FILES[@]}"
+	do
+		OUTPUT=$(q=1 scp_and_check "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"/"${FILE}" ./localCode/"${FILE}")
+		if [ $OUTPUT -ne 0 ]
+		then
+			FAIL_FLAG=1
+		fi
+	done
 	ssh "${USERNAME}"@"${IPADDR}" /bin/bash << END_DOCUMENT
 cd "${INSTALL_LOCATION}"
 rm client.key client.crt
@@ -162,14 +168,18 @@ END_DOCUMENT
 
 	for FILE in "${FILES[@]}"
 	do
-		scp -q "${SOURCE_LOCATION}"/"${FILE}" "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}"
-		OUTPUT=$?
+		OUTPUT=$(q=1 scp_and_check "${SOURCE_LOCATION}"/"${FILE}" "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}")
 		if [ $OUTPUT -ne 0 ]
 		then
-			fail "Error encountered transferring files to ${USERNAME}@${IPADDR}."
 			FAIL_FLAG=1
 		fi
 	done
+
+	OUTPUT=$(q=1 r=1 scp_and_check "${SOURCE_LOCATION}"/darkmode "${USERNAME}"@"${IPADDR}":"${INSTALL_LOCATION}")
+	if [ $OUTPUT -ne 0 ]
+	then
+		FAIL_FLAG=1
+	fi
 
 	ssh "${USERNAME}"@"${IPADDR}" << END_DOCUMENT
 /bin/bash << END_BASH
@@ -302,6 +312,27 @@ function fail {
 
 function pass {
 	echo -e "\033[1;32m$1\033[0m"
+}
+
+function scp_and_check {
+	# Take in optional q and r vars (quiet and recursive flags)
+	# Note that q is on by default, and r off by default.
+	# Passing anything in as q or r sets q or r
+	q=${q:+"-q"}
+	r=${r:+"-r"}
+	local from="$1"
+	local to="$2"
+
+	scp $q $r "${from}" "${to}"
+
+	local OUTPUT=$?
+	if [ $OUTPUT -ne 0 ]
+	then
+		fail "Error encountered transferring ${from} to ${to}."
+		echo 1
+	else
+		echo 0
+	fi
 }
 
 main
