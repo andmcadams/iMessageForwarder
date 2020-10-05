@@ -262,6 +262,7 @@ while True:
 			if newId != lastId:
 				raise NewMessageException('New Message Detected!', newId)
 
+		getToChat(chatId)
 		chatConn = sqlite3.connect(CHAT_DB_PATH)
 		isFromGroup = getIsGroup(chatId, chatConn)
 
