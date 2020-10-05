@@ -2,16 +2,15 @@ import sqlite3
 import sys
 import os
 import json
+from dotenv import load_dotenv
 
 
 if len(sys.argv) != 2:
 	print('Not enough args')
 	exit(1)
 
-dirname = os.path.dirname(__file__)
-configFile = os.path.join(dirname, 'config.json')
-config = json.load(open(configFile))
-CHAT_DB_PATH = config['chatLocation']
+load_dotenv()
+CHAT_DB_PATH = os.getenv('CHAT_PATH')
 
 conn = sqlite3.connect(CHAT_DB_PATH)
 

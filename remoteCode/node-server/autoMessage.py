@@ -6,12 +6,11 @@ import subprocess
 import json
 import os
 import ast
+from dotenv import load_dotenv
+load_dotenv()
 
-dirname = os.path.dirname(__file__)
-configFile = os.path.join(dirname, 'config.json')
-config = json.load(open(configFile))
-QUEUE_DB_PATH = config['queueLocation']
-CHAT_DB_PATH = config['chatLocation']
+QUEUE_DB_PATH = os.getenv('QUEUE_PATH')
+CHAT_DB_PATH = os.getenv('CHAT_PATH')
 
 typeDict = {
 	2000: ['darkmode/dHeart.png', 'darkmode/aHeart.png'],
