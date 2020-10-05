@@ -71,9 +71,9 @@ END_DOCUMENT
 
 	if [ $OUTPUT -ne 0 ]
 	then
-		fail "Could not create config.json at ${HOMEDIR_EXPANSION}/Applications/node-server/config.json"
+		fail "Could not create .env at ${HOMEDIR_EXPANSION}/Applications/node-server/.env"
 	else
-		pass "Created config.json at ${HOMEDIR_EXPANSION}/Applications/node-server/config.json"
+		pass "Created config.json at ${HOMEDIR_EXPANSION}/Applications/node-server/.env"
 		CREATED_REMOTE_CONFIG=1
 	fi
 }
