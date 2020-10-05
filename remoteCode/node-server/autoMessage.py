@@ -6,12 +6,11 @@ import subprocess
 import json
 import os
 import ast
+from dotenv import load_dotenv
+load_dotenv()
 
-dirname = os.path.dirname(__file__)
-configFile = os.path.join(dirname, 'config.json')
-config = json.load(open(configFile))
-QUEUE_DB_PATH = config['queueLocation']
-CHAT_DB_PATH = config['chatLocation']
+QUEUE_DB_PATH = os.getenv('QUEUE_PATH')
+CHAT_DB_PATH = os.getenv('CHAT_PATH')
 
 typeDict = {
 	2000: ['darkmode/dHeart.png', 'darkmode/aHeart.png'],
@@ -79,11 +78,10 @@ def getToChat(chatId):
 	newRecipients(groupName)
 
 def makeNewChat(recipientString):
-	groupName = ', '.join(ast.literal_eval(recipientString))
-	newRecipients(groupName)
+	newRecipients(recipientString)
 
 def newRecipients(groupName):
-		# Create a new message
+        # Create a new message
 	loc = pyautogui.locateCenterOnScreen('darkmode/composeButton.png', confidence=0.98)
 	if not loc:
 		print('I couldn\'t find the compose button!')
@@ -229,7 +227,6 @@ while True:
 		rowId, recipientString, text = row
 		makeNewChat(recipientString)
 		time.sleep(1.5)
-		print('Printing chatId: {}'.format(chatId))
 		lines = text.splitlines()
 		for i in range(len(lines)):
 			line = lines[i]
@@ -265,6 +262,7 @@ while True:
 			if newId != lastId:
 				raise NewMessageException('New Message Detected!', newId)
 
+		getToChat(chatId)
 		chatConn = sqlite3.connect(CHAT_DB_PATH)
 		isFromGroup = getIsGroup(chatId, chatConn)
 
@@ -303,7 +301,7 @@ while True:
 						break
 
 					found = True
-					cursor = conn.execute('delete from chat where ROWID = ?', (rowId, ))
+					cursor = conn.execute('delete from reaction where ROWID = ?', (rowId, ))
 					conn.commit()
 					break
 				if attempts >= 3:
