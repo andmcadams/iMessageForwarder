@@ -34,8 +34,13 @@ httpApp.get('/ping', (req, res) => {
 const httpsApp = express()
 httpsApp.use(bodyParser.json())
 httpsApp.use('/queue', queueRoutes.protectedEndpoints(QUEUE_PATH))
+httpsApp.use('/queue', queueRoutes.unprotectedEndpoints(QUEUE_PATH))
 httpsApp.use('/retrieve', retrieveRoutes.protectedEndpoints(CHAT_PATH))
-
+httpsApp.get('/ping', (req, res) => {
+	return res.status(200).send({
+		name: 'iMessageForwarder'
+	})
+})
 
 var key = fs.readFileSync('./server.key', 'utf8')
 var cert = fs.readFileSync('./server.crt', 'utf8')
