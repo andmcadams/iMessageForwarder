@@ -18,7 +18,7 @@ function handleBadId(res) {
 	})
 }
 
-function protectedEndpoints(dbPath) {
+function protectedEndpoints(dbPath, rootPath) {
 	var router = express.Router();
 	router.post('/message', (req, res) => {
 	  if (req.body.chat_id == null || req.body.text == null) {
@@ -35,7 +35,7 @@ function protectedEndpoints(dbPath) {
 		let db = new sqlite.Database(dbPath)
 		db.run('INSERT INTO message (chat_id, text) VALUES (?, ?)', chat_id, text, function(err) {
 			if (err == null) {
-				res.set({'Location': '/message/' + this.lastID})
+				res.set({'Location': rootPath + 'message/' + this.lastID})
 				return res.status(201).send({
 					ROWID: this.lastID
 				})
@@ -63,7 +63,7 @@ function protectedEndpoints(dbPath) {
 		let db = new sqlite.Database(dbPath)
 		db.run('INSERT INTO chat (recipient_string, text) VALUES (?, ?)', recipient_string, text, function(err) {
 			if (err == null) {
-				res.set({'Location': '/chat/' + this.lastID})
+				res.set({'Location': rootPath + 'chat/' + this.lastID})
 				return res.status(201).send({
 					ROWID: this.lastID
 				})
@@ -94,7 +94,7 @@ function protectedEndpoints(dbPath) {
 		let db = new sqlite.Database(dbPath)
 		db.run('INSERT INTO reaction (chat_id, associated_guid, associated_type) VALUES (?, ?, ?)', chat_id, associated_guid, associated_type, function(err) {
 			if (err == null) {
-				res.set({'Location': '/reaction/' + this.lastID})
+				res.set({'Location': rootPath + 'reaction/' + this.lastID})
 				return res.status(201).send({
 					ROWID: this.lastID
 				})
@@ -125,7 +125,7 @@ function protectedEndpoints(dbPath) {
 		let db = new sqlite.Database(dbPath)
 		db.run('INSERT INTO rename (chat_id, group_title) VALUES (?, ?)', chat_id, group_title, function(err) {
 			if (err == null) {
-				res.set({'Location': '/rename/' + this.lastID})
+				res.set({'Location': rootPath + 'rename/' + this.lastID})
 				return res.status(201).send({
 					ROWID: this.lastID
 				})
@@ -162,8 +162,7 @@ function unprotectedEndpoints(dbPath) {
 			if (err == null) {
 				hasSent = row == null
 				return res.send({
-					sent: hasSent,
-					row: row
+					sent: hasSent
 				})
 			}
 			else
