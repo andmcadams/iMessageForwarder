@@ -33,7 +33,7 @@ httpApp.get('/ping', (req, res) => {
 // HTTPS App definition
 const httpsApp = express()
 httpsApp.use(bodyParser.json())
-httpsApp.use('/queue', queueRoutes.protectedEndpoints(QUEUE_PATH, '/queue'))
+httpsApp.use('/queue', queueRoutes.protectedEndpoints(QUEUE_PATH, '/queue/'))
 httpsApp.use('/queue', queueRoutes.unprotectedEndpoints(QUEUE_PATH, true))
 httpsApp.use('/retrieve', retrieveRoutes.protectedEndpoints(CHAT_PATH))
 httpsApp.get('/ping', (req, res) => {
