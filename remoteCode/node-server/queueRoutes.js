@@ -112,10 +112,10 @@ function protectedEndpoints(dbPath, rootPath) {
 
 	router.post('/rename', (req, res) => {
 	  if (req.body.chat_id == null || req.body.group_title == null) {
-		// Missing either of these means the request is malformed.
-		return res.status(400).send({
-			error: 'Missing "chat_id" or "group_title" keys in request body.'
-		})
+			// Missing either of these means the request is malformed.
+			return res.status(400).send({
+				error: 'Missing "chat_id" or "group_title" keys in request body.'
+			})
 	  }
 	  else {
 		let chat_id = parseId(req.body.chat_id)
@@ -145,7 +145,7 @@ function protectedEndpoints(dbPath, rootPath) {
 
 // Check table :table for ROWID :id and send back false if still in queue, true otherwise
 // No need for https or auth, queue objects cannot be identified by sent or not
-function unprotectedEndpoints(dbPath) {
+function unprotectedEndpoints(dbPath, sendRow) {
 	var router = express.Router()
 	router.get('/:table/:id', (req, res) => {
 	  var table = req.params.table
@@ -161,8 +161,12 @@ function unprotectedEndpoints(dbPath) {
 		  db.get('SELECT * FROM ' + table + ' WHERE ROWID = ?', id, function(err, row) {
 			if (err == null) {
 				hasSent = row == null
+				// Only send row info if toggled on
+				if (sendRow == false)
+					row = null
 				return res.send({
-					sent: hasSent
+					sent: hasSent,
+					row: row
 				})
 			}
 			else

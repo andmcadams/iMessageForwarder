@@ -23,7 +23,7 @@ if (QUEUE_PATH == null || CHAT_PATH == null) {
 // HTTP App definition
 const httpApp = express()
 httpApp.use(bodyParser.json())
-httpApp.use('/queue', queueRoutes.unprotectedEndpoints(QUEUE_PATH))
+httpApp.use('/queue', queueRoutes.unprotectedEndpoints(QUEUE_PATH, false))
 httpApp.get('/ping', (req, res) => {
 	return res.status(200).send({
 		name: 'iMessageForwarder'
@@ -34,7 +34,7 @@ httpApp.get('/ping', (req, res) => {
 const httpsApp = express()
 httpsApp.use(bodyParser.json())
 httpsApp.use('/queue', queueRoutes.protectedEndpoints(QUEUE_PATH, '/queue'))
-httpsApp.use('/queue', queueRoutes.unprotectedEndpoints(QUEUE_PATH))
+httpsApp.use('/queue', queueRoutes.unprotectedEndpoints(QUEUE_PATH, true))
 httpsApp.use('/retrieve', retrieveRoutes.protectedEndpoints(CHAT_PATH))
 httpsApp.get('/ping', (req, res) => {
 	return res.status(200).send({
