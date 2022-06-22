@@ -14,7 +14,7 @@
     "express": "^4.17.1",
     "newman": "^5.2.0",
     "nodemon": "^2.0.4",
-    "sqlite3": "^5.0.0"
+    "sqlite3": "^5.0.3"
   },
   "devDependencies": {
     "standard": "^14.3.4"
